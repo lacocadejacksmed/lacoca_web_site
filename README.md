@@ -1,110 +1,116 @@
-# API_Whatsapp — Guía de arranque rápido
+# API Whatsapp & Dashboard Administrativo
 
-Breve guía para que un compañero pueda clonar, inicializar y ejecutar el proyecto después de hacer `git pull`.
+Este proyecto es una solución integral para la gestión de pedidos y clientes a través de una integración con la API de WhatsApp (Meta) y un panel administrativo web. Permite recibir comprobantes de pago, gestionar estados de suscripción y exportar reportes detallados.
 
-**Requisitos**
+## 🚀 Contexto del Proyecto
 
-- Node.js 18+ (se probó en Node 22). Verifica con `node -v`.
-- MySQL (local o remota) si vas a probar la persistencia.
-- Git y un editor (VS Code recomendado).
+El sistema actúa como un backend robusto que centraliza la interacción con clientes de WhatsApp y formularios de aterrizaje (Landing Pages). Su objetivo principal es automatizar la recepción de pedidos, la validación de comprobantes y el seguimiento de clientes recurrentes.
 
-**Archivos importantes**
+### 🛠️ Tecnologías Principales
 
-- `src/app.js` — punto de entrada del servidor.
-- `src/routes/api.routes.js` — rutas API.
-- `src/controllers/*` — controladores (ordenes, admin, etc.).
-- `.env` — variables de entorno (no está en el repo si `.gitignore` funciona).
-
-1. Clonar y moverte al repo
-
-```bash
-git clone <tu-repo-url>
-cd API_Whatsapp
-```
-
-2. Instalar dependencias
-
-```bash
-npm install
-```
-
-3. Crear y configurar el fichero `.env`
-
-Crea un archivo `.env` en la raíz con al menos estas variables (rellena con tus valores):
-
-```
-PORT=3000
-DB_HOST=localhost
-DB_USER=root
-DB_PASS=password
-DB_NAME=mi_basedatos
-```
-
-Importante: no comites `.env`. Si el repo contiene credenciales por error, rota las credenciales.
-
-4. Crear carpeta de uploads (Multer escribe aquí)
-
-```bash
-mkdir -p public/uploads
-```
-
-5. Arrancar en modo desarrollo
-
-```bash
-npm run dev
-```
-
-Esto usa `nodemon` y recarga al detectar cambios.
-
-6. Endpoints útiles
-
-- Form submit (landing): `POST /api/orders` — formulario principal.
-- Admin (UI estática en `public/admin.html` que consume estas rutas):
-  - `GET /api/admin/clientes`
-  - `GET /api/admin/comprobantes`
-  - `POST /api/admin/comprobantes/:id/status`
-  *La exportación a Excel se realiza directamente desde el frontend usando ExcelJS y FileSaver.*
-
-7. Dependencias para exportar (opcional)
-
-Si quieres usar las exportaciones Excel/PDF asegúrate de tener instaladas:
-
-```bash
-npm install exceljs pdfkit
-```
-
-Si el servidor falla con `Cannot find module 'exceljs'` o `Cannot find module 'pdfkit'`, instala las deps y reinicia.
-
-8. Problemas comunes y soluciones rápidas
-
-- Error "Cannot find module 'exceljs'": ejecutar `npm install exceljs` y reiniciar.
-- Error "argument handler must be a function" al arrancar: normalmente indica que una ruta apunta a un `undefined` — revisa que los controladores exporten las funciones usadas en `src/routes/api.routes.js`.
-- Si `nodemon` reinicia continuamente: revisa si un proceso de escritura (logs, herramientas) está tocando archivos en la raíz; también puedes ejecutar `node src/app.js` para una ejecución sin recarga.
-
-9. Tips para desarrollo
-
-- Usa `POSTMAN` o `curl` para probar endpoints API.
-- Para front-end estático: abre `http://localhost:3000` después de arrancar el servidor.
-- Para depuración rápida de rutas problemáticas, revisa `src/controllers/admin.controller.js` y confirma que todas las funciones están exportadas.
-
-10. Comandos útiles
-
-```bash
-# Instalar deps
-npm install
-
-# Arrancar en dev (nodemon)
-npm run dev
-
-# Ejecutar sin nodemon
-node src/app.js
-```
-
-11. ¿Qué hacer si algo falla?
-
-- Pega aquí la salida completa del terminal tras ejecutar `npm run dev`.
-- Indica qué archivo modificaste recientemente si ves reinicios constantes.
+- **React & Vite**: Frontend moderno con componentes reutilizables.
+- **Tailwind CSS & Framer Motion**: Estilizado premium y animaciones fluidas.
+- **Node.js & Express**: Servidor web y API REST.
+- **Sequelize (ORM)**: Gestión de base de datos MySQL.
+- **Meta WhatsApp Cloud API**: Recepción y procesamiento de mensajes automáticos.
 
 ---
 
-Si quieres, puedo añadir una plantilla de `.env.example` o un script `setup.sh`/`setup.ps1` para automatizar estos pasos.
+## 📂 Estructura del Proyecto
+
+```text
+API_Whatsapp/
+├── backend/            # Lógica de servidor y API
+│   ├── controllers/    # Lógica de negocio
+│   ├── models/         # Modelos de base de datos
+│   ├── routes/         # Endpoints de la API
+│   └── app.js          # Punto de entrada del backend
+├── frontend/           # Aplicación React (Vite)
+│   ├── src/            # Componentes y páginas
+│   ├── public/         # Activos estáticos del frontend
+│   └── index.html      # Punto de entrada del cliente
+├── database/           # Scripts y configuración de DB
+├── .env                # Variables de entorno
+└── package.json        # Dependencias raíz
+```
+
+---
+
+## ⚙️ Configuración e Instalación
+
+### 1. Requisitos Previos
+- **Node.js** (v18 o superior)
+- **MySQL** (Local o Remoto)
+- Cuenta de desarrollador en **Meta (Facebook Developers)** para WhatsApp Cloud API.
+
+### 2. Instalación
+```bash
+npm install
+```
+
+### 3. Variables de Entorno (`.env`)
+Crea un archivo `.env` en la raíz con el siguiente formato:
+```env
+PORT=3000
+DB_HOST=localhost
+DB_USER=tu_usuario
+DB_PASS=tu_contraseña
+DB_NAME=api_whatsapp_db
+# Meta WhatsApp API (Opcional para pruebas locales de webhook)
+WHATSAPP_TOKEN=tu_token_de_meta
+VERIFY_TOKEN=token_definido_en_meta
+```
+
+### 4. Ejecución
+```bash
+# Modo Desarrollo (con auto-recarga)
+npm run dev
+
+# Modo Producción
+npm start
+```
+
+---
+
+## 📱 Flujo de Trabajo
+
+### A. Recepción de Pedidos
+1. El cliente llena el formulario en la **Landing Page**.
+2. Sube su **comprobante de pago** (imagen/PDF).
+3. El sistema crea o actualiza al **Cliente** y registra el **Comprobante** en la base de datos.
+
+### B. Dashboard Administrativo (`/admin`)
+- **Gestión de Comprobantes**: Ver lista de pagos, cambiar estados (Pendiente, Aprobado, Rechazado).
+- **Control de Clientes**: Visualizar base de datos de usuarios y su estado de actividad.
+- **Suscripciones**: Seguimiento detallado de planes activos.
+- **Exportación**: Botones para descargar reportes en **Excel** y **PDF**.
+
+### C. Webhook de WhatsApp
+- Escucha mensajes entrantes de Meta.
+- Procesa interacciones automáticas para responder a clientes o notificar estados de pedidos.
+
+---
+
+## 🛠️ Endpoints de la API
+
+| Método | Ruta | Descripción |
+| :--- | :--- | :--- |
+| `POST` | `/api/orders` | Crea un nuevo pedido con comprobante. |
+| `GET` | `/api/admin/stats` | Obtiene estadísticas generales del dashboard. |
+| `GET` | `/api/admin/comprobantes` | Lista todos los pagos recibidos. |
+| `GET` | `/api/admin/clientes` | Lista la base de datos de clientes. |
+| `GET` | `/api/admin/export/daily.xlsx` | Descarga reporte diario en Excel. |
+| `POST` | `/api/admin/comprobantes/:id/status` | Actualiza el estado de un pago. |
+
+---
+
+## 🎨 Notas de Diseño
+El frontend utiliza un enfoque de **Rich Aesthetics**:
+- **Glassmorphism** en tarjetas y modales.
+- **Dark Mode** optimizado para visualización prolongada.
+- **Micro-animaciones** para feedback visual en acciones del administrador.
+
+---
+
+## 🤝 Soporte
+Para reportar errores o solicitar nuevas funcionalidades, revisa la sección de logs en la consola o contacta al desarrollador principal.
