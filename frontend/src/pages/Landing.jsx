@@ -6,7 +6,7 @@ import Plans from '../components/Plans';
 import FAQ from '../components/FAQ';
 import RegistrationWizard from '../components/RegistrationWizard';
 import PaymentInfo from '../components/PaymentInfo';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, 
   Shield, 
@@ -23,12 +23,15 @@ import {
   Truck,
   RefreshCw,
   Share2,
-  Check
+  Check,
+  X
 } from 'lucide-react';
 
 export default function Landing() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [isPaymentInfoOpen, setIsPaymentInfoOpen] = useState(false);
+  const [isNavbarMenuOpen, setIsNavbarMenuOpen] = useState(false);
+  const [isMenuExpanded, setIsMenuExpanded] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('quincenal');
   const [weeklyMenu, setWeeklyMenu] = useState({ fechas: 'Del 11 al 15 de Mayo', imagen_url: '/weekly_menu_preview_1778475988702.png' });
 
@@ -53,7 +56,11 @@ export default function Landing() {
 
   return (
     <div className="bg-white selection:bg-orange-100 selection:text-orange-600">
-      <Navbar onOpenWizard={() => openWizard()} onOpenPaymentInfo={() => setIsPaymentInfoOpen(true)} />
+      <Navbar 
+        onOpenWizard={() => openWizard()} 
+        onOpenPaymentInfo={() => setIsPaymentInfoOpen(true)} 
+        onMenuToggle={(isOpen) => setIsNavbarMenuOpen(isOpen)}
+      />
       
       <main>
         <Hero onOpenWizard={() => openWizard()} />
@@ -96,7 +103,8 @@ export default function Landing() {
                 initial={{ opacity: 0, scale: 0.9, x: 50 }}
                 whileInView={{ opacity: 1, scale: 1, x: 0 }}
                 viewport={{ once: true }}
-                className="lg:w-1/2 relative group"
+                className="lg:w-1/2 relative group cursor-zoom-in"
+                onClick={() => setIsMenuExpanded(true)}
               >
                 <div className="absolute inset-0 bg-orange-500/20 blur-[100px] rounded-full group-hover:bg-orange-500/30 transition-all"></div>
                 <div className="relative bg-white p-4 rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden transform group-hover:-rotate-1 transition-all duration-500">
@@ -107,8 +115,8 @@ export default function Landing() {
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-0 group-hover:opacity-100 transition-all flex items-end p-10">
                      <div className="text-white">
-                        <p className="text-xs font-black uppercase tracking-widest text-orange-400 mb-1">Próxima Semana</p>
-                        <h4 className="text-2xl font-black">Almuerzos Ejecutivos</h4>
+                        <p className="text-xs font-black uppercase tracking-widest text-orange-400 mb-1">Haz clic para ampliar</p>
+                        <h4 className="text-2xl font-black">Ver Menú Completo</h4>
                      </div>
                   </div>
                 </div>
@@ -286,16 +294,64 @@ export default function Landing() {
         }}
       />
 
-      {/* Floating CTA for Mobile */}
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[150] md:hidden">
-         <button 
-           onClick={() => openWizard()}
-           className="bg-orange-500 text-white px-8 py-4 rounded-full font-black shadow-2xl flex items-center gap-3 animate-bounce"
-         >
-            <MessageCircle size={20} fill="currentColor" />
-            Reserva tu Cupo
-         </button>
-      </div>
+      {/* Floating CTA for Mobile - Hidden when menu is open */}
+      <AnimatePresence>
+        {!isNavbarMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 50, x: '-50%' }}
+            className="fixed bottom-8 left-1/2 z-[150] md:hidden"
+          >
+             <button 
+               onClick={() => openWizard()}
+               className="bg-orange-500 text-white px-8 py-4 rounded-full font-black shadow-2xl flex items-center gap-3 animate-bounce border-none cursor-pointer"
+             >
+                <MessageCircle size={20} fill="currentColor" />
+                Reserva tu Cupo
+             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Menu Expansion Modal */}
+      <AnimatePresence>
+        {isMenuExpanded && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-xl"
+            onClick={() => setIsMenuExpanded(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center"
+              onClick={e => e.stopPropagation()}
+            >
+               <button 
+                 onClick={() => setIsMenuExpanded(false)}
+                 className="absolute -top-4 -right-4 md:-top-10 md:-right-10 bg-white text-slate-900 p-3 rounded-full shadow-2xl hover:bg-orange-500 hover:text-white transition-all z-10"
+               >
+                  <X size={24} strokeWidth={3} />
+               </button>
+               
+               <div className="bg-white p-2 md:p-4 rounded-[32px] md:rounded-[48px] shadow-2xl overflow-hidden overflow-y-auto w-full">
+                  <img 
+                    src={weeklyMenu.imagen_url || '/weekly_menu_preview_1778475988702.png'} 
+                    alt="Menú semanal completo" 
+                    className="w-full h-auto rounded-[24px] md:rounded-[40px]"
+                  />
+               </div>
+               
+               <div className="mt-6 text-center">
+                  <p className="text-white/60 text-xs font-bold uppercase tracking-[0.3em]">Menú Semanal • Medellín</p>
+               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
