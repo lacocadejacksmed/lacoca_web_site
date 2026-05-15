@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Menu, X, LogOut } from 'lucide-react';
 // El logo se carga directamente desde la carpeta pública en el JSX
 
-export default function Navbar({ onOpenWizard }) {
+export default function Navbar({ onOpenWizard, onOpenPaymentInfo }) {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -42,6 +42,7 @@ export default function Navbar({ onOpenWizard }) {
         <div className="hidden md:flex items-center gap-6 mr-4">
           <a href="#menu" className="text-white font-medium text-sm hover:text-orange-200 transition-colors no-underline">Menú</a>
           <a href="#planes" className="text-white font-medium text-sm hover:text-orange-200 transition-colors no-underline">Planes</a>
+          <button onClick={onOpenPaymentInfo} className="text-white font-medium text-sm hover:text-orange-200 transition-colors bg-transparent border-none cursor-pointer">Pagos</button>
           <a href="#beneficios" className="text-white font-medium text-sm hover:text-orange-200 transition-colors no-underline">Beneficios</a>
         </div>
         

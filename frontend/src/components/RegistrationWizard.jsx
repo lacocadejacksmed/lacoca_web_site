@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Download, ExternalLink, Copy } from 'lucide-react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 
@@ -28,11 +28,15 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     tieneCocas: false,
     comprobanteFile: null,
     comprobanteName: '',
-    fecha_inicio: ''
+    fecha_inicio: '',
+    paymentMethod: 'bancolombia'
   });
+  const [copied, setCopied] = useState(false);
   const [recognizedClient, setRecognizedClient] = useState(null);
   const [holidays, setHolidays] = useState([]);
   const [availability, setAvailability] = useState([]);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [selectedQr, setSelectedQr] = useState(null);
 
   useEffect(() => {
     const fetchHolidays = async () => {
@@ -180,6 +184,76 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     if (file) {
       setFormData({ ...formData, comprobanteFile: file, comprobanteName: file.name });
     }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: 'Copiado al portapapeles',
+      showConfirmButton: false,
+      timer: 1500
+    });
+  };
+
+  const downloadQr = (url, name) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `QR_Jacks_${name}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Iniciando descarga...', showConfirmButton: false, timer: 1500 });
+  };
+
+  const paymentMethods = {
+    bancolombia: {
+      name: 'Bancolombia',
+      icon: '/logoBancolombia.png',
+      account: '238-000045-84',
+      type: 'Ahorros',
+      holder: 'Alejandro Gómez Mesa',
+      qr: '/qr_bancolombia.png',
+      appUrl: 'bancolombia://'
+    },
+    nequi: {
+      name: 'Nequi',
+      icon: '/LogoNequi.jpg',
+      account: '3116437887',
+      type: 'Nequi',
+      holder: 'Alejandro Gómez Mesa',
+      qr: '/qr_nequi.png',
+      appUrl: 'nequi://'
+    },
+    daviplata: {
+      name: 'Daviplata',
+      icon: '/LogoDaviplata.jpg',
+      account: '3116437887',
+      type: 'Daviplata',
+      holder: 'Alejandro Gómez Mesa',
+      qr: '/qr_daviplata.png',
+      appUrl: 'daviplata://'
+    }
+  };
+
+  const openBankApp = (scheme) => {
+    window.location.href = scheme;
+    setTimeout(() => {
+      // Si después de 2 segundos no se abrió nada, es probable que no esté instalada o estemos en PC
+      Swal.fire({
+        toast: true,
+        position: 'bottom-end',
+        icon: 'info',
+        title: 'Intentando abrir la app...',
+        text: 'Si no abre, asegúrate de tener la app instalada en tu móvil.',
+        showConfirmButton: false,
+        timer: 3000
+      });
+    }, 500);
   };
 
   const getAdjustedPriceInfo = () => {
@@ -620,18 +694,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                     </div>
                   </div>
 
-                  <div 
-                    onClick={() => fileInputRef.current.click()}
-                    className="group border-2 border-dashed border-gray-200 hover:border-orange-400 rounded-[24px] p-8 text-center cursor-pointer transition-all bg-gray-50 hover:bg-orange-50"
-                  >
-                    <Upload className="mx-auto text-gray-300 group-hover:text-orange-500 mb-3 transition-colors" size={32} />
-                    <div className="text-sm font-black text-gray-600 group-hover:text-orange-700">
-                      {formData.comprobanteName || 'Subir Comprobante de Pago'}
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-1 font-bold uppercase tracking-widest text-slate-900">Click para adjuntar imagen o PDF</p>
-                    <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
-                  </div>
-
+                  {/* 1. Total Final */}
                   <div className="bg-slate-900 text-white p-6 rounded-2xl flex justify-between items-center shadow-2xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                     <div>
@@ -651,6 +714,122 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* 2. Métodos de Pago */}
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block ml-1">Selecciona cómo pagar</label>
+                    <div className="flex bg-slate-100/50 p-1 rounded-2xl gap-1 border border-slate-100">
+                      {Object.entries(paymentMethods).map(([id, method]) => (
+                        <button
+                          key={id}
+                          onClick={() => setFormData({ ...formData, paymentMethod: id })}
+                          className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${
+                            formData.paymentMethod === id 
+                              ? 'bg-white text-slate-900 shadow-sm' 
+                              : 'text-slate-400 hover:text-slate-600'
+                          }`}
+                        >
+                          <img src={method.icon} alt={method.name} className="h-4 w-4 object-contain opacity-80" />
+                          {method.name}
+                        </button>
+                      ))}
+                    </div>
+
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={formData.paymentMethod}
+                        initial={{ opacity: 0, scale: 0.98 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        className="space-y-4"
+                      >
+                        {/* Info Card */}
+                        <div className="bg-white border border-slate-100 rounded-[28px] p-6 shadow-sm space-y-5">
+                          <div className="flex justify-between items-center">
+                            <div className="space-y-1">
+                              <div className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Cuenta {paymentMethods[formData.paymentMethod].type}</div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-2xl font-black text-slate-900 tracking-tighter">
+                                  {paymentMethods[formData.paymentMethod].account}
+                                </span>
+                                <button 
+                                  onClick={() => copyToClipboard(paymentMethods[formData.paymentMethod].account)}
+                                  className={`p-2.5 rounded-xl transition-all shadow-sm ${copied ? 'bg-green-500 text-white' : 'bg-slate-50 text-slate-400 hover:text-orange-500 hover:bg-orange-50'}`}
+                                >
+                                  {copied ? <Check size={16} strokeWidth={3} /> : <Copy size={16} strokeWidth={3} />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center p-2 border border-slate-100 shadow-inner">
+                              <img src={paymentMethods[formData.paymentMethod].icon} alt="logo" className="w-full h-full object-contain" />
+                            </div>
+                          </div>
+
+                          <div className="flex items-end justify-between pt-4 border-t border-slate-50">
+                            <div className="space-y-3">
+                              <div>
+                                <div className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Titular</div>
+                                <div className="text-sm font-black text-slate-700">{paymentMethods[formData.paymentMethod].holder}</div>
+                              </div>
+                              <button 
+                                onClick={() => downloadQr(paymentMethods[formData.paymentMethod].qr, paymentMethods[formData.paymentMethod].name)}
+                                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-orange-600 transition-colors bg-slate-50 px-4 py-2 rounded-xl border border-slate-100"
+                              >
+                                 <Download size={14} strokeWidth={3} /> Guardar QR
+                              </button>
+                            </div>
+                            
+                            <div 
+                              onClick={() => {
+                                setSelectedQr(paymentMethods[formData.paymentMethod]);
+                                setIsQrModalOpen(true);
+                              }}
+                              className="relative w-20 h-20 bg-slate-50 rounded-2xl border border-slate-100 p-2 shadow-sm cursor-pointer group hover:border-orange-200 transition-all"
+                            >
+                               <img src={paymentMethods[formData.paymentMethod].qr} alt="QR" className="w-full h-full object-contain opacity-40 group-hover:opacity-100 transition-opacity" />
+                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                                  <div className="bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-xl">
+                                     <ExternalLink size={12} className="text-orange-500" />
+                                  </div>
+                               </div>
+                               <div className="absolute -bottom-1 -right-1 bg-orange-500 text-white p-1 rounded-lg shadow-lg">
+                                  <Check size={8} strokeWidth={4} />
+                                </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Botón Abrir App AFUERA de la card y más redondo */}
+                        <button 
+                          onClick={() => openBankApp(paymentMethods[formData.paymentMethod].appUrl)}
+                          className="w-full py-4 bg-slate-900 hover:bg-orange-600 text-white rounded-full font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 active:scale-95 group"
+                        >
+                          <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                            <ExternalLink size={16} strokeWidth={3} />
+                          </div>
+                          Ir a la App de {paymentMethods[formData.paymentMethod].name}
+                        </button>
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
+
+                  {/* 3. Subida de Comprobante */}
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] block ml-1">Adjuntar Pago</label>
+                    <div 
+                      onClick={() => fileInputRef.current.click()}
+                      className="group border-2 border-dashed border-slate-200 hover:border-orange-400 rounded-[32px] p-8 text-center cursor-pointer transition-all bg-slate-50 hover:bg-orange-50"
+                    >
+                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:scale-110 transition-transform">
+                        <Upload className="text-slate-300 group-hover:text-orange-500 transition-colors" size={28} />
+                      </div>
+                      <div className="text-sm font-black text-slate-600 group-hover:text-orange-700">
+                        {formData.comprobanteName || 'Subir Comprobante de Pago'}
+                      </div>
+                      <p className="text-[9px] text-slate-400 mt-2 font-black uppercase tracking-widest">Imagen o PDF del recibo</p>
+                      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileChange} />
+                    </div>
                   </div>
 
                   <div className="space-y-4">
@@ -711,6 +890,54 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
             )}
           </button>
         </div>
+
+        {/* QR Expansion Modal */}
+        <AnimatePresence>
+           {isQrModalOpen && selectedQr && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 z-[250] flex items-center justify-center p-6 bg-slate-900/95 backdrop-blur-xl rounded-[inherit]"
+              >
+                 <motion.div 
+                   initial={{ scale: 0.9, y: 20 }}
+                   animate={{ scale: 1, y: 0 }}
+                   exit={{ scale: 0.9, y: 20 }}
+                   className="bg-white p-8 rounded-[40px] shadow-2xl max-w-sm w-full text-center relative"
+                 >
+                    <button 
+                      onClick={() => setIsQrModalOpen(false)}
+                      className="absolute -top-4 -right-4 bg-orange-500 text-white p-3 rounded-2xl shadow-xl hover:bg-orange-600 transition-colors"
+                    >
+                       <X size={24} strokeWidth={3} />
+                    </button>
+
+                    <div className="mb-6">
+                       <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-full mb-4">
+                          <img src={selectedQr.icon} alt="logo" className="h-4 w-4 object-contain" />
+                          <span className="text-xs font-black uppercase tracking-widest text-slate-900">{selectedQr.name}</span>
+                       </div>
+                       <h3 className="text-xl font-black text-slate-900">Código QR de Pago</h3>
+                    </div>
+
+                    <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 mb-8 shadow-inner">
+                       <img src={selectedQr.qr} alt="QR Pago" className="w-full h-auto rounded-2xl" />
+                    </div>
+
+                    <div className="space-y-4">
+                       <button 
+                         onClick={() => downloadQr(selectedQr.qr, selectedQr.name)}
+                         className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-orange-500 transition-all shadow-xl shadow-slate-900/10 active:scale-95"
+                       >
+                          <Download size={20} strokeWidth={3} /> Guardar Imagen
+                       </button>
+                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Escanea desde tu app de banco</p>
+                    </div>
+                 </motion.div>
+              </motion.div>
+           )}
+        </AnimatePresence>
       </motion.div>
     </div>
   );

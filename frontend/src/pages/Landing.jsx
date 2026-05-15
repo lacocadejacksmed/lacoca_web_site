@@ -5,6 +5,7 @@ import Hero from '../components/Hero';
 import Plans from '../components/Plans';
 import FAQ from '../components/FAQ';
 import RegistrationWizard from '../components/RegistrationWizard';
+import PaymentInfo from '../components/PaymentInfo';
 import { motion } from 'framer-motion';
 import { 
   Play, 
@@ -27,6 +28,7 @@ import {
 
 export default function Landing() {
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isPaymentInfoOpen, setIsPaymentInfoOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('quincenal');
   const [weeklyMenu, setWeeklyMenu] = useState({ fechas: 'Del 11 al 15 de Mayo', imagen_url: '/weekly_menu_preview_1778475988702.png' });
 
@@ -51,7 +53,7 @@ export default function Landing() {
 
   return (
     <div className="bg-white selection:bg-orange-100 selection:text-orange-600">
-      <Navbar onOpenWizard={() => openWizard()} />
+      <Navbar onOpenWizard={() => openWizard()} onOpenPaymentInfo={() => setIsPaymentInfoOpen(true)} />
       
       <main>
         <Hero onOpenWizard={() => openWizard()} />
@@ -273,6 +275,15 @@ export default function Landing() {
         isOpen={isWizardOpen} 
         onClose={() => setIsWizardOpen(false)} 
         initialPlan={selectedPlan}
+      />
+
+      <PaymentInfo 
+        isOpen={isPaymentInfoOpen} 
+        onClose={() => setIsPaymentInfoOpen(false)}
+        onReturn={() => {
+          setIsPaymentInfoOpen(false);
+          setIsWizardOpen(true);
+        }}
       />
 
       {/* Floating CTA for Mobile */}
