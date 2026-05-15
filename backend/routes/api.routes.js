@@ -18,6 +18,7 @@ router.get("/availability", orderController.getAvailability);
 router.get("/check-client/:cedula", orderController.checkClient);
 router.get("/feriados", adminController.getFeriados);
 router.get("/menu", menuController.getMenu);
+router.get("/cobertura", adminController.getCoverage); // Nueva ruta pública
 
 // Rutas Administrativas (Protegidas)
 router.get("/admin/stats", [protect, admin], adminController.getStats);
@@ -31,6 +32,8 @@ router.get("/admin/suscripciones", [protect, admin], adminController.getSubscrip
 router.get("/admin/suscripciones/:id", [protect, admin], adminController.getSubscriptionById);
 router.put("/admin/suscripciones/:id", [protect, admin], adminController.updateSubscription);
 router.delete("/admin/clientes/:cedula/desactivar", [protect, admin], adminController.deactivateCliente);
+router.get("/admin/repartidores", [protect, admin], adminController.getRepartidores);
+router.post("/admin/asignar-repartidor", [protect, admin], adminController.assignRepartidor);
 
 // Reportes
 router.get("/admin/exportar/diario.xlsx", [protect, admin], adminController.exportDailyExcel);
@@ -40,6 +43,10 @@ router.get("/admin/exportar/diario.pdf", [protect, admin], adminController.expor
 router.get("/admin/feriados", [protect, admin], adminController.getFeriados);
 router.post("/admin/feriados", [protect, admin], adminController.addFeriado);
 router.delete("/admin/feriados/:id", [protect, admin], adminController.deleteFeriado);
+
+// Cobertura (Zonas Geográficas)
+router.get("/admin/cobertura", [protect, admin], adminController.getCoverage);
+router.post("/admin/cobertura", [protect, admin], adminController.updateCoverage);
 
 // Menú Semanal (Administración)
 router.get("/admin/menus", [protect, admin], menuController.getMenus);

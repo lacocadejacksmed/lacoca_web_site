@@ -31,6 +31,18 @@ const DireccionEntrega = sequelize.define('DireccionEntrega', {
     es_principal: {
         type: DataTypes.BOOLEAN,
         defaultValue: true
+    },
+    zona: {
+        type: DataTypes.STRING(100),
+        allowNull: true
+    },
+    latitud: {
+        type: DataTypes.DECIMAL(10, 8),
+        allowNull: true
+    },
+    longitud: {
+        type: DataTypes.DECIMAL(11, 8),
+        allowNull: true
     }
 }, {
     timestamps: false,

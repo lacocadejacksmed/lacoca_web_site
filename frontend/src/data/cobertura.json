@@ -1,0 +1,75 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "El Poblado", "color": "#f97316" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.5833, 6.1753],
+          [-75.5468, 6.1753],
+          [-75.5468, 6.2313],
+          [-75.5833, 6.2313],
+          [-75.5833, 6.1753]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Laureles - Estadio", "color": "#3b82f6" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.6175, 6.2374],
+          [-75.5741, 6.2374],
+          [-75.5741, 6.2717],
+          [-75.6175, 6.2717],
+          [-75.6175, 6.2374]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Envigado", "color": "#10b981" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.6050, 6.1400],
+          [-75.5600, 6.1400],
+          [-75.5600, 6.1900],
+          [-75.6050, 6.1900],
+          [-75.6050, 6.1400]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Belén", "color": "#8b5cf6" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.6235, 6.1996],
+          [-75.5756, 6.1996],
+          [-75.5756, 6.2406],
+          [-75.6235, 6.2406],
+          [-75.6235, 6.1996]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "Centro", "color": "#ef4444" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-75.5802, 6.2245],
+          [-75.5538, 6.2245],
+          [-75.5538, 6.2651],
+          [-75.5802, 6.2651],
+          [-75.5802, 6.2245]
+        ]]
+      }
+    }
+  ]
+}

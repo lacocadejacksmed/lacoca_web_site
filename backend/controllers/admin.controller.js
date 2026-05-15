@@ -4,7 +4,11 @@ const Comprobante = require("../models/Comprobante");
 const Configuracion = require("../models/Configuracion");
 const Plan = require("../models/Plan");
 const DireccionEntrega = require("../models/DireccionEntrega");
+const Usuario = require("../models/Usuario");
 const { Op } = require("sequelize");
+
+const fs = require("fs");
+const path = require("path");
 
 let ExcelJS;
 let PDFDocument;
@@ -476,6 +480,55 @@ const deleteFeriado = async (req, res) => {
   }
 };
 
+const getRepartidores = async (req, res) => {
+  try {
+    const repartidores = await Usuario.findAll({
+      where: { rol: 'repartidor' },
+      attributes: ['id', 'nombre', 'zona_asignada']
+    });
+    res.json({ success: true, repartidores });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const assignRepartidor = async (req, res) => {
+  try {
+    const { subscriptionId, repartidorId } = req.body;
+    const sub = await Suscripcion.findByPk(subscriptionId);
+    if (!sub) return res.status(404).json({ success: false, message: 'Suscripción no encontrada' });
+    
+    sub.repartidor_id = repartidorId;
+    await sub.save();
+    
+    res.json({ success: true, message: 'Repartidor asignado correctamente' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getCoverage = async (req, res) => {
+  try {
+    const filePath = path.join(__dirname, "../data/cobertura.json");
+    const data = fs.readFileSync(filePath, "utf8");
+    res.json(JSON.parse(data));
+  } catch (error) {
+    console.error("Error leyendo cobertura:", error);
+    res.status(500).json({ success: false, message: "Error al leer el archivo de cobertura" });
+  }
+};
+
+const updateCoverage = async (req, res) => {
+  try {
+    const filePath = path.join(__dirname, "../data/cobertura.json");
+    fs.writeFileSync(filePath, JSON.stringify(req.body, null, 2), "utf8");
+    res.json({ success: true, message: "Mapa de cobertura actualizado correctamente" });
+  } catch (error) {
+    console.error("Error guardando cobertura:", error);
+    res.status(500).json({ success: false, message: "Error al guardar el archivo de cobertura" });
+  }
+};
+
 module.exports = {
   getStats,
   getComprobantes,
@@ -493,4 +546,8 @@ module.exports = {
   getFeriados,
   addFeriado,
   deleteFeriado,
+  getRepartidores,
+  assignRepartidor,
+  getCoverage,
+  updateCoverage,
 };

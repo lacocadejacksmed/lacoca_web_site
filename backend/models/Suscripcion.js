@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 const Cliente = require('./Cliente');
 const Plan = require('./Plan');
+const Usuario = require('./Usuario');
 
 const Suscripcion = sequelize.define('Suscripcion', {
     id: {
@@ -57,6 +58,14 @@ const Suscripcion = sequelize.define('Suscripcion', {
     fecha_inicio: {
         type: DataTypes.DATEONLY,
         allowNull: true
+    },
+    repartidor_id: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'usuarios',
+            key: 'id'
+        }
     }
 }, {
     timestamps: true,
@@ -71,5 +80,8 @@ Suscripcion.belongsTo(Cliente, { foreignKey: 'cliente_cedula' });
 
 Plan.hasMany(Suscripcion, { foreignKey: 'plan_id' });
 Suscripcion.belongsTo(Plan, { foreignKey: 'plan_id' });
+
+Suscripcion.belongsTo(Usuario, { as: 'repartidor', foreignKey: 'repartidor_id' });
+Usuario.hasMany(Suscripcion, { as: 'entregas', foreignKey: 'repartidor_id' });
 
 module.exports = Suscripcion;

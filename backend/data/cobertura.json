@@ -1,0 +1,39 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Poblado",
+        "color": "#f97316"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              -75.58111,
+              6.193974
+            ],
+            [
+              -75.55451,
+              6.184758
+            ],
+            [
+              -75.55451,
+              6.217183
+            ],
+            [
+              -75.575275,
+              6.231006
+            ],
+            [
+              -75.58111,
+              6.193974
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

@@ -31,6 +31,7 @@ import {
 import api from '../services/api';
 import { exportExcel } from '../services/exportService';
 import Swal from 'sweetalert2';
+import CoverageMap from '../components/CoverageMap';
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -38,6 +39,8 @@ export default function Admin() {
   const [payments, setPayments] = useState([]);
   const [statsPeriod, setStatsPeriod] = useState('mes');
   const [loading, setLoading] = useState(true);
+  const [repartidores, setRepartidores] = useState([]);
+  const [repartidorAsignado, setRepartidorAsignado] = useState(null);
   
   // Filters
   const [clientSearch, setClientSearch] = useState('');
@@ -158,11 +161,36 @@ export default function Admin() {
       if (resMenus.data.success) {
         setMenuHistory(resMenus.data.menus);
       }
+
+      await fetchRepartidores();
     } catch (err) {
       console.error(err);
       Swal.fire({ icon: 'error', title: 'Error de conexión', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000 });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchRepartidores = async () => {
+    try {
+      const res = await api.get('/admin/repartidores');
+      if (res.data.success) {
+        setRepartidores(res.data.repartidores);
+      }
+    } catch (err) {
+      console.error("Error fetching repartidores:", err);
+    }
+  };
+
+  const assignRepartidor = async (subscriptionId, repartidorId) => {
+    try {
+      const res = await api.post('/admin/asignar-repartidor', { subscriptionId, repartidorId });
+      if (res.data.success) {
+        Swal.fire({ icon: 'success', title: 'Repartidor asignado', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2000 });
+        fetchData();
+      }
+    } catch (err) {
+      Swal.fire({ icon: 'error', title: 'Error al asignar repartidor' });
     }
   };
 
@@ -272,7 +300,9 @@ export default function Admin() {
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
               { id: 'pagos', label: 'Validar Pagos', icon: CreditCard, badge: payments.filter(p => p.status === 'pendiente').length },
               { id: 'clientes', label: 'Lista Clientes', icon: Users },
+              { id: 'repartidores', label: 'Repartidores', icon: MapPin },
               { id: 'feriados', label: 'Festivos', icon: CalendarDays },
+              { id: 'mapa', label: 'Mapa Cobertura', icon: MapPin },
               { id: 'menu', label: 'Menú Semanal', icon: ImageIcon }
             ].map(item => (
               <button 
@@ -314,7 +344,7 @@ export default function Admin() {
         <header className="flex justify-between items-center mb-10">
           <div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              {activeTab === 'dashboard' ? 'Resumen de Negocio' : activeTab === 'pagos' ? 'Validación de Pagos' : activeTab === 'clientes' ? 'Gestión de Clientes' : activeTab === 'feriados' ? 'Calendario de Festivos' : 'Configuración de Menú'}
+              {activeTab === 'dashboard' ? 'Resumen de Negocio' : activeTab === 'pagos' ? 'Validación de Pagos' : activeTab === 'clientes' ? 'Gestión de Clientes' : activeTab === 'repartidores' ? 'Gestión de Repartidores' : activeTab === 'feriados' ? 'Calendario de Festivos' : 'Configuración de Menú'}
             </h2>
             <p className="text-gray-500 font-medium">Panel centralizado de operaciones</p>
           </div>
@@ -491,6 +521,35 @@ export default function Admin() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'mapa' && (
+            <motion.div 
+              key="mapa"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div className="p-10">
+                <div className="mb-10">
+                  <h3 className="text-xl font-black text-slate-900">Mapa de Cobertura Geográfica</h3>
+                  <p className="text-sm text-gray-500 font-medium">Visualización de los polígonos de entrega en Medellín (Poblado, Laureles, Envigado, Belén y Centro)</p>
+                </div>
+                
+                <CoverageMap />
+                
+                <div className="mt-8 p-6 bg-orange-50 rounded-2xl border border-orange-100">
+                  <h4 className="text-sm font-black text-orange-800 uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <AlertCircle size={16} /> Información Técnica
+                  </h4>
+                  <p className="text-xs font-medium text-orange-700 leading-relaxed">
+                    Este mapa utiliza los datos del archivo <code className="bg-orange-100 px-1 rounded">cobertura.json</code>. 
+                    Cualquier dirección ingresada por un cliente es validada contra estos polígonos usando la librería Turf.js para asegurar que estemos dentro de la zona de servicio.
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -704,6 +763,59 @@ export default function Admin() {
             </motion.div>
           )}
 
+          {activeTab === 'repartidores' && (
+            <motion.div 
+              key="repartidores"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div className="p-10">
+                <div className="flex justify-between items-center mb-8">
+                   <div>
+                      <h3 className="text-xl font-black text-slate-900">Equipo de Reparto</h3>
+                      <p className="text-sm text-gray-500 font-medium">Asigna repartidores a zonas específicas para optimizar entregas</p>
+                   </div>
+                </div>
+
+                <div className="bg-gray-50/50 rounded-3xl border border-gray-100 overflow-hidden">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="bg-white border-b border-gray-100">
+                        <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Repartidor</th>
+                        <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Zona Asignada</th>
+                        <th className="px-8 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {repartidores.map(r => (
+                        <tr key={r.id} className="hover:bg-gray-50/30 transition-colors">
+                          <td className="px-8 py-4">
+                             <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-xs uppercase">
+                                   {r.nombre.charAt(0)}
+                                </div>
+                                <span className="text-sm font-black text-slate-800">{r.nombre}</span>
+                             </div>
+                          </td>
+                          <td className="px-8 py-4">
+                             <span className="text-xs font-bold text-orange-600 bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
+                                {r.zona_asignada || 'Sin asignar'}
+                             </span>
+                          </td>
+                          <td className="px-8 py-4">
+                             <span className="text-[10px] font-black text-green-600 uppercase tracking-widest">Disponible</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {activeTab === 'clientes' && (
             <motion.div 
               key="clients"
@@ -797,6 +909,8 @@ export default function Admin() {
           onClose={() => setSelectedComprobante(null)} 
           onValidate={validatePayment}
           onUpdate={fetchData}
+          repartidores={repartidores}
+          onAssignRepartidor={assignRepartidor}
         />
       )}
     </div>
@@ -1076,7 +1190,12 @@ function ClientModal({ client, onClose, onUpdate }) {
                                  <MapPin size={20} />
                               </div>
                               <div className="font-black text-slate-900 text-lg leading-tight mb-1">{dir.direccion}</div>
-                              <div className="text-sm font-bold text-gray-500 mb-4">{dir.barrio}</div>
+                              <div className="text-sm font-bold text-gray-500 mb-2">{dir.barrio}</div>
+                              {dir.zona && (
+                                 <div className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-1 rounded-lg border border-green-100 inline-block mb-2">
+                                   📍 ZONA: {dir.zona}
+                                 </div>
+                               )}
                            </div>
                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest pt-4 border-t border-gray-200/50">
                               Días de Entrega: {dir.dias_entrega}
@@ -1112,12 +1231,13 @@ function ClientModal({ client, onClose, onUpdate }) {
   );
 }
 
-function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate }) {
+function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartidores, onAssignRepartidor }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState({ 
     ...comprobante,
     facturacionElectronica: comprobante.facturacionElectronica === true || comprobante.facturacionElectronica === 'Si' ? 'Si' : 'No'
   });
+  const [selectedRepartidor, setSelectedRepartidor] = useState(comprobante.repartidorId || '');
 
   const handleSave = async () => {
     try {
@@ -1277,12 +1397,41 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate }) {
                              <span className="text-[9px] font-black bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full uppercase">{dir.es_principal ? 'Principal' : 'Secundaria'}</span>
                           </div>
                           <div className="text-xs font-bold text-gray-500 mb-2">{dir.barrio}</div>
+                          {dir.zona && (
+                            <div className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-1 rounded-lg border border-green-100 inline-block mb-2">
+                              📍 ZONA: {dir.zona}
+                            </div>
+                          )}
                           <div className="text-[10px] font-black text-slate-400 uppercase tracking-tight">Días: {dir.dias_entrega}</div>
                         </>
                       )}
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Repartidor Assignment */}
+              <div className="bg-slate-50 p-6 rounded-[32px] border border-gray-100">
+                 <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Asignación de Reparto</h5>
+                 <div className="flex gap-4">
+                    <select 
+                      className="flex-1 bg-white border-none rounded-xl px-4 py-3 text-sm font-bold shadow-sm"
+                      value={selectedRepartidor}
+                      onChange={e => setSelectedRepartidor(e.target.value)}
+                    >
+                       <option value="">Seleccionar Repartidor...</option>
+                       {repartidores.map(r => (
+                         <option key={r.id} value={r.id}>{r.nombre} ({r.zona_asignada || 'Sin zona'})</option>
+                       ))}
+                    </select>
+                    <button 
+                      onClick={() => onAssignRepartidor(comprobante.subscriptionId, selectedRepartidor)}
+                      disabled={!selectedRepartidor}
+                      className="bg-slate-900 text-white px-6 rounded-xl font-black text-xs hover:bg-orange-600 transition-all disabled:opacity-50"
+                    >
+                       Asignar
+                    </button>
+                 </div>
               </div>
 
               {/* Preferences & Restrictions */}

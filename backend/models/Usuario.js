@@ -25,11 +25,15 @@ const Usuario = sequelize.define('Usuario', {
         allowNull: false
     },
     rol: {
-        type: DataTypes.ENUM('admin', 'staff', 'cliente'),
+        type: DataTypes.ENUM('admin', 'staff', 'cliente', 'repartidor'),
         defaultValue: 'admin'
     },
     cedula: {
         type: DataTypes.STRING(20),
+        allowNull: true
+    },
+    zona_asignada: {
+        type: DataTypes.STRING(100),
         allowNull: true
     }
 }, {

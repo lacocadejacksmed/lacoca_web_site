@@ -5,6 +5,8 @@ import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Downl
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import BankRedirect from './BankRedirect';
+import * as turf from '@turf/turf';
+import axios from 'axios';
 
 const plans = {
   semanal: { name: 'Semanal', price: 75000 },
@@ -16,6 +18,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [coberturaData, setCoberturaData] = useState({ type: 'FeatureCollection', features: [] });
   const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
@@ -62,42 +65,11 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [selectedQr, setSelectedQr] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [coverage1, setCoverage1] = useState({ status: 'pending', zone: null });
+  const [coverage2, setCoverage2] = useState({ status: 'pending', zone: null });
 
   const totalSteps = 4;
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
-
-  const checkExistingClient = async (cedula, silent = false) => {
-    if (!cedula || cedula.length < 5) return;
-    try {
-      const res = await api.get(`/check-client/${cedula}`);
-      if (res.data && res.data.success && res.data.found) {
-        const c = res.data.cliente;
-        setRecognizedClient(c);
-        setFormData(prev => ({
-          ...prev,
-          nombre: c.nombre || prev.nombre,
-          email: c.correo || prev.email,
-          telefono: (c.celular || prev.telefono).replace(/\D/g, '').slice(0, 10),
-          direccion: c.ultimaDireccion?.direccion || prev.direccion,
-          barrio: c.ultimaDireccion?.barrio || prev.barrio
-        }));
-        
-        if (!silent && c.nombre) {
-          Swal.fire({
-            icon: 'success',
-            title: `¡Hola de nuevo, ${c.nombre.split(' ')[0]}!`,
-            text: 'Hemos recuperado tus datos para que tu renovación sea más rápida.',
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 4000
-          });
-        }
-      }
-    } catch (err) {
-      console.error("Error checking client:", err);
-    }
-  };
 
   useEffect(() => {
     const fetchHolidays = async () => {
@@ -166,6 +138,111 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     }
   }, [isOpen, initialPlan]);
 
+  // Cargar zonas de cobertura desde el servidor en tiempo real
+  useEffect(() => {
+    const fetchCobertura = async () => {
+      try {
+        const res = await api.get('/cobertura');
+        if (res.data) setCoberturaData(res.data);
+      } catch (err) {
+        console.error("Error cargando zonas de cobertura:", err);
+      }
+    };
+    fetchCobertura();
+  }, []);
+
+  const checkExistingClient = async (cedula, silent = false) => {
+    if (!cedula || cedula.length < 5) return;
+    try {
+      const res = await api.get(`/check-client/${cedula}`);
+      if (res.data && res.data.success && res.data.found) {
+        const c = res.data.cliente;
+        setRecognizedClient(c);
+        setFormData(prev => ({
+          ...prev,
+          nombre: c.nombre || prev.nombre,
+          email: c.correo || prev.email,
+          telefono: (c.celular || prev.telefono).replace(/\D/g, '').slice(0, 10),
+          direccion: c.ultimaDireccion?.direccion || prev.direccion,
+          barrio: c.ultimaDireccion?.barrio || prev.barrio
+        }));
+        
+        if (!silent && c.nombre) {
+          Swal.fire({
+            icon: 'success',
+            title: `¡Hola de nuevo, ${c.nombre.split(' ')[0]}!`,
+            text: 'Hemos recuperado tus datos para que tu renovación sea más rápida.',
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error checking client:", err);
+    }
+  };
+
+  const checkCoverage = async (address, barrio, setStatus, num) => {
+    if (!address || address.length < 5) return;
+    setStatus({ status: 'loading', zone: null });
+
+    // Limpiar dirección de caracteres conflictivos (# y -)
+    const cleanAddress = address.replace(/[#]/g, ' ').replace(/[-]/g, ' ');
+    
+    // Estrategia de búsqueda multinivel
+    const searchQueries = [
+      `${cleanAddress}, ${barrio}, Medellín, Colombia`, // 1. Intento completo
+      `${cleanAddress}, Medellín, Colombia`,           // 2. Solo dirección (por si el barrio no coincide)
+      `${barrio}, Medellín, Colombia`                  // 3. Solo barrio (último recurso)
+    ];
+
+    try {
+      let found = false;
+      for (const query of searchQueries) {
+        const res = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+          params: { q: query, format: 'json', limit: 1, countrycodes: 'co' }
+        });
+
+        if (res.data && res.data.length > 0) {
+          const { lat, lon } = res.data[0];
+          const pt = turf.point([parseFloat(lon), parseFloat(lat)]);
+          let zoneName = null;
+
+          coberturaData.features.forEach(f => {
+            if (turf.booleanPointInPolygon(pt, f)) {
+              zoneName = f.properties.name;
+            }
+          });
+
+          if (zoneName) {
+            setStatus({ status: 'ok', zone: zoneName });
+            setFormData(prev => ({ 
+              ...prev, 
+              [`zona_${num}`]: zoneName, 
+              [`lat_${num}`]: lat, 
+              [`lng_${num}`]: lon 
+            }));
+            found = true;
+            break; // Éxito total
+          } else if (query === searchQueries[0]) {
+            // Si en el primer intento encontramos el punto pero está fuera, marcamos fuera de cobertura
+            setStatus({ status: 'no_coverage', zone: null });
+            found = true;
+            break;
+          }
+        }
+      }
+
+      if (!found) {
+        setStatus({ status: 'not_found', zone: null });
+      }
+    } catch (err) {
+      console.error("Geocoding error:", err);
+      setStatus({ status: 'error', zone: null });
+    }
+  };
 
   const handleNext = () => {
     if (validateStep()) {
@@ -229,9 +306,18 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     if (step === 3) {
       if (!formData.direccion.trim()) errors.direccion = 'Dinos en qué dirección entregamos tu primer pedido';
       if (!formData.barrio.trim()) errors.barrio = 'Indica el barrio para organizar nuestra ruta';
+      
+      if (coverage1.status !== 'ok' && (formData.direccion.trim() && formData.barrio.trim())) {
+        errors.direccion = 'La dirección 1 no tiene cobertura confirmada';
+      }
+
       if (formData.tipoEntrega === 'hibrida') {
         if (!formData.direccion2.trim()) errors.direccion2 = 'Al ser modo híbrido, necesitamos la segunda dirección';
         if (!formData.barrio2.trim()) errors.barrio2 = 'Indica el barrio de tu segunda ubicación';
+        
+        if (coverage2.status !== 'ok' && (formData.direccion2.trim() && formData.barrio2.trim())) {
+          errors.direccion2 = 'La dirección 2 no tiene cobertura confirmada';
+        }
       }
     }
     if (step === 4) {
@@ -806,6 +892,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                           setFormData({...formData, direccion: e.target.value});
                           if(fieldErrors.direccion) setFieldErrors({...fieldErrors, direccion: null});
                         }}
+                        onBlur={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
                         placeholder="Dirección"
                       />
                       <input 
@@ -817,12 +904,30 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                           setFormData({...formData, barrio: e.target.value});
                           if(fieldErrors.barrio) setFieldErrors({...fieldErrors, barrio: null});
                         }}
+                        onBlur={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
                         placeholder="Barrio"
                       />
                     </div>
-                    {(fieldErrors.direccion || fieldErrors.barrio) && (
-                      <p className="text-[10px] font-bold text-orange-600 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {fieldErrors.direccion || fieldErrors.barrio}</p>
-                    )}
+                    
+                    {/* Badge de Cobertura */}
+                    <div className="mt-2">
+                      {coverage1.status === 'loading' && <div className="text-[10px] font-bold text-blue-500 animate-pulse">Verificando cobertura...</div>}
+                      {coverage1.status === 'ok' && (
+                        <div className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100 inline-flex items-center gap-1">
+                          <Check size={10} strokeWidth={4} /> COBERTURA CONFIRMADA: {coverage1.zone}
+                        </div>
+                      )}
+                      {coverage1.status === 'no_coverage' && (
+                        <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-100 inline-flex items-center gap-1">
+                          ⚠️ FUERA DE COBERTURA
+                        </div>
+                      )}
+                      {coverage1.status === 'not_found' && (
+                        <div className="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-100 inline-flex items-center gap-1">
+                          ❓ DIRECCIÓN NO ENCONTRADA
+                        </div>
+                      )}
+                    </div>
                     {formData.tipoEntrega === 'hibrida' && (
                       <div className="flex flex-wrap gap-2 pt-2">
                         {daysOfWeek.map(d => (
@@ -865,6 +970,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                             setFormData({...formData, direccion2: e.target.value});
                             if(fieldErrors.direccion2) setFieldErrors({...fieldErrors, direccion2: null});
                           }}
+                          onBlur={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
                           placeholder="Dirección"
                         />
                         <input 
@@ -876,12 +982,30 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                             setFormData({...formData, barrio2: e.target.value});
                             if(fieldErrors.barrio2) setFieldErrors({...fieldErrors, barrio2: null});
                           }}
+                          onBlur={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
                           placeholder="Barrio"
                         />
                       </div>
-                      {(fieldErrors.direccion2 || fieldErrors.barrio2) && (
-                        <p className="text-[10px] font-bold text-orange-600 mt-1 flex items-center gap-1"><AlertCircle size={10} /> {fieldErrors.direccion2 || fieldErrors.barrio2}</p>
-                      )}
+                      
+                      {/* Badge de Cobertura 2 */}
+                      <div className="mt-2 min-h-[24px]">
+                        {coverage2.status === 'loading' && <div className="text-[10px] font-bold text-blue-500 animate-pulse">Verificando cobertura...</div>}
+                        {coverage2.status === 'ok' && (
+                          <div className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100 inline-flex items-center gap-1">
+                            <Check size={10} strokeWidth={4} /> COBERTURA CONFIRMADA: {coverage2.zone}
+                          </div>
+                        )}
+                        {coverage2.status === 'no_coverage' && (
+                          <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-100 inline-flex items-center gap-1">
+                            ⚠️ FUERA DE COBERTURA
+                          </div>
+                        )}
+                        {coverage2.status === 'not_found' && (
+                          <div className="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-100 inline-flex items-center gap-1">
+                            ❓ DIRECCIÓN NO ENCONTRADA
+                          </div>
+                        )}
+                      </div>
                       <div className="flex flex-wrap gap-2 pt-2 opacity-60">
                         {formData.days_address_2.split(',').map(d => d && (
                           <span key={d} className="px-3 py-1.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-700">

@@ -54,11 +54,13 @@ CREATE TABLE IF NOT EXISTS suscripciones (
     `alergias` TEXT DEFAULT NULL,
     `restricciones` TEXT DEFAULT NULL,
     `fecha_inicio` DATE DEFAULT NULL,
+    `repartidor_id` INT DEFAULT NULL,
     `fecha_creacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `fecha_actualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     CONSTRAINT `fk_suscripcion_cliente` FOREIGN KEY (`cliente_cedula`) REFERENCES clientes(`cedula`) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT `fk_suscripcion_plan` FOREIGN KEY (`plan_id`) REFERENCES planes(`id`)
+    CONSTRAINT `fk_suscripcion_plan` FOREIGN KEY (`plan_id`) REFERENCES planes(`id`),
+    CONSTRAINT `fk_suscripcion_repartidor` FOREIGN KEY (`repartidor_id`) REFERENCES usuarios(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ==========================================
@@ -71,6 +73,9 @@ CREATE TABLE IF NOT EXISTS direcciones_entrega (
     `barrio` VARCHAR(100) NOT NULL,
     `dias_entrega` VARCHAR(255) NOT NULL, -- Lunes,Martes...
     `es_principal` TINYINT(1) DEFAULT 1,
+    `zona` VARCHAR(100) DEFAULT NULL,
+    `latitud` DECIMAL(10, 8) DEFAULT NULL,
+    `longitud` DECIMAL(11, 8) DEFAULT NULL,
     PRIMARY KEY (`id`),
     CONSTRAINT `fk_direccion_suscripcion` FOREIGN KEY (`suscripcion_id`) REFERENCES suscripciones(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -99,8 +104,9 @@ CREATE TABLE IF NOT EXISTS usuarios (
     `nombre` VARCHAR(255) NOT NULL,
     `email` VARCHAR(255) NOT NULL UNIQUE,
     `password` VARCHAR(255) NOT NULL,
-    `rol` ENUM('admin', 'staff', 'cliente') DEFAULT 'admin',
+    `rol` ENUM('admin', 'staff', 'cliente', 'repartidor') DEFAULT 'admin',
     `cedula` VARCHAR(20) DEFAULT NULL,
+    `zona_asignada` VARCHAR(100) DEFAULT NULL,
     `createdAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updatedAt` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)

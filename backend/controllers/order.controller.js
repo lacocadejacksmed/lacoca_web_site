@@ -51,7 +51,9 @@ const createOrder = async (req, res) => {
             email, nombre, cedula, celular, 
             plan, needs_cocas, delivery_type,
             address_1, barrio_1, days_address_1,
+            zona_1, lat_1, lng_1,
             address_2, barrio_2, days_address_2,
+            zona_2, lat_2, lng_2,
             facturacionElectronica,
             alergias, restricciones,
             fecha_inicio
@@ -174,7 +176,10 @@ const createOrder = async (req, res) => {
             direccion: address_1,
             barrio: barrio_1,
             dias_entrega: days_address_1 || 'Lunes,Martes,Miércoles,Jueves,Viernes',
-            es_principal: true
+            es_principal: true,
+            zona: zona_1,
+            latitud: lat_1,
+            longitud: lng_1
         });
 
         if (delivery_type === 'Hibrida' && address_2) {
@@ -183,7 +188,10 @@ const createOrder = async (req, res) => {
                 direccion: address_2,
                 barrio: barrio_2 || barrio_1,
                 dias_entrega: days_address_2 || 'A definir',
-                es_principal: false
+                es_principal: false,
+                zona: zona_2,
+                latitud: lat_2,
+                longitud: lng_2
             });
         }
 
