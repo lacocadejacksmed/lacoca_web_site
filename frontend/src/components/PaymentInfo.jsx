@@ -19,26 +19,6 @@ export default function PaymentInfo({ isOpen, onClose, onReturn }) {
       holder: 'Alejandro Gómez Mesa',
       qr: '/qr_bancolombia.png',
       appUrl: 'bancolombia://'
-    },
-    {
-      id: 'nequi',
-      name: 'Nequi',
-      icon: '/LogoNequi.jpg',
-      account: '3116437887',
-      type: 'Nequi',
-      holder: 'Alejandro Gómez Mesa',
-      qr: '/qr_nequi.png',
-      appUrl: 'nequi://'
-    },
-    {
-      id: 'daviplata',
-      name: 'Daviplata',
-      icon: '/LogoDaviplata.jpg',
-      account: '3116437887',
-      type: 'Daviplata',
-      holder: 'Alejandro Gómez Mesa',
-      qr: '/qr_daviplata.png',
-      appUrl: 'daviplata://'
     }
   ];
 
@@ -95,7 +75,7 @@ export default function PaymentInfo({ isOpen, onClose, onReturn }) {
 
         <div className="flex-1 overflow-y-auto p-8 md:p-12 pt-8 custom-scrollbar">
           {/* Main Grid/List */}
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <div className="max-w-md mx-auto mb-12">
             {paymentMethods.map((method) => (
               <motion.div 
                 key={method.id}

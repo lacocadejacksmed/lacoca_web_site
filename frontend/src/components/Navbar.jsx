@@ -48,8 +48,11 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
             </div>
             {/* Title - Always visible */}
             <div className="flex flex-col">
-              <span className={`text-white font-black tracking-tighter leading-none transition-all ${isScrolled ? 'text-xl' : 'text-2xl md:text-3xl'}`} style={{ fontFamily: 'Outfit, sans-serif' }}>
+              <span className={`text-white font-bold leading-[0.7] tracking-tight transition-all ${isScrolled ? 'text-xl' : 'text-2xl md:text-3xl'}`} style={{ fontFamily: 'Fredoka, sans-serif' }}>
                 La Coca
+              </span>
+              <span className={`text-orange-100 self-end transition-all ${isScrolled ? 'text-sm' : 'text-xl md:text-2xl'}`} style={{ fontFamily: 'Alex Brush, cursive' }}>
+                de Jacks
               </span>
             </div>
           </a>
@@ -157,8 +160,11 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
                   <img src="/logoLaCoca.svg" alt="Logo" className="h-20 w-20 rounded-full border-4 border-orange-500 shadow-xl" />
                   <div className="absolute -bottom-1 -right-1 bg-green-500 w-5 h-5 rounded-full border-4 border-white"></div>
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tighter">La Coca</h3>
-                <p className="text-[10px] font-bold text-orange-500 uppercase tracking-[0.3em]">Premium Food</p>
+                <div className="flex flex-col items-center">
+                  <h3 className="text-3xl font-bold text-slate-900 leading-[0.7] tracking-tight" style={{ fontFamily: 'Fredoka, sans-serif' }}>La Coca</h3>
+                  <span className="text-4xl text-orange-500 self-end" style={{ fontFamily: 'Alex Brush, cursive' }}>de Jacks</span>
+                </div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em] mt-4">Premium Food</p>
               </div>
 
               <div className="space-y-2">

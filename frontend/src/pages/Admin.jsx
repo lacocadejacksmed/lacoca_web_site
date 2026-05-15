@@ -254,12 +254,12 @@ export default function Admin() {
 
     // Rechazos por motivo (respetando el filtro de fecha)
     const rejected = payments.filter(p => p.status === 'rechazado' && new Date(p.fecha) >= filterDate);
-    const byCoverage = rejected.filter(p => p.motivo_rechazo === 'Sin Cobertura').length;
+
     const byCocas = rejected.filter(p => p.motivo_rechazo === 'Mentira Juego Cocas').length;
     const byFake = rejected.filter(p => p.motivo_rechazo === 'Comprobante Falso').length;
     const byNotReflected = rejected.filter(p => p.motivo_rechazo === 'No Reflejado').length;
 
-    return { income, active, pending, expiring, byCoverage, byCocas, byFake, byNotReflected };
+    return { income, active, pending, expiring, byCocas, byFake, byNotReflected };
   };
 
   const filteredClients = clients.filter(c => 
@@ -404,14 +404,8 @@ export default function Admin() {
               </div>
 
               {/* Rejections Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-10">
-                <StatCard 
-                  title="Sin Cobertura" 
-                  value={stats.byCoverage} 
-                  icon={MapPin} 
-                  color="bg-slate-400" 
-                  desc="Fuera de zona" 
-                />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+
                 <StatCard 
                   title="Mentira Cocas" 
                   value={stats.byCocas} 
@@ -1571,19 +1565,7 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
                         <Clock size={14} />
                         No Reflejado
                       </button>
-                      <button 
-                        onClick={() => {
-                          const msg = "Hola, desafortunadamente no tenemos cobertura en tu zona de entrega por el momento. Procederemos con la devolución. 📍";
-                          const phone = comprobante.clienteCelular;
-                          onValidate(comprobante.id, 'rechazado', 'Sin Cobertura');
-                          window.open(`https://wa.me/${phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-                          onClose();
-                        }}
-                        className="px-4 py-4 bg-gray-50 text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-2"
-                      >
-                        <AlertCircle size={14} />
-                        Sin Cobertura
-                      </button>
+
                       <button 
                         onClick={() => {
                           const msg = "Hola, notamos que indicaste tener el juego de cocas pero no registras suscripciones previas. Por favor realiza el pago de los recipientes. 🍱";

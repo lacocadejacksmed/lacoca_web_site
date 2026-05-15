@@ -80,22 +80,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
         console.error("Error al cargar festivos:", err);
       }
     };
-    const fetchAvailability = async () => {
-      try {
-        const res = await api.get('/availability');
-        if (res.data?.success) {
-          setAvailability(res.data.availability);
-          const firstAvailable = res.data.availability.find(a => a.disponible);
-          if (firstAvailable) {
-            setFormData(prev => ({ ...prev, fecha_inicio: firstAvailable.fecha }));
-          }
-        }
-      } catch (err) {
-        console.error("Error al cargar disponibilidad:", err);
-      }
-    };
     fetchHolidays();
-    fetchAvailability();
   }, []);
 
   useEffect(() => {
@@ -104,28 +89,52 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       setStep(1);
       setFieldErrors({});
       setFormData(prev => ({ ...prev, plan: initialPlan || 'quincenal' }));
+
+      // Cargar disponibilidad fresca cada vez que se abre
+      const fetchAvailability = async () => {
+        try {
+          const res = await api.get('/availability');
+          if (res.data?.success) {
+            setAvailability(res.data.availability);
+            const firstAvailable = res.data.availability.find(a => a.disponible);
+            if (firstAvailable) {
+              setFormData(prev => ({ ...prev, fecha_inicio: firstAvailable.fecha }));
+            }
+          }
+        } catch (err) {
+          console.error("Error al cargar disponibilidad:", err);
+          // Fallback manual si el API falla, para no dejar el wizard vacío
+          const fallback = [];
+          const start = new Date();
+          const day = start.getDay();
+          const daysToNextMonday = (day === 0) ? 1 : (8 - day);
+          let currentMonday = new Date(start);
+          currentMonday.setDate(start.getDate() + daysToNextMonday);
+          for(let i=0; i<4; i++) {
+            fallback.push({ fecha: currentMonday.toISOString().split('T')[0], disponible: true });
+            currentMonday.setDate(currentMonday.getDate() + 7);
+          }
+          setAvailability(fallback);
+        }
+      };
+      
+      fetchAvailability();
       
       const token = localStorage.getItem('token');
       if (token) {
         const fetchMe = async () => {
           try {
-            // Nota: El interceptor 401 podría redireccionar si el token expira
             const res = await api.get('/auth/me');
             if (res.data?.success) {
               const u = res.data.usuario;
               if (u) {
-                // Usamos una actualización funcional para evitar conflictos
-                setFormData(prev => {
-                  const newData = {
-                    ...prev,
-                    nombre: u.nombre || prev.nombre,
-                    documento: u.cedula || prev.documento,
-                    email: u.email || prev.email,
-                    telefono: (u.celular || prev.telefono).replace(/\D/g, '').slice(0, 10)
-                  };
-                  return newData;
-                });
-                // Si tiene cédula, recuperamos historial silenciosamente
+                setFormData(prev => ({
+                  ...prev,
+                  nombre: u.nombre || prev.nombre,
+                  documento: u.cedula || prev.documento,
+                  email: u.email || prev.email,
+                  telefono: (u.celular || prev.telefono).replace(/\D/g, '').slice(0, 10)
+                }));
                 if (u.cedula) checkExistingClient(u.cedula, true);
               }
             }
@@ -431,24 +440,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       holder: 'Alejandro Gómez Mesa',
       qr: '/qr_bancolombia.png',
       appUrl: 'bancolombia://'
-    },
-    nequi: {
-      name: 'Nequi',
-      icon: '/LogoNequi.jpg',
-      account: '3116437887',
-      type: 'Nequi',
-      holder: 'Alejandro Gómez Mesa',
-      qr: '/qr_nequi.png',
-      appUrl: 'nequi://'
-    },
-    daviplata: {
-      name: 'Daviplata',
-      icon: '/LogoDaviplata.jpg',
-      account: '3116437887',
-      type: 'Daviplata',
-      holder: 'Alejandro Gómez Mesa',
-      qr: '/qr_daviplata.png',
-      appUrl: 'daviplata://'
     }
   };
 
