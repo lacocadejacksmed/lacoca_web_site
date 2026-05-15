@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, Copy, Check, Download, ExternalLink, ShieldCheck, Info } from 'lucide-react';
 import { useState } from 'react';
 import Swal from 'sweetalert2';
+import BankRedirect from './BankRedirect';
 
 export default function PaymentInfo({ isOpen, onClose, onReturn }) {
   const [copiedId, setCopiedId] = useState(null);
@@ -64,20 +65,6 @@ export default function PaymentInfo({ isOpen, onClose, onReturn }) {
     document.body.removeChild(link);
   };
 
-  const openBankApp = (scheme) => {
-    window.location.href = scheme;
-    setTimeout(() => {
-      Swal.fire({
-        toast: true,
-        position: 'bottom-end',
-        icon: 'info',
-        title: 'Intentando abrir la app...',
-        text: 'Si no abre, asegúrate de tener la app instalada en tu móvil.',
-        showConfirmButton: false,
-        timer: 3000
-      });
-    }, 500);
-  };
 
   if (!isOpen) return null;
 
@@ -162,19 +149,14 @@ export default function PaymentInfo({ isOpen, onClose, onReturn }) {
                   </div>
                 </div>
 
-                <div className="mt-8 pt-6 border-t border-slate-50 grid grid-cols-2 gap-3">
+                 <div className="mt-8 pt-6 border-t border-slate-50 flex flex-col gap-3">
                    <button 
                      onClick={() => downloadQr(method.qr, method.name)}
-                     className="py-3 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                     className="w-full py-3 bg-slate-50 hover:bg-slate-100 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2"
                    >
-                     <Download size={14} strokeWidth={3} /> QR
+                     <Download size={14} strokeWidth={3} /> Guardar QR
                    </button>
-                   <button 
-                     onClick={() => openBankApp(method.appUrl)}
-                     className="py-3 bg-slate-900 hover:bg-orange-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-900/10 transition-all flex items-center justify-center gap-2"
-                   >
-                      <ExternalLink size={14} /> Abrir App
-                   </button>
+                   <BankRedirect bankId={method.id} />
                 </div>
               </motion.div>
             ))}

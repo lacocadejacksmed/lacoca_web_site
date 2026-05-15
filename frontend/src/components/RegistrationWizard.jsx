@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Download, ExternalLink, Copy, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Download, ExternalLink, Copy, AlertCircle, CheckCircle2, Smartphone, Globe } from 'lucide-react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
+import BankRedirect from './BankRedirect';
 
 const plans = {
   semanal: { name: 'Semanal', price: 75000 },
@@ -365,21 +366,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     }
   };
 
-  const openBankApp = (scheme) => {
-    window.location.href = scheme;
-    setTimeout(() => {
-      // Si después de 2 segundos no se abrió nada, es probable que no esté instalada o estemos en PC
-      Swal.fire({
-        toast: true,
-        position: 'bottom-end',
-        icon: 'info',
-        title: 'Intentando abrir la app...',
-        text: 'Si no abre, asegúrate de tener la app instalada en tu móvil.',
-        showConfirmButton: false,
-        timer: 3000
-      });
-    }, 500);
-  };
 
   const getAdjustedPriceInfo = () => {
     const currentPlan = plans[formData.plan];
@@ -1046,16 +1032,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                           </div>
                         </div>
 
-                        {/* Botón Abrir App AFUERA de la card y más redondo */}
-                        <button 
-                          onClick={() => openBankApp(paymentMethods[formData.paymentMethod].appUrl)}
-                          className="w-full py-4 bg-slate-900 hover:bg-orange-600 text-white rounded-full font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-900/10 active:scale-95 group"
-                        >
-                          <div className="w-8 h-8 bg-white/10 rounded-full flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                            <ExternalLink size={16} strokeWidth={3} />
-                          </div>
-                          Ir a la App de {paymentMethods[formData.paymentMethod].name}
-                        </button>
+                        {/* Botón de Redirección Inteligente */}
+                        <BankRedirect bankId={formData.paymentMethod} className="mb-6" />
+
                       </motion.div>
                     </AnimatePresence>
                   </div>
