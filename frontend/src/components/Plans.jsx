@@ -45,9 +45,9 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan }) {
   return (
     <section id="planes" className="py-24 bg-gradient-to-b from-white to-orange-50/50">
       <div className="max-w-7xl mx-auto px-6">
-        
+
         <div className="text-center mb-16">
-          <motion.span 
+          <motion.span
             initial={{ opacity: 0, y: 10 }}
             whileInView={{ opacity: 1, y: 0 }}
             className="inline-block bg-orange-100 text-orange-700 rounded-full px-5 py-1.5 text-xs font-black uppercase tracking-wider mb-4"
@@ -66,9 +66,8 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan }) {
               key={plan.id}
               whileHover={{ y: -10 }}
               onClick={() => setSelectedPlan(plan.id)}
-              className={`relative bg-white rounded-3xl p-8 shadow-xl cursor-pointer transition-all border-2 flex flex-col ${
-                selectedPlan === plan.id ? 'border-orange-500 scale-105 z-10' : 'border-transparent hover:border-orange-200'
-              }`}
+              className={`relative bg-white rounded-3xl p-8 shadow-xl cursor-pointer transition-all border-2 flex flex-col ${selectedPlan === plan.id ? 'border-orange-500 scale-105 z-10' : 'border-transparent hover:border-orange-200'
+                }`}
             >
               {plan.popular && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-black px-4 py-1.5 rounded-b-xl uppercase tracking-widest">
@@ -103,13 +102,12 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan }) {
                 ))}
               </ul>
 
-              <button 
+              <button
                 onClick={(e) => { e.stopPropagation(); onOpenWizard(plan.id); }}
-                className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 ${
-                  selectedPlan === plan.id 
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40 hover:bg-orange-600' 
+                className={`w-full py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 ${selectedPlan === plan.id
+                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40 hover:bg-orange-600'
                     : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 {selectedPlan === plan.id ? 'Seleccionado ✓' : 'Seleccionar Plan'}
                 <ArrowRight size={18} />
@@ -119,7 +117,7 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan }) {
         </div>
 
         {/* Investment Banner */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
           className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-orange-200 rounded-[32px] p-8 md:p-12"
@@ -130,7 +128,7 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan }) {
               <p className="text-gray-700 font-medium leading-relaxed mb-8">
                 Para iniciar el servicio necesitas adquirir el juego de cocas (envases reutilizables) que intercambiarás diariamente.
               </p>
-              
+
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4">
                 <div className="bg-white border-2 border-orange-100 rounded-2xl px-6 py-4">
                   <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">Plan elegido</div>
@@ -149,7 +147,7 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan }) {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => onOpenWizard(selectedPlan)}
               className="bg-slate-900 text-white hover:bg-slate-800 px-10 py-5 rounded-2xl font-black text-lg transition-all shadow-xl hover:-translate-y-1 active:scale-95 flex items-center gap-3 shrink-0"
             >

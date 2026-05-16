@@ -17,7 +17,7 @@ export default function FAQ() {
   return (
     <section id="faq" className="py-24 bg-white">
       <div className="max-w-3xl mx-auto px-6">
-        
+
         <div className="text-center mb-16">
           <h2 className="text-4xl font-black mb-4 tracking-tight">Preguntas Frecuentes</h2>
           <p className="text-lg text-gray-500 font-medium">Todo lo que necesitas saber antes de reservar</p>
@@ -26,14 +26,14 @@ export default function FAQ() {
         <div className="space-y-4">
           {faqs.map((faq, i) => (
             <div key={i} className="border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-              <button 
+              <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
                 className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50/50 transition-colors"
               >
                 <span className="font-bold text-gray-800 pr-8">{faq.q}</span>
-                <ChevronDown 
-                  className={`text-orange-500 transition-transform duration-300 ${openIndex === i ? 'rotate-180' : ''}`} 
-                  size={20} 
+                <ChevronDown
+                  className={`text-orange-500 transition-transform duration-300 ${openIndex === i ? 'rotate-180' : ''}`}
+                  size={20}
                   strokeWidth={3}
                 />
               </button>
@@ -56,7 +56,7 @@ export default function FAQ() {
         </div>
 
         {/* CTA Card */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           className="mt-16 bg-gradient-to-br from-orange-500 to-amber-500 text-white rounded-[32px] p-10 text-center shadow-2xl shadow-orange-500/20"
@@ -65,9 +65,9 @@ export default function FAQ() {
           <p className="text-orange-50 font-medium mb-8 max-w-md mx-auto leading-relaxed">
             Estamos aquí para ayudarte. Contáctanos por WhatsApp y te responderemos rápidamente.
           </p>
-          <a 
-            href="https://wa.me/573116437887" 
-            target="_blank" 
+          <a
+            href="https://wa.me/573116437887"
+            target="_blank"
             className="inline-flex items-center gap-3 bg-white text-orange-600 hover:bg-orange-50 px-10 py-4 rounded-2xl font-black text-lg transition-all shadow-xl hover:-translate-y-1 active:scale-95 no-underline"
           >
             <MessageCircle size={24} fill="currentColor" />

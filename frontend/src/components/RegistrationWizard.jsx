@@ -198,7 +198,8 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     setStatus({ status: 'loading', zone: null });
 
     // Limpiar dirección de caracteres conflictivos (# y -)
-    const cleanAddress = address.replace(/[#]/g, ' ').replace(/[-]/g, ' ');
+    // Limpiar dirección de caracteres conflictivos (# y -) y normalizar espacios
+    const cleanAddress = address.replace(/[#]/g, ' ').replace(/[-]/g, ' ').replace(/\s+/g, ' ').trim();
     
     // Estrategia de búsqueda multinivel
     const searchQueries = [
@@ -210,8 +211,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     try {
       let found = false;
       for (const query of searchQueries) {
-        const res = await axios.get(`https://nominatim.openstreetmap.org/search`, {
-          params: { q: query, format: 'json', limit: 1, countrycodes: 'co' }
+        // Usamos nuestro propio backend como proxy para evitar errores de CORS
+        const res = await api.get('/geocode', {
+          params: { q: query }
         });
 
         if (res.data && res.data.length > 0) {

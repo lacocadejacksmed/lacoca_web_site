@@ -13,6 +13,7 @@
     "@tailwindcss/vite": "^4.3.0",
     "@turf/turf": "^7.3.5",
     "axios": "^1.16.0",
+    "clsx": "^2.1.1",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.38.0",
@@ -25,7 +26,8 @@
     "react-leaflet": "^5.0.0",
     "react-leaflet-draw": "^0.21.0",
     "react-router-dom": "^7.15.0",
-    "sweetalert2": "^11.26.24"
+    "sweetalert2": "^11.26.24",
+    "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

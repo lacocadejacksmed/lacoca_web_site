@@ -19,6 +19,7 @@ router.get("/check-client/:cedula", orderController.checkClient);
 router.get("/feriados", adminController.getFeriados);
 router.get("/menu", menuController.getMenu);
 router.get("/cobertura", adminController.getCoverage); // Nueva ruta pública
+router.get("/geocode", orderController.geocodeAddress); // Proxy para Nominatim
 
 // Rutas Administrativas (Protegidas)
 router.get("/admin/stats", [protect, admin], adminController.getStats);

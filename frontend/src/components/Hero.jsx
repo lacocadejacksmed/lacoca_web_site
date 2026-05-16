@@ -17,8 +17,8 @@ export default function Hero({ onOpenWizard }) {
 
       <div className="max-w-7xl mx-auto px-6 relative">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
-          
-          <motion.div 
+
+          <motion.div
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8 }}
@@ -38,7 +38,7 @@ export default function Hero({ onOpenWizard }) {
             </p>
 
             <div className="flex flex-wrap gap-4 mb-14">
-              <button 
+              <button
                 onClick={onOpenWizard}
                 className="bg-white text-orange-600 hover:bg-orange-50 font-black px-8 py-4 rounded-2xl flex items-center gap-3 transition-all shadow-xl hover:-translate-y-1 active:scale-95"
               >
@@ -66,7 +66,7 @@ export default function Hero({ onOpenWizard }) {
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             className="flex flex-col gap-4"
             initial={{ opacity: 0, x: 50 }}
             animate={{ opacity: 1, x: 0 }}

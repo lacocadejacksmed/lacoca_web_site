@@ -1,3 +1,4 @@
+const axios = require('axios');
 const multer = require('multer');
 const path = require('path');
 const Cliente = require('../models/Cliente');
@@ -299,9 +300,43 @@ const checkClient = async (req, res) => {
   }
 };
 
+// Proxy de geocodificación para evitar errores de CORS
+const geocodeAddress = async (req, res) => {
+  try {
+    const { q } = req.query;
+    if (!q) return res.status(400).json({ success: false, message: "Consulta vacía" });
+
+    // Cambiamos Nominatim por Photon (Komoot) que es más permisivo con el rate limit
+    const response = await axios.get(`https://photon.komoot.io/api/`, {
+      params: { 
+        q, 
+        limit: 1
+      }
+    });
+
+    // Photon devuelve un GeoJSON FeatureCollection directamente.
+    // Lo mapeamos al formato que espera el frontend (array de objetos con lat/lon)
+    const results = response.data.features.map(f => ({
+      lat: f.geometry.coordinates[1],
+      lon: f.geometry.coordinates[0],
+      display_name: f.properties.name || f.properties.street || q
+    }));
+
+    res.json(results);
+  } catch (error) {
+    console.error("Geocoding proxy error detail:", error.response?.data || error.message);
+    res.status(500).json({ 
+      success: false, 
+      message: "Error en el servicio de geocodificación",
+      error: error.message 
+    });
+  }
+};
+
 module.exports = {
   upload,
   createOrder,
   getAvailability,
-  checkClient
+  checkClient,
+  geocodeAddress
 };
