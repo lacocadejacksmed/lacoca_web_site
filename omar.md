@@ -15,33 +15,35 @@ Hemos integrado un sistema de **cobertura ultra-preciso** para evitar que client
 
 ---
 
-## 🟢 Lo que SÍ puedes hacer (¡Con total libertad!)
+## 🟢 Tu Enfoque: Desarrollo de Frontend y UI/UX (¡Con total libertad!)
 
-Siente la total libertad de mejorar, cambiar estilos y refactorizar en las siguientes áreas:
+Como desarrollador enfocado en el **Frontend**, tienes total libertad para programar nuevas interfaces, mejorar la experiencia de usuario, optimizar componentes y refactorizar en las siguientes áreas:
 
-* **Landing Page y Secciones:** Puedes editar y refinar todo el copy, imágenes, espaciados y animaciones en:
+* **Crear y Mejorar Componentes React:** Puedes programar nuevos componentes, añadir efectos visuales con Framer Motion, y perfeccionar el diseño y la interactividad.
+* **Landing Page y Secciones:** Puedes editar, rediseñar y enriquecer el código de:
   * `frontend/src/pages/Landing2.jsx` (La página principal actual).
   * `frontend/src/components/Plans.jsx` (Planes de precios).
   * `frontend/src/components/FAQ.jsx` (Preguntas frecuentes).
   * `frontend/src/components/Navbar.jsx` (Barra de navegación).
-* **Estilos (CSS):** Puedes añadir variables, clases personalizadas o modificar transiciones en `frontend/src/index.css` de manera segura.
-* **Zonas de Cobertura en el Mapa:** Puedes agregar, editar o borrar los límites de cobertura directamente desde el **Panel de Administrador** en el mapa interactivo. El panel guarda automáticamente los cambios en `backend/data/cobertura.json` mediante la API.
-* **Menú Semanal:** Puedes actualizar las fechas y la imagen del menú de la semana desde el Panel de Administrador sin tocar el código.
+* **Maquetación y Estilos (CSS):** Eres libre de estructurar y expandir los estilos en `frontend/src/index.css` (añadir variables HSL, fuentes, clases de utilidad, etc.).
+* **Zonas de Cobertura e Información Dinámica:** Puedes probar y perfeccionar el flujo visual del mapa en el Admin. Si necesitas cambiar zonas físicamente, puedes hacerlo de forma interactiva en el panel (se guarda automáticamente en `backend/data/cobertura.json`).
+
 
 ---
 
-## 🔴 Lo que NO debes hacer (⚠️ Zona Crítica)
+## 🔴 Pautas de Seguridad e Integración (Por favor, consulta antes de modificar)
 
-Para evitar romper el flujo de reservas y la seguridad de la app, por favor **sigue estrictamente estas reglas**:
+Para mantener la estabilidad del sistema de reservas y la seguridad de la información, por favor ten en cuenta estas pautas técnicas antes de programar cambios profundos:
 
-1. **NO modifiques `RegistrationWizard.jsx` directamente:**
-   * Este componente maneja toda la lógica del formulario paso a paso, carga las APIs de geocodificación de Nominatim, renderiza el mapa dinámico de Leaflet y procesa el comprobante de pago con coordenadas. Si necesitas un cambio ahí, ¡avísame primero y lo hacemos juntos!
-2. **NO crees formularios de registro alternativos o "in-line" en `Landing2.jsx`:**
-   * El botón "Reservar Cupo" de la Landing siempre debe abrir el componente modular `<RegistrationWizard isOpen={...} onClose={...} />`. No intentes replicar el wizard incrustado directamente en el código de la landing, ya que omitiría las validaciones geográficas y de base de datos.
-3. **NO modifiques las rutas de `App.jsx` eliminando seguridad:**
-   * La ruta `/admin` en `frontend/src/App.jsx` debe estar siempre protegida por el componente `<ProtectedRoute adminOnly={true}>`. Eliminar `adminOnly={true}` crearía una vulnerabilidad grave que permitiría a cualquier cliente entrar a ver las ventas y las coberturas.
-4. **NO borres los campos de geolocalización en las APIs de reservas:**
-   * En el controlador `backend/controllers/order.controller.js` se requieren obligatoriamente los campos `lat_1`, `lng_1` y `zona_1` para crear órdenes exitosas en la base de datos.
+1. **Coordinación en `RegistrationWizard.jsx` (Checkout):**
+   * Este componente de frontend maneja un flujo complejo: geocodificación automática, el mapa interactivo de Leaflet para corregir coordenadas, y la validación matemática contra los límites GeoJSON mediante Turf.js. Si quieres proponer mejoras de UI o UX en esta sección, **¡escríbeme y lo programamos juntos en un bloque!**
+2. **Uso del Wizard Modular:**
+   * El botón "Reservar Cupo" de la Landing siempre debe invocar el componente modular `<RegistrationWizard isOpen={...} onClose={...} />`. Por favor, evita incrustar formularios de reserva manuales o alternativos dentro de `Landing2.jsx`, ya que omitirían las APIs geográficas de envío de coordenadas.
+3. **Seguridad en las Rutas (`App.jsx`):**
+   * La ruta `/admin` en `frontend/src/App.jsx` debe estar siempre protegida por el componente `<ProtectedRoute adminOnly={true}>` para evitar que usuarios no autorizados visualicen los paneles financieros y las bases de datos de clientes.
+4. **Campos del Backend en el Payload de Órdenes:**
+   * Al enviar el formulario final, el backend requiere estrictamente las claves `lat_1`, `lng_1` y `zona_1` (y sus contrapartes en modo híbrido) en el cuerpo del request (`backend/controllers/order.controller.js`) para poder registrar al cliente.
+
 
 ---
 
