@@ -16,7 +16,7 @@ export default function PaymentInfo({ isOpen, onClose, onReturn }) {
       icon: '/logoBancolombia.png',
       account: '238-000045-84',
       type: 'Ahorros',
-      holder: 'Alejandro Gómez Mesa',
+      holder: 'Daniel',
       qr: '/qr_bancolombia.png',
       appUrl: 'bancolombia://'
     }

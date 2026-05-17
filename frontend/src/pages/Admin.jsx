@@ -68,6 +68,10 @@ export default function Admin() {
   };
 
   useEffect(() => {
+    if (usuario.rol !== 'admin') {
+      navigate('/dashboard');
+      return;
+    }
     fetchData();
   }, []);
 

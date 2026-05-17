@@ -13,16 +13,50 @@ export default function Register() {
     confirmPassword: '',
     cedula: '',
     celular: '',
-    rol: 'cliente' // Default for public register
+    rol: 'cliente'
   });
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es obligatorio';
+    if (!formData.email) {
+      newErrors.email = 'El correo es obligatorio';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'El formato del correo no es válido';
+    }
+    
+    if (!formData.cedula) {
+      newErrors.cedula = 'La cédula es obligatoria';
+    } else if (!/^\d{6,12}$/.test(formData.cedula)) {
+      newErrors.cedula = 'Cédula inválida (6-12 dígitos)';
+    }
+
+    if (!formData.celular) {
+      newErrors.celular = 'El celular es obligatorio';
+    } else if (!/^\d{10}$/.test(formData.celular)) {
+      newErrors.celular = 'Celular debe tener 10 dígitos';
+    }
+
+    if (!formData.password) {
+      newErrors.password = 'La contraseña es obligatoria';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Mínimo 6 caracteres';
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Las contraseñas no coinciden';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleRegister = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      return Swal.fire({ icon: 'error', title: 'Error', text: 'Las contraseñas no coinciden' });
-    }
+    if (!validate()) return;
 
     setLoading(true);
     try {
@@ -42,8 +76,8 @@ export default function Register() {
     } catch (err) {
       Swal.fire({
         icon: 'error',
-        title: 'Error',
-        text: err.response?.data?.message || 'Error al registrarse'
+        title: 'Error de Registro',
+        text: err.response?.data?.message || 'Hubo un problema al crear tu cuenta. Intenta de nuevo.'
       });
     } finally {
       setLoading(false);
@@ -75,29 +109,39 @@ export default function Register() {
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Nombre Completo</label>
               <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <User className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.nombre ? 'text-red-400' : 'text-slate-300'}`} size={16} />
                 <input 
                   type="text"
-                  required
                   value={formData.nombre}
-                  onChange={e => setFormData({...formData, nombre: e.target.value})}
-                  className="w-full bg-gray-50 border-none rounded-xl pl-11 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all outline-none"
+                  onChange={e => {
+                    setFormData({...formData, nombre: e.target.value});
+                    if (errors.nombre) setErrors({...errors, nombre: null});
+                  }}
+                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
+                    errors.nombre ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:ring-2 focus:ring-orange-500'
+                  }`}
                 />
               </div>
+              {errors.nombre && <p className="text-[8px] font-bold text-red-500 px-1">{errors.nombre}</p>}
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Correo Electrónico</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <Mail className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.email ? 'text-red-400' : 'text-slate-300'}`} size={16} />
                 <input 
                   type="email"
-                  required
                   value={formData.email}
-                  onChange={e => setFormData({...formData, email: e.target.value})}
-                  className="w-full bg-gray-50 border-none rounded-xl pl-11 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all outline-none"
+                  onChange={e => {
+                    setFormData({...formData, email: e.target.value});
+                    if (errors.email) setErrors({...errors, email: null});
+                  }}
+                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
+                    errors.email ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:ring-2 focus:ring-orange-500'
+                  }`}
                 />
               </div>
+              {errors.email && <p className="text-[8px] font-bold text-red-500 px-1">{errors.email}</p>}
             </div>
           </div>
 
@@ -105,29 +149,41 @@ export default function Register() {
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Cédula</label>
               <div className="relative">
-                <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <Users className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.cedula ? 'text-red-400' : 'text-slate-300'}`} size={16} />
                 <input 
                   type="text"
-                  required
                   value={formData.cedula}
-                  onChange={e => setFormData({...formData, cedula: e.target.value})}
-                  className="w-full bg-gray-50 border-none rounded-xl pl-11 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all outline-none"
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setFormData({...formData, cedula: val});
+                    if (errors.cedula) setErrors({...errors, cedula: null});
+                  }}
+                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
+                    errors.cedula ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:ring-2 focus:ring-orange-500'
+                  }`}
                 />
               </div>
+              {errors.cedula && <p className="text-[8px] font-bold text-red-500 px-1">{errors.cedula}</p>}
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Celular</label>
               <div className="relative">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-bold text-xs">📞</div>
+                <div className={`absolute left-4 top-1/2 -translate-y-1/2 font-bold text-xs transition-colors ${errors.celular ? 'text-red-400' : 'text-slate-300'}`}>📞</div>
                 <input 
                   type="text"
-                  required
                   value={formData.celular}
-                  onChange={e => setFormData({...formData, celular: e.target.value})}
-                  className="w-full bg-gray-50 border-none rounded-xl pl-11 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all outline-none"
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setFormData({...formData, celular: val});
+                    if (errors.celular) setErrors({...errors, celular: null});
+                  }}
+                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
+                    errors.celular ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:ring-2 focus:ring-orange-500'
+                  }`}
                 />
               </div>
+              {errors.celular && <p className="text-[8px] font-bold text-red-500 px-1">{errors.celular}</p>}
             </div>
           </div>
 
@@ -135,29 +191,39 @@ export default function Register() {
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Contraseña</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.password ? 'text-red-400' : 'text-slate-300'}`} size={16} />
                 <input 
                   type="password"
-                  required
                   value={formData.password}
-                  onChange={e => setFormData({...formData, password: e.target.value})}
-                  className="w-full bg-gray-50 border-none rounded-xl pl-11 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all outline-none"
+                  onChange={e => {
+                    setFormData({...formData, password: e.target.value});
+                    if (errors.password) setErrors({...errors, password: null});
+                  }}
+                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
+                    errors.password ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:ring-2 focus:ring-orange-500'
+                  }`}
                 />
               </div>
+              {errors.password && <p className="text-[8px] font-bold text-red-500 px-1">{errors.password}</p>}
             </div>
 
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Confirmar</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.confirmPassword ? 'text-red-400' : 'text-slate-300'}`} size={16} />
                 <input 
                   type="password"
-                  required
                   value={formData.confirmPassword}
-                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
-                  className="w-full bg-gray-50 border-none rounded-xl pl-11 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all outline-none"
+                  onChange={e => {
+                    setFormData({...formData, confirmPassword: e.target.value});
+                    if (errors.confirmPassword) setErrors({...errors, confirmPassword: null});
+                  }}
+                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
+                    errors.confirmPassword ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:ring-2 focus:ring-orange-500'
+                  }`}
                 />
               </div>
+              {errors.confirmPassword && <p className="text-[8px] font-bold text-red-500 px-1">{errors.confirmPassword}</p>}
             </div>
           </div>
 

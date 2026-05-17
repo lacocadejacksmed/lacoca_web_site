@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "start": "node backend/app.js",
-    "dev": "nodemon backend/app.js",
+    "server": "nodemon backend/app.js",
+    "client": "npm run dev --prefix frontend",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "build:full": "npm run build --prefix frontend",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -24,6 +27,7 @@
     "sequelize": "^6.37.8"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "nodemon": "^3.1.14"
   }
 }

@@ -16,13 +16,15 @@ export default function ClientDashboard() {
 
   const fetchMyData = async () => {
     try {
-      // Necesitaremos un endpoint para obtener los datos del cliente logueado
       const res = await api.get('/auth/me');
       if (res.data.success) {
-        // Por ahora, como no tenemos el endpoint de suscripciones del cliente, 
-        // simulamos o dejamos el espacio.
-        setLoading(false);
+        // Obtenemos las suscripciones
+        const subsRes = await api.get('/client/suscripciones');
+        if (subsRes.data.success) {
+          setSuscripciones(subsRes.data.suscripciones);
+        }
       }
+      setLoading(false);
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -116,10 +118,34 @@ export default function ClientDashboard() {
 
             {loading ? (
               <div className="py-20 text-center text-gray-400 font-medium animate-pulse">Cargando tus datos...</div>
-            ) : (
+            ) : suscripciones.length === 0 ? (
               <div className="bg-gray-50 rounded-2xl p-10 text-center">
                 <Clock size={48} className="mx-auto text-gray-200 mb-4" />
-                <p className="text-gray-400 font-medium italic">Próximamente verás aquí el estado de tus entregas y fechas de vencimiento.</p>
+                <p className="text-gray-400 font-medium italic">Aún no tienes suscripciones activas.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {suscripciones.map((sub) => (
+                  <div key={sub.id} className="bg-white border border-gray-100 p-6 rounded-2xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:shadow-lg transition-all">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="font-bold text-lg text-slate-800">Plan {sub.Plan?.nombre}</span>
+                        {sub.estado === 'Pendiente' && <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-bold">Pendiente</span>}
+                        {sub.estado === 'Activo' && <span className="bg-green-100 text-green-600 px-3 py-1 rounded-full text-xs font-bold">Activo</span>}
+                        {sub.estado === 'Cancelado' && <span className="bg-red-100 text-red-600 px-3 py-1 rounded-full text-xs font-bold">Cancelado</span>}
+                        {sub.estado === 'Vencido' && <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-xs font-bold">Vencido</span>}
+                      </div>
+                      <p className="text-sm text-gray-500 mb-1">Inicia: <span className="font-semibold text-slate-700">{sub.fecha_inicio || 'Por definir'}</span></p>
+                      <p className="text-sm text-gray-500">Precio Total: <span className="font-semibold text-slate-700">${parseFloat(sub.precio_total).toLocaleString('es-CO')}</span></p>
+                    </div>
+                    <div className="flex flex-col text-left md:text-right">
+                      <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mb-1">Dirección Principal</p>
+                      <p className="text-sm font-semibold text-slate-700 max-w-[200px] truncate" title={sub.direcciones?.[0]?.direccion}>
+                        {sub.direcciones?.[0]?.direccion || 'No registrada'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </motion.div>

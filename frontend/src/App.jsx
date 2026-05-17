@@ -1,16 +1,23 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Landing from './pages/Landing';
+import Landing2 from './pages/Landing2';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import ClientDashboard from './pages/ClientDashboard';
 
-// Componente para proteger rutas
-const ProtectedRoute = ({ children }) => {
+// Componente para proteger rutas con roles
+const ProtectedRoute = ({ children, adminOnly = false }) => {
   const token = localStorage.getItem('token');
+  const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+
   if (!token) {
     return <Navigate to="/login" replace />;
   }
+
+  if (adminOnly && usuario.rol !== 'admin') {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return children;
 };
 
@@ -18,7 +25,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Landing />} />
+        <Route path="/" element={<Landing2 />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route 
@@ -32,7 +39,7 @@ function App() {
         <Route 
           path="/admin" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute adminOnly={true}>
               <Admin />
             </ProtectedRoute>
           } 

@@ -11,6 +11,7 @@ const router = express.Router();
 router.post("/auth/register", authController.register);
 router.post("/auth/login", authController.login);
 router.get("/auth/me", protect, authController.getMe);
+router.get("/client/suscripciones", protect, authController.getMySubscriptions);
 
 // Rutas Públicas (Landing Page)
 router.post("/orders", orderController.upload.single("comprobante"), orderController.createOrder);

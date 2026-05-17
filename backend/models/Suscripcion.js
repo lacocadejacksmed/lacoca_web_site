@@ -44,7 +44,7 @@ const Suscripcion = sequelize.define('Suscripcion', {
         allowNull: false
     },
     estado: {
-        type: DataTypes.ENUM('Pendiente', 'Activo', 'Cancelado'),
+        type: DataTypes.ENUM('Pendiente', 'Activo', 'Cancelado', 'Vencido'),
         defaultValue: 'Pendiente'
     },
     alergias: {

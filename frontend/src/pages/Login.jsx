@@ -8,11 +8,30 @@ import Swal from 'sweetalert2';
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const validate = () => {
+    const newErrors = {};
+    if (!email) {
+      newErrors.email = 'El correo es obligatorio';
+    } else if (!/\S+@\S+\.\S+/.test(email)) {
+      newErrors.email = 'El formato del correo no es válido';
+    }
+    
+    if (!password) {
+      newErrors.password = 'La contraseña es obligatoria';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (!validate()) return;
+
     setLoading(true);
     try {
       const res = await api.post('/auth/login', { email, password });
@@ -26,13 +45,13 @@ export default function Login() {
           timer: 1500,
           showConfirmButton: false
         });
-        navigate('/admin');
+        navigate(res.data.usuario.rol === 'admin' ? '/admin' : '/dashboard');
       }
     } catch (err) {
       Swal.fire({
         icon: 'error',
-        title: 'Error',
-        text: err.response?.data?.message || 'Error al iniciar sesión'
+        title: 'Error de Acceso',
+        text: err.response?.data?.message || 'Credenciales incorrectas o problema de conexión'
       });
     } finally {
       setLoading(false);
@@ -63,31 +82,41 @@ export default function Login() {
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Correo Electrónico</label>
             <div className="relative">
-              <Mail className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <Mail className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${errors.email ? 'text-red-400' : 'text-slate-300'}`} size={18} />
               <input 
                 type="email"
-                required
                 value={email}
-                onChange={e => setEmail(e.target.value)}
+                onChange={e => {
+                  setEmail(e.target.value);
+                  if (errors.email) setErrors({...errors, email: null});
+                }}
                 placeholder="ejemplo@correo.com"
-                className="w-full bg-gray-50 border-none rounded-2xl pl-14 pr-6 py-4 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all outline-none"
+                className={`w-full bg-gray-50 border-2 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold transition-all outline-none ${
+                  errors.email ? 'border-red-100 ring-2 ring-red-50 bg-red-50/30 text-red-900' : 'border-transparent focus:ring-2 focus:ring-orange-500'
+                }`}
               />
             </div>
+            {errors.email && <p className="text-[10px] font-bold text-red-500 px-1 animate-in slide-in-from-top-1">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Contraseña</label>
             <div className="relative">
-              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+              <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${errors.password ? 'text-red-400' : 'text-slate-300'}`} size={18} />
               <input 
                 type="password"
-                required
                 value={password}
-                onChange={e => setPassword(e.target.value)}
+                onChange={e => {
+                  setPassword(e.target.value);
+                  if (errors.password) setErrors({...errors, password: null});
+                }}
                 placeholder="••••••••"
-                className="w-full bg-gray-50 border-none rounded-2xl pl-14 pr-6 py-4 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all outline-none"
+                className={`w-full bg-gray-50 border-2 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold transition-all outline-none ${
+                  errors.password ? 'border-red-100 ring-2 ring-red-50 bg-red-50/30 text-red-900' : 'border-transparent focus:ring-2 focus:ring-orange-500'
+                }`}
               />
             </div>
+            {errors.password && <p className="text-[10px] font-bold text-red-500 px-1 animate-in slide-in-from-top-1">{errors.password}</p>}
           </div>
 
           <button 

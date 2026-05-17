@@ -48,24 +48,24 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
             </div>
             {/* Title - Always visible */}
             <div className="flex flex-col">
-              <span className={`text-white font-bold leading-[0.7] tracking-tight transition-all ${isScrolled ? 'text-xl' : 'text-2xl md:text-3xl'}`} style={{ fontFamily: 'Fredoka, sans-serif' }}>
+              <span className={`font-bold leading-[0.7] tracking-tight transition-all ${isScrolled ? 'text-white text-xl' : 'text-slate-900 text-2xl md:text-3xl'}`} style={{ fontFamily: 'Fredoka, sans-serif' }}>
                 La Coca
               </span>
-              <span className={`text-orange-100 self-end transition-all ${isScrolled ? 'text-sm' : 'text-xl md:text-2xl'}`} style={{ fontFamily: 'Alex Brush, cursive' }}>
+              <span className={`self-end transition-all ${isScrolled ? 'text-orange-100 text-sm' : 'text-orange-500 text-xl md:text-2xl'}`} style={{ fontFamily: 'Alex Brush, cursive' }}>
                 de Jacks
               </span>
             </div>
           </a>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-8 bg-white/10 backdrop-blur-sm px-8 py-3 rounded-full border border-white/20">
+          <div className={`hidden lg:flex items-center gap-8 backdrop-blur-sm px-8 py-3 rounded-full border transition-all ${isScrolled ? 'bg-white/10 border-white/20' : 'bg-slate-900/5 border-slate-900/10'}`}>
             {menuLinks.map((link) => (
               link.href ? (
-                <a key={link.name} href={link.href} className="text-white font-black text-[11px] uppercase tracking-widest hover:text-orange-200 transition-colors no-underline">
+                <a key={link.name} href={link.href} className={`font-black text-[11px] uppercase tracking-widest transition-colors no-underline ${isScrolled ? 'text-white hover:text-orange-200' : 'text-slate-600 hover:text-orange-600'}`}>
                   {link.name}
                 </a>
               ) : (
-                <button key={link.name} onClick={link.onClick} className="text-white font-black text-[11px] uppercase tracking-widest hover:text-orange-200 transition-colors bg-transparent border-none cursor-pointer">
+                <button key={link.name} onClick={link.onClick} className={`font-black text-[11px] uppercase tracking-widest transition-colors bg-transparent border-none cursor-pointer ${isScrolled ? 'text-white hover:text-orange-200' : 'text-slate-600 hover:text-orange-600'}`}>
                   {link.name}
                 </button>
               )
@@ -80,16 +80,21 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
                 <div className="flex items-center gap-2">
                   <a
                     href={user.rol === 'admin' ? '/admin' : '/dashboard'}
-                    className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-xl transition-all no-underline"
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all no-underline ${isScrolled ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-slate-900/5 hover:bg-slate-900/10 text-slate-700'}`}
                   >
                     <User size={16} />
                     <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Panel</span>
                   </a>
                   <button
                     onClick={() => { localStorage.clear(); window.location.reload(); }}
-                    className="p-2 text-white/60 hover:text-white transition-colors hidden md:block"
+                    title="Cerrar Sesión"
+                    className={`p-2.5 rounded-xl transition-all duration-300 hidden md:flex items-center justify-center border-none cursor-pointer ${
+                      isScrolled 
+                        ? 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white' 
+                        : 'bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 shadow-sm shadow-red-500/5'
+                    }`}
                   >
-                    <LogOut size={18} />
+                    <LogOut size={16} strokeWidth={2.5} />
                   </button>
                 </div>
               ) : (
@@ -106,7 +111,7 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
             {/* CTA Reservar - Hidden on very small mobile, visible from M up */}
             <button
               onClick={onOpenWizard}
-              className="hidden sm:flex bg-white text-orange-600 hover:bg-orange-50 text-[10px] font-black uppercase tracking-widest py-3 px-6 rounded-full transition-all shadow-xl active:scale-95 border-none cursor-pointer"
+              className={`hidden sm:flex text-[10px] font-black uppercase tracking-widest py-3 px-6 rounded-full transition-all shadow-xl active:scale-95 border-none cursor-pointer ${isScrolled ? 'bg-white text-orange-600 hover:bg-orange-50' : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/20'}`}
             >
               Reservar
             </button>
@@ -118,7 +123,7 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
                 setIsMenuOpen(newState);
                 onMenuToggle?.(newState);
               }}
-              className="lg:hidden p-3 bg-white/10 hover:bg-white/20 text-white rounded-2xl transition-all border border-white/20"
+              className={`lg:hidden p-3 rounded-2xl transition-all border ${isScrolled ? 'bg-white/10 hover:bg-white/20 text-white border-white/20' : 'bg-slate-900/5 hover:bg-slate-900/10 text-slate-800 border-slate-900/10'}`}
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>

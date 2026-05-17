@@ -1,12 +1,33 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Download, ExternalLink, Copy, AlertCircle, CheckCircle2, Smartphone, Globe } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Download, ExternalLink, Copy, AlertCircle, CheckCircle2, Smartphone, Globe, MapPin } from 'lucide-react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import BankRedirect from './BankRedirect';
 import * as turf from '@turf/turf';
 import axios from 'axios';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix Leaflet's default icon issue in React
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+function LocationMarker({ position, setPosition, checkCoverageByCoords, num }) {
+  const map = useMapEvents({
+    click(e) {
+      setPosition(e.latlng);
+      checkCoverageByCoords(e.latlng.lat, e.latlng.lng, num);
+    },
+  });
+  return position === null ? null : <Marker position={position}></Marker>;
+}
 
 const plans = {
   semanal: { name: 'Semanal', price: 75000 },
@@ -67,6 +88,35 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
   const [fieldErrors, setFieldErrors] = useState({});
   const [coverage1, setCoverage1] = useState({ status: 'pending', zone: null });
   const [coverage2, setCoverage2] = useState({ status: 'pending', zone: null });
+  const [showMap1, setShowMap1] = useState(false);
+  const [mapPos1, setMapPos1] = useState(null);
+  const [showMap2, setShowMap2] = useState(false);
+  const [mapPos2, setMapPos2] = useState(null);
+
+  const checkCoverageByCoords = (lat, lng, num) => {
+    const setStatus = num === 1 ? setCoverage1 : setCoverage2;
+    setStatus({ status: 'loading', zone: null });
+    const pt = turf.point([lng, lat]);
+    let zoneName = null;
+
+    coberturaData.features.forEach(f => {
+      if (turf.booleanPointInPolygon(pt, f)) {
+        zoneName = f.properties.name;
+      }
+    });
+
+    if (zoneName) {
+      setStatus({ status: 'ok', zone: zoneName });
+      setFormData(prev => ({ 
+        ...prev, 
+        [`zona_${num}`]: zoneName, 
+        [`lat_${num}`]: lat, 
+        [`lng_${num}`]: lng 
+      }));
+    } else {
+      setStatus({ status: 'no_coverage', zone: null });
+    }
+  };
 
   const totalSteps = 4;
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
@@ -200,47 +250,72 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     // Limpiar dirección de caracteres conflictivos (# y -)
     const cleanAddress = address.replace(/[#]/g, ' ').replace(/[-]/g, ' ');
     
-    // Estrategia de búsqueda multinivel
+    // Estrategia de búsqueda multinivel para cubrir todo el Valle de Aburrá
     const searchQueries = [
-      `${cleanAddress}, ${barrio}, Medellín, Colombia`, // 1. Intento completo
-      `${cleanAddress}, Medellín, Colombia`,           // 2. Solo dirección (por si el barrio no coincide)
-      `${barrio}, Medellín, Colombia`                  // 3. Solo barrio (último recurso)
+      `${cleanAddress}, ${barrio}, Antioquia, Colombia`,         // 1. Intento completo con barrio y departamento
+      `${cleanAddress}, Valle de Aburrá, Antioquia, Colombia`,   // 2. Intento con subregión
+      `${cleanAddress}, Antioquia, Colombia`,                    // 3. Intento solo con dirección y departamento
+      `${barrio}, Antioquia, Colombia`,                          // 4. Intento solo con barrio (último recurso)
+      `${cleanAddress}, Medellín, Colombia`                      // 5. Fallback histórico
     ];
 
     try {
       let found = false;
-      for (const query of searchQueries) {
-        const res = await axios.get(`https://nominatim.openstreetmap.org/search`, {
-          params: { q: query, format: 'json', limit: 1, countrycodes: 'co' }
-        });
+      const delay = ms => new Promise(res => setTimeout(res, ms));
 
-        if (res.data && res.data.length > 0) {
-          const { lat, lon } = res.data[0];
-          const pt = turf.point([parseFloat(lon), parseFloat(lat)]);
-          let zoneName = null;
-
-          coberturaData.features.forEach(f => {
-            if (turf.booleanPointInPolygon(pt, f)) {
-              zoneName = f.properties.name;
+      for (let i = 0; i < searchQueries.length; i++) {
+        const query = searchQueries[i];
+        
+        try {
+          const res = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+            params: { 
+              q: query, 
+              format: 'json', 
+              limit: 1, 
+              countrycodes: 'co',
+              email: 'contacto@lacocadejacks.com' // Nominatim TOS requires identifying email
             }
           });
 
-          if (zoneName) {
-            setStatus({ status: 'ok', zone: zoneName });
-            setFormData(prev => ({ 
-              ...prev, 
-              [`zona_${num}`]: zoneName, 
-              [`lat_${num}`]: lat, 
-              [`lng_${num}`]: lon 
-            }));
-            found = true;
-            break; // Éxito total
-          } else if (query === searchQueries[0]) {
-            // Si en el primer intento encontramos el punto pero está fuera, marcamos fuera de cobertura
-            setStatus({ status: 'no_coverage', zone: null });
-            found = true;
-            break;
+          if (res.data && res.data.length > 0) {
+            const { lat, lon } = res.data[0];
+            const pt = turf.point([parseFloat(lon), parseFloat(lat)]);
+            let zoneName = null;
+
+            coberturaData.features.forEach(f => {
+              if (turf.booleanPointInPolygon(pt, f)) {
+                zoneName = f.properties.name;
+              }
+            });
+
+            if (zoneName) {
+              setStatus({ status: 'ok', zone: zoneName });
+              setFormData(prev => ({ 
+                ...prev, 
+                [`zona_${num}`]: zoneName, 
+                [`lat_${num}`]: lat, 
+                [`lng_${num}`]: lon 
+              }));
+              found = true;
+              break; // Éxito total
+            } else if (i === 0) {
+              // Si en el primer intento encontramos el punto pero está fuera, marcamos fuera de cobertura
+              setStatus({ status: 'no_coverage', zone: null });
+              found = true;
+              break;
+            }
           }
+        } catch (stepErr) {
+          console.warn(`Error on query ${query}:`, stepErr.message);
+          // Si es 429 Too Many Requests, esperar más
+          if (stepErr.response?.status === 429) {
+            await delay(2000);
+          }
+        }
+
+        // Respetar el límite de Nominatim (1 request per second) si vamos a intentar de nuevo
+        if (!found && i < searchQueries.length - 1) {
+          await delay(1100);
         }
       }
 
@@ -248,8 +323,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
         setStatus({ status: 'not_found', zone: null });
       }
     } catch (err) {
-      console.error("Geocoding error:", err);
-      setStatus({ status: 'error', zone: null });
+      console.error("Geocoding fatal error:", err);
+      // Fallback amigable si la API falla críticamente
+      setStatus({ status: 'api_error', zone: null });
     }
   };
 
@@ -316,16 +392,18 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       if (!formData.direccion.trim()) errors.direccion = 'Dinos en qué dirección entregamos tu primer pedido';
       if (!formData.barrio.trim()) errors.barrio = 'Indica el barrio para organizar nuestra ruta';
       
-      if (coverage1.status !== 'ok' && (formData.direccion.trim() && formData.barrio.trim())) {
-        errors.direccion = 'La dirección 1 no tiene cobertura confirmada';
+      // SOLO BLOQUEAR si la API explícitamente dice que está FUERA de cobertura.
+      // Si dice 'not_found' o 'api_error', permitimos pasar porque OSM no entiende muchas direcciones colombianas.
+      if (coverage1.status === 'no_coverage') {
+        errors.direccion = 'La dirección 1 se encuentra fuera de nuestra zona de cobertura actual.';
       }
 
       if (formData.tipoEntrega === 'hibrida') {
         if (!formData.direccion2.trim()) errors.direccion2 = 'Al ser modo híbrido, necesitamos la segunda dirección';
         if (!formData.barrio2.trim()) errors.barrio2 = 'Indica el barrio de tu segunda ubicación';
         
-        if (coverage2.status !== 'ok' && (formData.direccion2.trim() && formData.barrio2.trim())) {
-          errors.direccion2 = 'La dirección 2 no tiene cobertura confirmada';
+        if (coverage2.status === 'no_coverage') {
+          errors.direccion2 = 'La dirección 2 se encuentra fuera de nuestra zona de cobertura actual.';
         }
       }
     }
@@ -437,7 +515,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       icon: '/logoBancolombia.png',
       account: '238-000045-84',
       type: 'Ahorros',
-      holder: 'Alejandro Gómez Mesa',
+      holder: 'Daniel',
       qr: '/qr_bancolombia.png',
       appUrl: 'bancolombia://'
     }
@@ -506,6 +584,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
         address_1: formData.direccion,
         barrio_1: formData.barrio,
         days_address_1: formData.days_address_1,
+        zona_1: formData.zona_1 || '',
+        lat_1: formData.lat_1 || '',
+        lng_1: formData.lng_1 || '',
         facturacionElectronica: formData.facturacion ? 'Si' : 'No',
         fecha_inicio: formData.fecha_inicio,
         alergias: formData.alergias,
@@ -516,10 +597,17 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
         payload.address_2 = formData.direccion2;
         payload.barrio_2 = formData.barrio2;
         payload.days_address_2 = formData.days_address_2;
+        payload.zona_2 = formData.zona_2 || '';
+        payload.lat_2 = formData.lat_2 || '';
+        payload.lng_2 = formData.lng_2 || '';
       }
 
-      // Añadir campos al FormData
-      Object.keys(payload).forEach(key => data.append(key, payload[key]));
+      // Añadir campos al FormData, asegurando que no se manden 'undefined'
+      Object.keys(payload).forEach(key => {
+        if (payload[key] !== undefined && payload[key] !== null) {
+          data.append(key, payload[key]);
+        }
+      });
       
       // Añadir archivo
       if (formData.comprobanteFile) {
@@ -811,6 +899,29 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                     />
                     {fieldErrors.telefono && <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10} /> {fieldErrors.telefono}</p>}
                   </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-900 uppercase tracking-widest">¿Tienes Alergias?</label>
+                      <textarea 
+                        className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-orange-500 transition-all font-medium text-slate-900 resize-none"
+                        rows="2"
+                        value={formData.alergias}
+                        onChange={e => setFormData({...formData, alergias: e.target.value})}
+                        placeholder="Ej: Maní, mariscos..."
+                      ></textarea>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-900 uppercase tracking-widest">Restricciones</label>
+                      <textarea 
+                        className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-orange-500 transition-all font-medium text-slate-900 resize-none"
+                        rows="2"
+                        value={formData.restricciones}
+                        onChange={e => setFormData({...formData, restricciones: e.target.value})}
+                        placeholder="Ej: No como cerdo, soy vegano..."
+                      ></textarea>
+                    </div>
+                  </div>
                 </motion.div>
               )}
 
@@ -901,21 +1012,49 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                     </div>
                     
                     {/* Badge de Cobertura */}
-                    <div className="mt-2">
-                      {coverage1.status === 'loading' && <div className="text-[10px] font-bold text-blue-500 animate-pulse">Verificando cobertura...</div>}
-                      {coverage1.status === 'ok' && (
-                        <div className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100 inline-flex items-center gap-1">
-                          <Check size={10} strokeWidth={4} /> COBERTURA CONFIRMADA: {coverage1.zone}
+                    <div className="mt-2 flex flex-col gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {coverage1.status === 'loading' && <div className="text-[10px] font-bold text-blue-500 animate-pulse flex items-center gap-1"><Globe size={12} className="animate-spin" /> Verificando cobertura...</div>}
+                        {coverage1.status === 'ok' && (
+                          <div className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 inline-flex items-center gap-1.5 shadow-sm">
+                            <Check size={12} strokeWidth={4} /> COBERTURA CONFIRMADA: {coverage1.zone}
+                          </div>
+                        )}
+                        {coverage1.status === 'no_coverage' && (
+                          <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm">
+                            <AlertCircle size={12} /> ⚠️ FUERA DE COBERTURA
+                          </div>
+                        )}
+                        
+                        {/* Botón siempre disponible */}
+                        {['ok', 'not_found', 'api_error', 'no_coverage'].includes(coverage1.status) && !showMap1 && (
+                          <button 
+                            onClick={() => setShowMap1(true)}
+                            className="text-[10px] bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors"
+                          >
+                            <MapPin size={12} className="text-orange-500" /> {coverage1.status === 'ok' ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
+                          </button>
+                        )}
+                      </div>
+
+                      {['not_found', 'api_error', 'no_coverage'].includes(coverage1.status) && !showMap1 && (
+                        <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col gap-2 shadow-sm">
+                          <div className="flex items-start gap-2">
+                            <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> 
+                            <span>No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.</span>
+                          </div>
                         </div>
                       )}
-                      {coverage1.status === 'no_coverage' && (
-                        <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-100 inline-flex items-center gap-1">
-                          ⚠️ FUERA DE COBERTURA
-                        </div>
-                      )}
-                      {coverage1.status === 'not_found' && (
-                        <div className="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-100 inline-flex items-center gap-1">
-                          ❓ DIRECCIÓN NO ENCONTRADA
+                      
+                      {showMap1 && (
+                        <div className="mt-2 rounded-xl overflow-hidden border-2 border-orange-500 shadow-lg relative h-[250px] z-0">
+                          <div className="absolute top-2 left-2 right-2 bg-white/90 backdrop-blur-md z-[400] text-center text-[10px] font-black text-slate-800 py-2 px-3 rounded-lg shadow-sm border border-slate-200">
+                            Haz clic en el mapa para colocar el Pin en tu dirección exacta
+                          </div>
+                          <MapContainer center={[6.2442, -75.5812]} zoom={12} style={{ height: '100%', width: '100%' }}>
+                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                            <LocationMarker position={mapPos1} setPosition={setMapPos1} checkCoverageByCoords={checkCoverageByCoords} num={1} />
+                          </MapContainer>
                         </div>
                       )}
                     </div>
@@ -979,21 +1118,49 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                       </div>
                       
                       {/* Badge de Cobertura 2 */}
-                      <div className="mt-2 min-h-[24px]">
-                        {coverage2.status === 'loading' && <div className="text-[10px] font-bold text-blue-500 animate-pulse">Verificando cobertura...</div>}
-                        {coverage2.status === 'ok' && (
-                          <div className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1 rounded-full border border-green-100 inline-flex items-center gap-1">
-                            <Check size={10} strokeWidth={4} /> COBERTURA CONFIRMADA: {coverage2.zone}
+                      <div className="mt-2 min-h-[24px] flex flex-col gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {coverage2.status === 'loading' && <div className="text-[10px] font-bold text-blue-500 animate-pulse flex items-center gap-1"><Globe size={12} className="animate-spin" /> Verificando cobertura...</div>}
+                          {coverage2.status === 'ok' && (
+                            <div className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 inline-flex items-center gap-1.5 shadow-sm">
+                              <Check size={12} strokeWidth={4} /> COBERTURA CONFIRMADA: {coverage2.zone}
+                            </div>
+                          )}
+                          {coverage2.status === 'no_coverage' && (
+                            <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm">
+                              <AlertCircle size={12} /> ⚠️ FUERA DE COBERTURA
+                            </div>
+                          )}
+
+                          {/* Botón siempre disponible */}
+                          {['ok', 'not_found', 'api_error', 'no_coverage'].includes(coverage2.status) && !showMap2 && (
+                            <button 
+                              onClick={() => setShowMap2(true)}
+                              className="text-[10px] bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors"
+                            >
+                              <MapPin size={12} className="text-orange-500" /> {coverage2.status === 'ok' ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
+                            </button>
+                          )}
+                        </div>
+
+                        {['not_found', 'api_error', 'no_coverage'].includes(coverage2.status) && !showMap2 && (
+                          <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col gap-2 shadow-sm">
+                            <div className="flex items-start gap-2">
+                              <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> 
+                              <span>No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.</span>
+                            </div>
                           </div>
                         )}
-                        {coverage2.status === 'no_coverage' && (
-                          <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1 rounded-full border border-red-100 inline-flex items-center gap-1">
-                            ⚠️ FUERA DE COBERTURA
-                          </div>
-                        )}
-                        {coverage2.status === 'not_found' && (
-                          <div className="text-[10px] font-black text-amber-600 bg-amber-50 px-3 py-1 rounded-full border border-amber-100 inline-flex items-center gap-1">
-                            ❓ DIRECCIÓN NO ENCONTRADA
+                        
+                        {showMap2 && (
+                          <div className="mt-2 rounded-xl overflow-hidden border-2 border-orange-500 shadow-lg relative h-[250px] z-0">
+                            <div className="absolute top-2 left-2 right-2 bg-white/90 backdrop-blur-md z-[400] text-center text-[10px] font-black text-slate-800 py-2 px-3 rounded-lg shadow-sm border border-slate-200">
+                              Haz clic en el mapa para colocar el Pin en tu dirección exacta
+                            </div>
+                            <MapContainer center={[6.2442, -75.5812]} zoom={12} style={{ height: '100%', width: '100%' }}>
+                              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                              <LocationMarker position={mapPos2} setPosition={setMapPos2} checkCoverageByCoords={checkCoverageByCoords} num={2} />
+                            </MapContainer>
                           </div>
                         )}
                       </div>
