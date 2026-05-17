@@ -28,8 +28,8 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
     <>
       <nav
         className={`fixed top-0 left-0 right-0 z-[200] transition-all duration-500 ${isScrolled
-            ? 'bg-orange-600/95 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.12)] py-3 px-4 md:px-8'
-            : 'bg-transparent py-6 px-6 md:px-12'
+          ? 'bg-orange-600/95 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.12)] py-3 px-4 md:px-8'
+          : 'bg-transparent py-6 px-6 md:px-12'
           }`}
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
@@ -37,12 +37,11 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
           <a href="#" className="flex items-center gap-3 no-underline group">
             {/* Image - Hidden on Mobile, visible from LG */}
             <div className="relative hidden lg:block">
-              <img 
-                src="/logoLaCoca.svg" 
-                alt="Logo" 
-                className={`object-contain rounded-full border-2 border-white shadow-xl group-hover:scale-105 transition-all duration-500 ${
-                  isScrolled ? 'h-12 w-12' : 'h-16 w-16'
-                }`} 
+              <img
+                src="/logoLaCoca.svg"
+                alt="Logo"
+                className={`object-contain rounded-full border-2 border-white shadow-xl group-hover:scale-105 transition-all duration-500 ${isScrolled ? 'h-12 w-12' : 'h-16 w-16'
+                  }`}
               />
               <div className="absolute -inset-1 bg-white/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity"></div>
             </div>
@@ -149,7 +148,7 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
             {/* Content Card */}
             <div className="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col p-8 pt-20">
               {/* Close Button - Absolute for visibility */}
-              <button 
+              <button
                 onClick={() => {
                   setIsMenuOpen(false);
                   onMenuToggle?.(false);
