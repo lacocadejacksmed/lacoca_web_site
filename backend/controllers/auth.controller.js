@@ -152,15 +152,14 @@ exports.getMySubscriptions = async (req, res) => {
                 const startDate = new Date(sub.fecha_inicio + 'T12:00:00');
                 startDate.setHours(0, 0, 0, 0);
                 
-                // Calculamos duración en calendario. Asumimos Semanal = 7 días de calendario (aunque sean 5 hábiles)
-                // Para una lógica más precisa, usaremos:
-                // Semanal (5 hábiles) -> Vence a los 7 días
-                // Quincenal (10 hábiles) -> Vence a los 14 días
-                // Mensual (20 hábiles) -> Vence a los 28 días
+                // Para una lógica más precisa, usaremos duraciones en calendario para vencer en fin de semana
+                // Semanal -> Vence a los 5 días (sábado)
+                // Quincenal -> Vence a los 12 días (sábado semana 2)
+                // Mensual -> Vence a los 26 días (sábado semana 4)
                 let diasCalendario = 0;
-                if (sub.Plan.nombre === 'Semanal') diasCalendario = 7;
-                else if (sub.Plan.nombre === 'Quincenal') diasCalendario = 14;
-                else if (sub.Plan.nombre === 'Mensual') diasCalendario = 28;
+                if (sub.Plan.nombre === 'Semanal') diasCalendario = 5;
+                else if (sub.Plan.nombre === 'Quincenal') diasCalendario = 12;
+                else if (sub.Plan.nombre === 'Mensual') diasCalendario = 26;
                 else diasCalendario = sub.Plan.dias_duracion; // Fallback
                 
                 const expirationDate = new Date(startDate);

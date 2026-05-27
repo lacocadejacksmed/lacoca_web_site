@@ -13,8 +13,7 @@ const Cliente = sequelize.define('Cliente', {
     },
     correo: {
         type: DataTypes.STRING,
-        allowNull: false,
-        unique: true
+        allowNull: false
     },
     celular: {
         type: DataTypes.STRING(20),
@@ -28,7 +27,13 @@ const Cliente = sequelize.define('Cliente', {
     timestamps: true,
     createdAt: 'fecha_creacion',
     updatedAt: 'fecha_actualizacion',
-    tableName: 'clientes'
+    tableName: 'clientes',
+    indexes: [
+        {
+            unique: true,
+            fields: ['correo']
+        }
+    ]
 });
 
 module.exports = Cliente;

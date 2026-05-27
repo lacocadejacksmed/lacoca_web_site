@@ -4,6 +4,7 @@ const path = require("path");
 const { connectDB, sequelize } = require("./config/database");
 const webhookRoutes = require("./routes/webhook.routes");
 const apiRoutes = require("./routes/api.routes");
+const { initCronJobs } = require("./cron");
 
 const app = express();
 
@@ -47,6 +48,8 @@ const startServer = async () => {
     // Sincronizar modelos con la base de datos
     await sequelize.sync({ alter: true });
     console.log("✅ Modelos sincronizados con la base de datos.");
+    
+    initCronJobs();
 
     app.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);

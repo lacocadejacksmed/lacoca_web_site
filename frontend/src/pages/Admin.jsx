@@ -26,11 +26,17 @@ import {
   ExternalLink,
   Package,
   MapPin,
-  Mail
+  Mail,
+  ChefHat,
+  Utensils,
+  UserPlus
 } from 'lucide-react';
 import api from '../services/api';
 import { exportExcel } from '../services/exportService';
+import { jsPDF } from "jspdf";
 import Swal from 'sweetalert2';
+import ClientEditorModal from '../components/ClientEditorModal';
+import RegistrationWizard from '../components/RegistrationWizard';
 import CoverageMap from '../components/CoverageMap';
 
 export default function Admin() {
@@ -41,6 +47,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [repartidores, setRepartidores] = useState([]);
   const [repartidorAsignado, setRepartidorAsignado] = useState(null);
+  const [plans, setPlans] = useState([]);
   
   // Filters
   const [clientSearch, setClientSearch] = useState('');
@@ -49,6 +56,7 @@ export default function Admin() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('pendiente');
 
   const [selectedClient, setSelectedClient] = useState(null);
+  const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
   const [selectedComprobante, setSelectedComprobante] = useState(null);
   const [feriados, setFeriados] = useState([]);
   const [newFeriado, setNewFeriado] = useState({ fecha: '', descripcion: '' });
@@ -78,9 +86,10 @@ export default function Admin() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resClients, resPayments] = await Promise.all([
+      const [resClients, resPayments, resPlans] = await Promise.all([
         api.get('/admin/clientes'),
-        api.get('/admin/comprobantes')
+        api.get('/admin/comprobantes'),
+        api.get('/planes')
       ]);
 
       if (resClients.data.success) {
@@ -149,6 +158,10 @@ export default function Admin() {
           motivo_rechazo: p.motivo_rechazo
         }));
         setPayments(mappedPayments);
+      }
+
+      if (resPlans.data.success) {
+        setPlans(resPlans.data.planes);
       }
 
       const resFeriados = await api.get('/admin/feriados');
@@ -302,6 +315,7 @@ export default function Admin() {
           <nav className="space-y-2">
             {[
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+              { id: 'cocina', label: 'Cocina en Vivo', icon: ChefHat },
               { id: 'pagos', label: 'Validar Pagos', icon: CreditCard, badge: payments.filter(p => p.status === 'pendiente').length },
               { id: 'clientes', label: 'Lista Clientes', icon: Users },
               { id: 'repartidores', label: 'Repartidores', icon: MapPin },
@@ -348,7 +362,13 @@ export default function Admin() {
         <header className="flex justify-between items-center mb-10">
           <div>
             <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              {activeTab === 'dashboard' ? 'Resumen de Negocio' : activeTab === 'pagos' ? 'Validación de Pagos' : activeTab === 'clientes' ? 'Gestión de Clientes' : activeTab === 'repartidores' ? 'Gestión de Repartidores' : activeTab === 'feriados' ? 'Calendario de Festivos' : 'Configuración de Menú'}
+              {activeTab === 'dashboard' ? 'Resumen de Negocio' : 
+               activeTab === 'cocina' ? 'Planilla de Cocina (En Vivo)' :
+               activeTab === 'pagos' ? 'Validación de Pagos' : 
+               activeTab === 'clientes' ? 'Gestión de Clientes' : 
+               activeTab === 'repartidores' ? 'Gestión de Repartidores' : 
+               activeTab === 'feriados' ? 'Calendario de Festivos' : 
+               'Configuración de Menú'}
             </h2>
             <p className="text-gray-500 font-medium">Panel centralizado de operaciones</p>
           </div>
@@ -432,6 +452,118 @@ export default function Admin() {
                   desc="Error bancario" 
                 />
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'cocina' && (
+            <motion.div 
+              key="cocina"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              {(() => {
+                // Cálculo en tiempo real de la cocina
+                const hoyStr = new Date().toISOString().split('T')[0];
+                const esFeriado = feriados.some(f => f.fecha === hoyStr);
+                
+                const clientesActivos = clients.filter(c => c.status === 'activo');
+                const totalAlmuerzos = esFeriado ? 0 : clientesActivos.length;
+                
+                // Extraer restricciones y alergias
+                const restriccionesTotales = {};
+                const alergiasTotales = {};
+                let cocasNuevas = 0;
+
+                clientesActivos.forEach(c => {
+                  if (c.raw && (c.raw.Suscripcions || c.raw.Suscripciones)) {
+                    const rawSubs = c.raw.Suscripcions || c.raw.Suscripciones;
+                    const sub = rawSubs.sort((a,b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))[0];
+                    if (sub) {
+                      if (sub.necesita_cocas) cocasNuevas++;
+                      
+                      if (sub.restricciones && sub.restricciones !== 'Ninguna') {
+                        sub.restricciones.split(',').forEach(r => {
+                          const trimR = r.trim();
+                          if (trimR) restriccionesTotales[trimR] = (restriccionesTotales[trimR] || 0) + 1;
+                        });
+                      }
+                      
+                      if (sub.alergias && sub.alergias !== 'Ninguna') {
+                        const alerg = sub.alergias.trim();
+                        if (alerg) alergiasTotales[alerg] = (alergiasTotales[alerg] || 0) + 1;
+                      }
+                    }
+                  }
+                });
+
+                return (
+                  <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className={`p-8 rounded-[32px] text-white shadow-xl ${esFeriado ? 'bg-red-500' : 'bg-slate-900'}`}>
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="p-3 bg-white/10 rounded-2xl">
+                            <ChefHat size={32} className="text-orange-400" />
+                          </div>
+                          <span className="bg-white/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
+                            {new Date().toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' })}
+                          </span>
+                        </div>
+                        <h3 className="text-5xl font-black mb-2">{totalAlmuerzos}</h3>
+                        <p className="text-slate-400 font-medium text-sm">Almuerzos totales a preparar HOY</p>
+                        {esFeriado && <p className="mt-4 text-xs font-black bg-white/20 text-white p-2 rounded-lg inline-block">HOY ES FESTIVO - NO HAY SERVICIO</p>}
+                      </div>
+                      
+                      <div className="p-8 rounded-[32px] bg-orange-50 border border-orange-100 shadow-sm flex flex-col justify-center">
+                        <div className="flex items-center gap-4 mb-2">
+                          <Package size={24} className="text-orange-500" />
+                          <h4 className="text-lg font-black text-orange-900">Juegos de Cocas Nuevos</h4>
+                        </div>
+                        <p className="text-4xl font-black text-orange-600 mb-2">{cocasNuevas}</p>
+                        <p className="text-sm font-medium text-orange-700">Clientes nuevos que requieren entrega de recipientes hoy.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+                        <h4 className="text-lg font-black text-slate-900 flex items-center gap-2 mb-6">
+                          <Utensils size={20} className="text-amber-500" /> Restricciones (Dietas)
+                        </h4>
+                        {Object.keys(restriccionesTotales).length === 0 ? (
+                          <p className="text-sm text-gray-400 italic">No hay dietas especiales hoy.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {Object.entries(restriccionesTotales).map(([res, count]) => (
+                              <div key={res} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="font-bold text-slate-700 capitalize">{res}</span>
+                                <span className="bg-amber-100 text-amber-700 font-black px-3 py-1 rounded-lg">{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+                        <h4 className="text-lg font-black text-slate-900 flex items-center gap-2 mb-6">
+                          <AlertTriangle size={20} className="text-red-500" /> Alergias Reportadas
+                        </h4>
+                        {Object.keys(alergiasTotales).length === 0 ? (
+                          <p className="text-sm text-gray-400 italic">No hay alergias reportadas hoy.</p>
+                        ) : (
+                          <div className="space-y-3">
+                            {Object.entries(alergiasTotales).map(([alerg, count]) => (
+                              <div key={alerg} className="flex justify-between items-center p-3 bg-red-50 rounded-xl">
+                                <span className="font-bold text-red-700 capitalize">{alerg}</span>
+                                <span className="bg-red-500 text-white font-black px-3 py-1 rounded-lg">{count}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </motion.div>
           )}
 
@@ -825,14 +957,14 @@ export default function Admin() {
                  <div className="relative flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input 
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-sm font-medium"
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-sm font-medium focus:ring-2 focus:ring-orange-500 transition-all"
                       placeholder="Buscar cliente por nombre o cédula..."
                       value={clientSearch}
                       onChange={e => setClientSearch(e.target.value)}
                     />
                  </div>
                  <select 
-                    className="bg-gray-50 border-none rounded-2xl px-6 py-3 text-sm font-bold"
+                    className="bg-gray-50 border-none rounded-2xl px-6 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all"
                     value={clientStatus}
                     onChange={e => setClientStatus(e.target.value)}
                  >
@@ -841,6 +973,12 @@ export default function Admin() {
                     <option value="pendiente">Pendientes</option>
                     <option value="vencido">Vencidos</option>
                  </select>
+                 <button 
+                   onClick={() => setIsCreatorModalOpen(true)}
+                   className="bg-slate-900 text-white rounded-2xl px-6 py-3 text-sm font-black flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+                 >
+                   <UserPlus size={18} /> Registrar Cliente Manual
+                 </button>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -895,11 +1033,21 @@ export default function Admin() {
 
       {/* Full Client Detail Modal */}
       {selectedClient && (
-        <ClientModal 
+        <ClientEditorModal 
           client={selectedClient} 
           onClose={() => setSelectedClient(null)} 
+          onUpdate={fetchData}
+          plans={plans}
         />
       )}
+      {/* Creator Modal */}
+      <RegistrationWizard 
+        isOpen={isCreatorModalOpen}
+        onClose={() => setIsCreatorModalOpen(false)} 
+        onUpdate={fetchData}
+        initialPlan="quincenal"
+        plans={plans}
+      />
       {/* Comprobante Modal (Full Data & Edit) */}
       {selectedComprobante && (
         <ComprobanteModal 
@@ -911,320 +1059,6 @@ export default function Admin() {
           onAssignRepartidor={assignRepartidor}
         />
       )}
-    </div>
-  );
-}
-
-function ClientModal({ client, onClose, onUpdate }) {
-  const [activeTab, setActiveTab] = useState('resumen');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedClient, setEditedClient] = useState({
-    nombre: client.nombre,
-    correo: client.correo,
-    telefono: client.telefono
-  });
-
-  const raw = client.raw;
-  const subscriptions = raw.Suscripcions || raw.Suscripciones || [];
-  
-  // Stats calculations
-  const totalInvertido = subscriptions.reduce((acc, sub) => {
-    // Solo sumamos si hay comprobantes aprobados
-    const aprobados = (sub.Comprobantes || []).filter(c => c.estado === 'Aprobado');
-    return acc + (aprobados.length > 0 ? sub.precio_total : 0);
-  }, 0);
-
-  const semanasLealtad = subscriptions.length;
-  const miembroDesde = new Date(raw.fecha_creacion).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
-
-  const handleClientSave = async () => {
-    try {
-      const res = await api.put(`/admin/clientes/${client.cedula}`, editedClient);
-      if (res.data.success) {
-        Swal.fire({ icon: 'success', title: 'Cliente actualizado', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2000 });
-        setIsEditing(false);
-        onUpdate();
-      }
-    } catch (err) {
-      Swal.fire({ icon: 'error', title: 'Error al actualizar' });
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-slate-900/90 backdrop-blur-sm" onClick={onClose}>
-       <motion.div 
-         initial={{ opacity: 0, y: 50, scale: 0.95 }}
-         animate={{ opacity: 1, y: 0, scale: 1 }}
-         className="relative w-full max-w-5xl bg-white rounded-[40px] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[90vh]"
-         onClick={e => e.stopPropagation()}
-       >
-          {/* Close Button */}
-          <button onClick={onClose} className="absolute top-6 right-6 z-50 bg-slate-100 text-slate-500 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm">
-             <X size={20} strokeWidth={3} />
-          </button>
-
-          {/* Sidebar Profiler */}
-          <div className="md:w-1/3 bg-slate-50 p-10 border-r border-gray-100 flex flex-col items-center">
-             <div className="w-32 h-32 bg-white rounded-[40px] shadow-xl border-4 border-white flex items-center justify-center mb-6 overflow-hidden">
-                <div className="text-4xl font-black text-orange-500">{editedClient.nombre.charAt(0)}</div>
-             </div>
-             
-             {isEditing ? (
-                <input 
-                  className="text-xl font-black text-slate-900 text-center leading-tight mb-4 border-b-2 border-orange-200 focus:border-orange-500 bg-transparent outline-none w-full"
-                  value={editedClient.nombre}
-                  onChange={e => setEditedClient({...editedClient, nombre: e.target.value})}
-                />
-             ) : (
-                <h3 className="text-2xl font-black text-slate-900 text-center leading-tight mb-2">{client.nombre}</h3>
-             )}
-
-             <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-8 ${
-               client.status === 'activo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-             }`}>
-               {client.status}
-             </span>
-
-             <div className="w-full space-y-6">
-                <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-slate-400">
-                      <Users size={18} />
-                   </div>
-                   <div>
-                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Documento</div>
-                      <div className="text-sm font-bold text-slate-900">{client.cedula}</div>
-                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-slate-400">
-                      <Mail size={18} />
-                   </div>
-                   <div className="overflow-hidden">
-                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Correo</div>
-                       {isEditing ? (
-                         <input 
-                           className="text-sm font-bold text-slate-900 w-full border-none bg-transparent outline-none"
-                           value={editedClient.correo}
-                           onChange={e => setEditedClient({...editedClient, correo: e.target.value})}
-                         />
-                       ) : (
-                         <div className="text-sm font-bold text-slate-900 truncate">{client.correo}</div>
-                       )}
-                   </div>
-                </div>
-                <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-slate-400">
-                      <MessageCircle size={18} />
-                   </div>
-                   <div>
-                      <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">WhatsApp</div>
-                       {isEditing ? (
-                         <input 
-                           className="text-sm font-bold text-slate-900 w-full border-none bg-transparent outline-none"
-                           value={editedClient.telefono}
-                           onChange={e => setEditedClient({...editedClient, telefono: e.target.value})}
-                         />
-                       ) : (
-                         <div className="text-sm font-bold text-slate-900">{client.telefono}</div>
-                       )}
-                   </div>
-                </div>
-             </div>
-
-             {isEditing ? (
-                <button 
-                  onClick={handleClientSave}
-                  className="w-full mt-10 py-4 bg-orange-600 text-white rounded-2xl font-black text-xs hover:bg-orange-700 shadow-xl shadow-orange-500/30 transition-all flex items-center justify-center gap-3"
-                >
-                  <Check size={18} strokeWidth={3} />
-                  Guardar Cambios
-                </button>
-             ) : (
-                <button 
-                  onClick={() => setIsEditing(true)}
-                  className="w-full mt-10 py-4 bg-slate-900 text-white rounded-2xl font-black text-xs hover:bg-slate-800 shadow-xl shadow-slate-900/30 transition-all flex items-center justify-center gap-3"
-                >
-                  Editar Información
-                </button>
-             )}
-
-             <button 
-                onClick={() => window.open(`https://wa.me/${client.telefono.replace(/\D/g, '')}`, '_blank')}
-                className="w-full mt-3 py-4 bg-green-500 text-white rounded-2xl font-black text-xs hover:bg-green-600 shadow-xl shadow-green-500/30 transition-all flex items-center justify-center gap-3"
-             >
-                <MessageCircle size={18} />
-                Chatear por WhatsApp
-             </button>
-          </div>
-
-          {/* Main Content Area */}
-          <div className="md:w-2/3 flex flex-col bg-white overflow-hidden">
-             {/* Tabs Header */}
-             <div className="px-10 pt-10 flex gap-6 border-b border-gray-50">
-                {['resumen', 'suscripciones', 'direcciones', 'pagos'].map(tab => (
-                  <button 
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`pb-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${
-                      activeTab === tab ? 'text-orange-600' : 'text-slate-400 hover:text-slate-600'
-                    }`}
-                  >
-                    {tab}
-                    {activeTab === tab && <motion.div layoutId="clientTab" className="absolute bottom-0 left-0 right-0 h-1 bg-orange-600 rounded-full" />}
-                  </button>
-                ))}
-             </div>
-
-             <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
-                {activeTab === 'resumen' && (
-                  <div className="space-y-10">
-                     <div className="grid grid-cols-2 gap-8">
-                        <div className="p-6 bg-orange-50 rounded-3xl border border-orange-100">
-                           <div className="text-[10px] font-black text-orange-600 uppercase tracking-widest mb-2">Plan Vigente</div>
-                           <div className="text-2xl font-black text-slate-900 leading-none">{client.plan}</div>
-                           <div className="text-xs font-bold text-orange-400 mt-2">Inicio: {raw.Suscripcions?.[0]?.fecha_inicio || 'N/A'} • Vence: {client.fechaVencimiento}</div>
-                        </div>
-                        <div className="p-6 bg-blue-50 rounded-3xl border border-blue-100">
-                           <div className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2">Días Restantes</div>
-                           <div className="text-3xl font-black text-slate-900 leading-none">{client.diasRestantes}d</div>
-                           <div className="text-xs font-bold text-blue-400 mt-2">Miembro desde: {miembroDesde}</div>
-                        </div>
-                     </div>
-
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="p-6 bg-slate-900 rounded-3xl text-white shadow-xl shadow-slate-200">
-                           <TrendingUp size={20} className="text-orange-500 mb-4" />
-                           <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Inversión Total</div>
-                           <div className="text-xl font-black">${totalInvertido.toLocaleString()}</div>
-                        </div>
-                        <div className="p-6 bg-white border border-gray-100 rounded-3xl shadow-sm">
-                           <Clock size={20} className="text-blue-500 mb-4" />
-                           <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Semanas Activo</div>
-                           <div className="text-xl font-black text-slate-900">{semanasLealtad} Semanas</div>
-                        </div>
-                        <div className="p-6 bg-white border border-gray-100 rounded-3xl shadow-sm">
-                           <Calendar size={20} className="text-green-500 mb-4" />
-                           <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Vencimiento</div>
-                           <div className="text-sm font-black text-slate-900 uppercase">{client.fechaVencimiento}</div>
-                        </div>
-                     </div>
-
-                     <div className="space-y-6">
-                        <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                           <AlertTriangle size={14} className="text-red-500" />
-                           Salud y Alergias
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                           <div className="bg-red-50/50 p-4 rounded-2xl border border-red-100">
-                              <label className="text-[9px] font-black text-red-400 uppercase tracking-widest block mb-1">Alergias</label>
-                              <div className="text-sm font-bold text-red-700">{client.alergias || 'Sin alergias registradas'}</div>
-                           </div>
-                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Restricciones</label>
-                              <div className="text-sm font-bold text-slate-700">{client.restricciones || 'Sin restricciones'}</div>
-                           </div>
-                        </div>
-                     </div>
-
-                     <div className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden">
-                        <div className="relative z-10">
-                           <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2">Facturación Electrónica</div>
-                           <div className="text-lg font-black">{client.facturacionElectronica === 'Si' ? 'REQUERIDA' : 'NO REQUERIDA'}</div>
-                           <p className="text-xs text-slate-400 mt-2">Preferencia guardada en la última suscripción</p>
-                        </div>
-                        <FileDown className="absolute -right-4 -bottom-4 text-slate-800" size={120} />
-                     </div>
-                  </div>
-                )}
-
-                {activeTab === 'suscripciones' && (
-                  <div className="space-y-4">
-                     {subscriptions.length === 0 ? (
-                       <div className="text-center py-20 text-slate-400 font-bold">No hay historial de suscripciones</div>
-                     ) : (
-                       subscriptions.map(sub => (
-                         <div key={sub.id} className="p-6 bg-white border border-gray-100 rounded-3xl hover:border-orange-200 transition-all shadow-sm">
-                            <div className="flex justify-between items-start mb-4">
-                               <div>
-                                  <div className="text-lg font-black text-slate-900">{sub.Plan?.nombre || 'Plan Personalizado'}</div>
-                                  <div className="text-xs font-bold text-gray-400">ID: #{sub.id} • Inicio: {sub.fecha_inicio || 'N/A'} • Registro: {new Date(sub.fecha_creacion).toLocaleDateString()}</div>
-                               </div>
-                               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                                 sub.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                               }`}>
-                                 {sub.estado}
-                               </span>
-                            </div>
-                            <div className="grid grid-cols-3 gap-4 border-t border-gray-50 pt-4">
-                               <div>
-                                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total</div>
-                                  <div className="text-sm font-black text-orange-600">${sub.precio_total.toLocaleString()}</div>
-                               </div>
-                               <div>
-                                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Entrega</div>
-                                  <div className="text-sm font-bold text-slate-700">{sub.tipo_entrega}</div>
-                               </div>
-                               <div>
-                                  <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Cocas</div>
-                                  <div className="text-sm font-bold text-slate-700">{sub.necesita_cocas ? 'Compró Juego' : 'Ya tenía'}</div>
-                               </div>
-                            </div>
-                         </div>
-                       ))
-                     )}
-                  </div>
-                )}
-
-                {activeTab === 'direcciones' && (
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {subscriptions.flatMap(s => s.direcciones || []).reduce((acc, current) => {
-                        const x = acc.find(item => item.direccion === current.direccion);
-                        if (!x) return acc.concat([current]);
-                        else return acc;
-                      }, []).map((dir, i) => (
-                        <div key={i} className="p-6 bg-gray-50 rounded-3xl border border-gray-100 flex flex-col justify-between">
-                           <div>
-                              <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center text-blue-500 mb-4">
-                                 <MapPin size={20} />
-                              </div>
-                              <div className="font-black text-slate-900 text-lg leading-tight mb-1">{dir.direccion}</div>
-                              <div className="text-sm font-bold text-gray-500 mb-2">{dir.barrio}</div>
-                              {dir.zona && (
-                                 <div className="text-[10px] font-black text-green-600 bg-green-50 px-2 py-1 rounded-lg border border-green-100 inline-block mb-2">
-                                   📍 ZONA: {dir.zona}
-                                 </div>
-                               )}
-                           </div>
-                           <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest pt-4 border-t border-gray-200/50">
-                              Días de Entrega: {dir.dias_entrega}
-                           </div>
-                        </div>
-                      ))}
-                      {subscriptions.length === 0 && <div className="col-span-2 text-center py-20 text-slate-400 font-bold">No hay direcciones registradas</div>}
-                   </div>
-                )}
-
-                {activeTab === 'pagos' && (
-                   <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                      {subscriptions.flatMap(s => s.Comprobantes || []).map(comp => (
-                        <div key={comp.id} className="group relative aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
-                           <img src={comp.url_imagen} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                           <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all p-4 flex flex-col justify-end">
-                              <div className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full w-fit mb-1 ${
-                                comp.estado === 'Aprobado' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
-                              }`}>
-                                 {comp.estado}
-                              </div>
-                              <div className="text-[10px] text-white/70 font-bold">{new Date(comp.fecha_creacion).toLocaleDateString()}</div>
-                           </div>
-                        </div>
-                      ))}
-                      {subscriptions.length === 0 && <div className="col-span-3 text-center py-20 text-slate-400 font-bold">No hay pagos registrados</div>}
-                   </div>
-                )}
-             </div>
-          </div>
-       </motion.div>
     </div>
   );
 }

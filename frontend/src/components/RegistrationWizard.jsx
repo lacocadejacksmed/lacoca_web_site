@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Download, ExternalLink, Copy, AlertCircle, CheckCircle2, Smartphone, Globe, MapPin } from 'lucide-react';
@@ -35,12 +35,27 @@ const plans = {
   mensual: { name: 'Mensual', price: 285000 }
 };
 
-export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'quincenal' }) {
+export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'quincenal', onUpdate, plans: dynamicPlans }) {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [coberturaData, setCoberturaData] = useState({ type: 'FeatureCollection', features: [] });
   const fileInputRef = useRef(null);
+
+  const activePlans = useMemo(() => {
+    if (dynamicPlans && Array.isArray(dynamicPlans) && dynamicPlans.length > 0) {
+      const formatted = {};
+      dynamicPlans.forEach(p => {
+        const id = (p.nombre || p.name || '').toLowerCase();
+        formatted[id] = {
+          name: p.nombre || p.name,
+          price: Number(p.precio || p.price || 0)
+        };
+      });
+      return formatted;
+    }
+    return plans; // Fallback to static plans defined outside
+  }, [dynamicPlans]);
 
   const [formData, setFormData] = useState({
     nombre: '', documento: '', facturacion: false, telefono: '', email: '',
@@ -101,7 +116,8 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
 
     coberturaData.features.forEach(f => {
       if (turf.booleanPointInPolygon(pt, f)) {
-        zoneName = f.properties.name;
+        const nameKey = Object.keys(f.properties).find(k => k.trim().toLowerCase() === 'nombre' || k.trim().toLowerCase() === 'name');
+        if (nameKey) zoneName = f.properties[nameKey];
       }
     });
 
@@ -247,84 +263,69 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     if (!address || address.length < 5) return;
     setStatus({ status: 'loading', zone: null });
 
-    // Limpiar dirección de caracteres conflictivos (# y -)
-    const cleanAddress = address.replace(/[#]/g, ' ').replace(/[-]/g, ' ');
+    // Mejorar la nomenclatura colombiana para Mapbox
+    let cleanAddress = address
+      .replace(/\b(cl|cll)\.?\s+/i, 'Calle ')
+      .replace(/\b(cra|cr)\.?\s+/i, 'Carrera ')
+      .replace(/\b(av)\.?\s+/i, 'Avenida ')
+      .replace(/\b(dg|diag)\.?\s+/i, 'Diagonal ')
+      .replace(/\b(tr|trans)\.?\s+/i, 'Transversal ')
+      .replace(/\b(cq|circ)\.?\s+/i, 'Circular ')
+      .replace(/(\d+)\s+([a-zA-Z]{1,2})\b/g, '$1$2'); // Mapbox odia los espacios en ej: "65 B", lo pasa a "65B"
+      
+    // En lugar de borrar # y -, los mantenemos porque Mapbox a veces los usa para entender la intersección
     
-    // Estrategia de búsqueda multinivel para cubrir todo el Valle de Aburrá
-    const searchQueries = [
-      `${cleanAddress}, ${barrio}, Antioquia, Colombia`,         // 1. Intento completo con barrio y departamento
-      `${cleanAddress}, Valle de Aburrá, Antioquia, Colombia`,   // 2. Intento con subregión
-      `${cleanAddress}, Antioquia, Colombia`,                    // 3. Intento solo con dirección y departamento
-      `${barrio}, Antioquia, Colombia`,                          // 4. Intento solo con barrio (último recurso)
-      `${cleanAddress}, Medellín, Colombia`                      // 5. Fallback histórico
-    ];
+    // Un solo query preciso usando el Bounding Box del Valle de Aburrá
+    const query = `${cleanAddress}, ${barrio}, Medellín, Antioquia, Colombia`;
+
+    const apiKey = import.meta.env.VITE_MAPBOX_API_KEY;
+
+    if (!apiKey) {
+      console.error("Falta la API Key de Mapbox (VITE_MAPBOX_API_KEY)");
+      setStatus({ status: 'api_error', zone: null });
+      return;
+    }
 
     try {
-      let found = false;
-      const delay = ms => new Promise(res => setTimeout(res, ms));
-
-      for (let i = 0; i < searchQueries.length; i++) {
-        const query = searchQueries[i];
-        
-        try {
-          const res = await axios.get(`https://nominatim.openstreetmap.org/search`, {
-            params: { 
-              q: query, 
-              format: 'json', 
-              limit: 1, 
-              countrycodes: 'co',
-              email: 'contacto@lacocadejacks.com' // Nominatim TOS requires identifying email
-            }
-          });
-
-          if (res.data && res.data.length > 0) {
-            const { lat, lon } = res.data[0];
-            const pt = turf.point([parseFloat(lon), parseFloat(lat)]);
-            let zoneName = null;
-
-            coberturaData.features.forEach(f => {
-              if (turf.booleanPointInPolygon(pt, f)) {
-                zoneName = f.properties.name;
-              }
-            });
-
-            if (zoneName) {
-              setStatus({ status: 'ok', zone: zoneName });
-              setFormData(prev => ({ 
-                ...prev, 
-                [`zona_${num}`]: zoneName, 
-                [`lat_${num}`]: lat, 
-                [`lng_${num}`]: lon 
-              }));
-              found = true;
-              break; // Éxito total
-            } else if (i === 0) {
-              // Si en el primer intento encontramos el punto pero está fuera, marcamos fuera de cobertura
-              setStatus({ status: 'no_coverage', zone: null });
-              found = true;
-              break;
-            }
-          }
-        } catch (stepErr) {
-          console.warn(`Error on query ${query}:`, stepErr.message);
-          // Si es 429 Too Many Requests, esperar más
-          if (stepErr.response?.status === 429) {
-            await delay(2000);
-          }
+      const res = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`, {
+        params: {
+          access_token: apiKey,
+          country: 'co',
+          limit: 1,
+          bbox: '-75.75,6.05,-75.45,6.45'
         }
+      });
 
-        // Respetar el límite de Nominatim (1 request per second) si vamos a intentar de nuevo
-        if (!found && i < searchQueries.length - 1) {
-          await delay(1100);
+      if (res.data && res.data.features && res.data.features.length > 0) {
+        const [lng, lat] = res.data.features[0].center;
+        const pt = turf.point([parseFloat(lng), parseFloat(lat)]);
+        let zoneName = null;
+
+        coberturaData.features.forEach(f => {
+          if (turf.booleanPointInPolygon(pt, f)) {
+            const nameKey = Object.keys(f.properties).find(k => k.trim().toLowerCase() === 'nombre' || k.trim().toLowerCase() === 'name');
+            if (nameKey) zoneName = f.properties[nameKey];
+          }
+        });
+
+        if (zoneName) {
+          setStatus({ status: 'ok', zone: zoneName });
+          setFormData(prev => ({ 
+            ...prev, 
+            [`zona_${num}`]: zoneName, 
+            [`lat_${num}`]: lat, 
+            [`lng_${num}`]: lng 
+          }));
+        } else {
+          // Encontró la coordenada, pero cae fuera de los polígonos de entrega
+          setStatus({ status: 'no_coverage', zone: null });
         }
-      }
-
-      if (!found) {
+      } else {
+        // Mapbox no encontró ningún lugar con esa dirección
         setStatus({ status: 'not_found', zone: null });
       }
     } catch (err) {
       console.error("Geocoding fatal error:", err);
-      // Fallback amigable si la API falla críticamente
       setStatus({ status: 'api_error', zone: null });
     }
   };
@@ -523,7 +524,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
 
 
   const getAdjustedPriceInfo = () => {
-    const currentPlan = plans[formData.plan];
+    const currentPlan = activePlans[formData.plan];
     if (!currentPlan) return { total: 0, discount: 0, effectiveDays: 5 };
 
     const cocasPrice = formData.tieneCocas ? 0 : 70000;
@@ -625,12 +626,17 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
           text: 'Hemos recibido tu pago. En breve aparecerá en tu panel de usuario.', 
           confirmButtonColor: '#ea580c' 
         }).then(() => {
-          // Si el cliente ya existe o está logueado, lo llevamos a su panel
-          const token = localStorage.getItem('token');
-          if (token || recognizedClient) {
-            navigate('/dashboard');
-          } else {
+          if (onUpdate) {
+            onUpdate();
             onClose();
+          } else {
+            // Si el cliente ya existe o está logueado, lo llevamos a su panel
+            const token = localStorage.getItem('token');
+            if (token || recognizedClient) {
+              navigate('/dashboard');
+            } else {
+              onClose();
+            }
           }
           
           // Reset Form
@@ -657,8 +663,8 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
 
   if (!isOpen) return null;
 
-  const currentPlan = plans[formData.plan] || plans['quincenal'];
-  const totalPrice = currentPlan.price + (formData.tieneCocas ? 0 : 70000);
+  const currentPlan = activePlans[formData.plan] || activePlans['quincenal'] || Object.values(activePlans)[0];
+  const totalPrice = (currentPlan?.price || 0) + (formData.tieneCocas ? 0 : 70000);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -775,7 +781,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                   <div className="space-y-3">
                     <label className="text-xs font-black text-slate-900 uppercase tracking-widest">Selecciona tu Plan</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {Object.entries(plans).map(([id, p]) => (
+                      {Object.entries(activePlans).map(([id, p]) => (
                         <button 
                           key={id}
                           onClick={() => setFormData({...formData, plan: id})}

@@ -9,8 +9,7 @@ const Feriado = sequelize.define('Feriado', {
     },
     fecha: {
         type: DataTypes.DATEONLY,
-        allowNull: false,
-        unique: true
+        allowNull: false
     },
     descripcion: {
         type: DataTypes.STRING,
@@ -18,7 +17,13 @@ const Feriado = sequelize.define('Feriado', {
     }
 }, {
     timestamps: false,
-    tableName: 'feriados'
+    tableName: 'feriados',
+    indexes: [
+        {
+            unique: true,
+            fields: ['fecha']
+        }
+    ]
 });
 
 module.exports = Feriado;

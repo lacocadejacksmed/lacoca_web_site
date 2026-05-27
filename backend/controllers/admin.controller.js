@@ -5,6 +5,7 @@ const Configuracion = require("../models/Configuracion");
 const Plan = require("../models/Plan");
 const DireccionEntrega = require("../models/DireccionEntrega");
 const Usuario = require("../models/Usuario");
+const { sendTextMessage } = require('../services/whatsapp.service');
 const { Op } = require("sequelize");
 
 const fs = require("fs");
@@ -115,7 +116,7 @@ const updateComprobanteStatus = async (req, res) => {
     const { status, motivo_rechazo, observaciones } = req.body;
 
     const comprobante = await Comprobante.findByPk(id, {
-      include: [{ model: Suscripcion, include: [Cliente] }],
+      include: [{ model: Suscripcion, include: [Cliente, Plan] }],
     });
 
     if (!comprobante) {
@@ -183,6 +184,113 @@ const updateCliente = async (req, res) => {
   } catch (error) {
     console.error("Error actualizando cliente:", error);
     res.status(500).json({ success: false, message: "Error al actualizar cliente" });
+  }
+};
+
+// Crear cliente manualmente (Admin)
+const createClienteManual = async (req, res) => {
+  try {
+    const { 
+      cedula, nombre, correo, celular, 
+      plan_id, necesita_cocas, tipo_entrega,
+      alergias, restricciones, fecha_inicio,
+      direcciones, facturacion_electronica
+    } = req.body;
+
+    let cliente = await Cliente.findByPk(cedula);
+    if (!cliente) {
+      cliente = await Cliente.create({ cedula, nombre, correo, celular, esta_activo: true });
+    } else {
+      await cliente.update({ nombre, correo, celular, esta_activo: true });
+    }
+
+    const planDb = await Plan.findByPk(plan_id);
+    if (!planDb) return res.status(400).json({ success: false, message: "Plan inválido" });
+
+    const precio_total = parseFloat(planDb.precio_base) + (necesita_cocas ? 70000 : 0);
+
+    const sub = await Suscripcion.create({
+      cliente_cedula: cedula,
+      plan_id,
+      necesita_cocas,
+      tipo_entrega,
+      facturacion_electronica: facturacion_electronica || false,
+      precio_total,
+      estado: "Activo",
+      alergias,
+      restricciones,
+      fecha_inicio
+    });
+
+    if (direcciones && direcciones.length > 0) {
+      for (const dir of direcciones) {
+        await DireccionEntrega.create({
+          suscripcion_id: sub.id,
+          direccion: dir.direccion,
+          barrio: dir.barrio,
+          dias_entrega: dir.dias_entrega,
+          es_principal: dir.es_principal,
+          zona: dir.zona || 'por-asignar',
+          latitud: dir.latitud || 0,
+          longitud: dir.longitud || 0
+        });
+      }
+    }
+
+    res.json({ success: true, message: "Cliente creado manualmente exitosamente" });
+  } catch (error) {
+    console.error("Error creando cliente manual:", error);
+    res.status(500).json({ success: false, message: "Error al crear cliente manual" });
+  }
+};
+
+// Actualización en cascada de Cliente, Suscripción y Direcciones
+const updateClienteFull = async (req, res) => {
+  try {
+    const { cedula } = req.params;
+    const {
+      nombre, correo, celular, esta_activo,
+      suscripcion_id,
+      plan_id, necesita_cocas, tipo_entrega,
+      alergias, restricciones, fecha_inicio, estado_sub,
+      direcciones
+    } = req.body;
+
+    const cliente = await Cliente.findByPk(cedula);
+    if (!cliente) return res.status(404).json({ success: false, message: "Cliente no encontrado" });
+
+    await cliente.update({ nombre, correo, celular, esta_activo });
+
+    if (suscripcion_id) {
+      const sub = await Suscripcion.findByPk(suscripcion_id);
+      if (sub) {
+        await sub.update({
+          plan_id, necesita_cocas, tipo_entrega,
+          alergias, restricciones, fecha_inicio, estado: estado_sub || sub.estado
+        });
+
+        if (direcciones && direcciones.length > 0) {
+          await DireccionEntrega.destroy({ where: { suscripcion_id: sub.id } });
+          for (const dir of direcciones) {
+            await DireccionEntrega.create({
+              suscripcion_id: sub.id,
+              direccion: dir.direccion,
+              barrio: dir.barrio,
+              dias_entrega: dir.dias_entrega,
+              es_principal: dir.es_principal,
+              zona: dir.zona || 'por-asignar',
+              latitud: dir.latitud || 0,
+              longitud: dir.longitud || 0
+            });
+          }
+        }
+      }
+    }
+
+    res.json({ success: true, message: "Información completa del cliente actualizada" });
+  } catch (error) {
+    console.error("Error actualizando cliente completo:", error);
+    res.status(500).json({ success: false, message: "Error al actualizar cliente completo" });
   }
 };
 
@@ -507,6 +615,16 @@ const assignRepartidor = async (req, res) => {
   }
 };
 
+// Obtener planes
+const getPlanes = async (req, res) => {
+  try {
+    const planes = await Plan.findAll({ where: { esta_activo: true } });
+    res.json({ success: true, planes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const getCoverage = async (req, res) => {
   try {
     const filePath = path.join(__dirname, "../data/cobertura.json");
@@ -540,6 +658,8 @@ module.exports = {
   updateComprobanteStatus,
   updateSubscription,
   updateCliente,
+  createClienteManual,
+  updateClienteFull,
   deactivateCliente,
   exportDailyExcel,
   exportDailyPdf,
@@ -549,5 +669,6 @@ module.exports = {
   getRepartidores,
   assignRepartidor,
   getCoverage,
+  getPlanes,
   updateCoverage,
 };

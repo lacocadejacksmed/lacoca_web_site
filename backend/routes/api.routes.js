@@ -19,6 +19,7 @@ router.get("/availability", orderController.getAvailability);
 router.get("/check-client/:cedula", orderController.checkClient);
 router.get("/feriados", adminController.getFeriados);
 router.get("/menu", menuController.getMenu);
+router.get("/planes", adminController.getPlanes);
 router.get("/cobertura", adminController.getCoverage); // Nueva ruta pública
 router.get("/geocode", orderController.geocodeAddress); // Proxy para Nominatim
 
@@ -29,6 +30,8 @@ router.get("/admin/comprobantes/:id", [protect, admin], adminController.getCompr
 router.post("/admin/comprobantes/:id/estado", [protect, admin], adminController.updateComprobanteStatus);
 router.get("/admin/cupos", [protect, admin], adminController.getCupos);
 router.get("/admin/clientes", [protect, admin], adminController.getClientes);
+router.post("/admin/clientes/manual", [protect, admin], adminController.createClienteManual);
+router.put("/admin/clientes/:cedula/full", [protect, admin], adminController.updateClienteFull);
 router.put("/admin/clientes/:cedula", [protect, admin], adminController.updateCliente);
 router.get("/admin/suscripciones", [protect, admin], adminController.getSubscriptions);
 router.get("/admin/suscripciones/:id", [protect, admin], adminController.getSubscriptionById);
