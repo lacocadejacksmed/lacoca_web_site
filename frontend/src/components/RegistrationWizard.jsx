@@ -275,8 +275,20 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       
     // En lugar de borrar # y -, los mantenemos porque Mapbox a veces los usa para entender la intersección
     
+    // Detectar municipio para no forzar Medellín si están en otra ciudad del Valle de Aburrá
+    let municipio = 'Medellín';
+    if (barrio) {
+      const bLower = barrio.toLowerCase();
+      if (bLower.includes('itagüí') || bLower.includes('itagui')) municipio = 'Itagüí';
+      else if (bLower.includes('bello')) municipio = 'Bello';
+      else if (bLower.includes('envigado')) municipio = 'Envigado';
+      else if (bLower.includes('sabaneta')) municipio = 'Sabaneta';
+      else if (bLower.includes('estrella')) municipio = 'La Estrella';
+      else if (bLower.includes('copacabana')) municipio = 'Copacabana';
+    }
+    
     // Un solo query preciso usando el Bounding Box del Valle de Aburrá
-    const query = `${cleanAddress}, ${barrio}, Medellín, Antioquia, Colombia`;
+    const query = `${cleanAddress}, ${barrio}, ${municipio}, Antioquia, Colombia`;
 
     const apiKey = import.meta.env.VITE_MAPBOX_API_KEY;
 
