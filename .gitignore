@@ -74,5 +74,14 @@ Thumbs.db
 # Otros
 *.env.*.local
 
-# Si usas Docker, puedes ignorar archivos sensibles del host
 # /docker-compose.override.yml
+
+# Archivos temporales, de pruebas (scratch) y subidas de usuarios
+/scratch/
+test_*.js
+test_*.cjs
+test-*.js
+test-*.cjs
+/uploads/
+*.sqlite
+*.db
