@@ -231,6 +231,16 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     try {
       const res = await api.get(`/check-client/${cedula}`);
       if (res.data && res.data.success && res.data.found) {
+        if (res.data.blocked) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'No es posible continuar',
+            text: res.data.message
+          });
+          setFormData(prev => ({ ...prev, cedula: '' }));
+          return;
+        }
+
         const c = res.data.cliente;
         setRecognizedClient(c);
         setFormData(prev => ({
@@ -276,19 +286,23 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     // En lugar de borrar # y -, los mantenemos porque Mapbox a veces los usa para entender la intersección
     
     // Detectar municipio para no forzar Medellín si están en otra ciudad del Valle de Aburrá
-    let municipio = 'Medellín';
+    let needsMunicipio = true;
     if (barrio) {
       const bLower = barrio.toLowerCase();
-      if (bLower.includes('itagüí') || bLower.includes('itagui')) municipio = 'Itagüí';
-      else if (bLower.includes('bello')) municipio = 'Bello';
-      else if (bLower.includes('envigado')) municipio = 'Envigado';
-      else if (bLower.includes('sabaneta')) municipio = 'Sabaneta';
-      else if (bLower.includes('estrella')) municipio = 'La Estrella';
-      else if (bLower.includes('copacabana')) municipio = 'Copacabana';
+      if (
+        bLower.includes('itagüí') || bLower.includes('itagui') ||
+        bLower.includes('bello') || bLower.includes('envigado') ||
+        bLower.includes('sabaneta') || bLower.includes('estrella') ||
+        bLower.includes('copacabana') || bLower.includes('medellín') || bLower.includes('medellin')
+      ) {
+        needsMunicipio = false;
+      }
     }
     
     // Un solo query preciso usando el Bounding Box del Valle de Aburrá
-    const query = `${cleanAddress}, ${barrio}, ${municipio}, Antioquia, Colombia`;
+    const query = needsMunicipio 
+      ? `${cleanAddress}, ${barrio}, Medellín, Antioquia, Colombia`
+      : `${cleanAddress}, ${barrio}, Antioquia, Colombia`;
 
     const apiKey = import.meta.env.VITE_MAPBOX_API_KEY;
 
@@ -1381,7 +1395,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                           onChange={e => setFormData({...formData, facturacion: e.target.checked})}
                         />
                         <div className="w-6 h-6 border-2 border-slate-200 rounded-lg flex items-center justify-center transition-all duration-300 group-active:scale-90 peer-checked:bg-orange-500 peer-checked:border-orange-500 peer-checked:shadow-lg peer-checked:shadow-orange-500/30">
-                          <Check size={16} strokeWidth={4} className="text-white scale-0 peer-checked:scale-100 transition-transform duration-300" />
+                          <Check size={16} strokeWidth={4} className={`text-white transition-transform duration-300 ${formData.facturacion ? 'scale-100' : 'scale-0'}`} />
                         </div>
                       </div>
                       <span className="text-xs font-bold text-gray-500 group-hover:text-slate-900 transition-colors">
@@ -1407,7 +1421,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                               ? 'border-orange-500 bg-orange-50' 
                               : 'border-slate-200 peer-checked:bg-orange-500 peer-checked:border-orange-500 peer-checked:shadow-lg peer-checked:shadow-orange-500/30'
                           }`}>
-                            <Check size={16} strokeWidth={4} className="text-white scale-0 peer-checked:scale-100 transition-transform duration-300" />
+                            <Check size={16} strokeWidth={4} className={`text-white transition-transform duration-300 ${formData.terms ? 'scale-100' : 'scale-0'}`} />
                           </div>
                         </div>
                         <span className={`text-xs font-bold transition-colors flex items-center gap-1.5 ${fieldErrors.terms ? 'text-orange-600' : 'text-gray-500 group-hover:text-slate-900'}`}>

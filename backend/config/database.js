@@ -1,16 +1,24 @@
 const { Sequelize } = require('sequelize');
 require('dotenv').config();
 
-const sequelize = new Sequelize(
-    process.env.DB_NAME || 'lacocadejacks',
-    process.env.DB_USER || 'root',
-    process.env.DB_PASSWORD || '123456',
-    {
-        host: process.env.DB_HOST || 'localhost',
+const sequelize = process.env.DATABASE_URL
+    ? new Sequelize(process.env.DATABASE_URL, {
         dialect: 'mysql',
-        logging: false, // Set to true to see SQL queries in console
-    }
-);
+        logging: false,
+        dialectOptions: {
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        }
+    })
+    : new Sequelize(
+        process.env.DB_NAME || 'lacocadejacks',
+        process.env.DB_USER || 'root',
+        process.env.DB_PASSWORD || '123456',
+        {
+            host: process.env.DB_HOST || 'localhost',
+            dialect: 'mysql',
+            logging: false,
+        }
+    );
 
 const connectDB = async () => {
     try {

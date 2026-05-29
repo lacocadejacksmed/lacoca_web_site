@@ -46,8 +46,9 @@ const startServer = async () => {
     await connectDB();
 
     // Sincronizar modelos con la base de datos
-    await sequelize.sync({ alter: true });
-    console.log("✅ Modelos sincronizados con la base de datos.");
+    const alterDB = process.env.NODE_ENV !== 'production';
+    await sequelize.sync({ alter: alterDB });
+    console.log(`✅ Modelos sincronizados con la base de datos (alter: ${alterDB}).`);
     
     initCronJobs();
 

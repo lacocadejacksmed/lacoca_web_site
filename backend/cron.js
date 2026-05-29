@@ -1,6 +1,8 @@
 const cron = require('node-cron');
 const Suscripcion = require('./models/Suscripcion');
 const Plan = require('./models/Plan');
+const Feriado = require('./models/Feriado');
+const { calcularVencimiento } = require('./utils/dateUtils');
 
 const checkSubscriptionsExpiration = async () => {
     try {
@@ -11,30 +13,22 @@ const checkSubscriptionsExpiration = async () => {
             include: [{ model: Plan }]
         });
 
-        const currentDate = new Date();
-        currentDate.setHours(0, 0, 0, 0);
+        const feriadosDocs = await Feriado.findAll({ attributes: ['fecha'] });
+        const feriadosArray = feriadosDocs.map(f => f.fecha);
 
         let vencidasCount = 0;
 
         for (let sub of suscripciones) {
             if (sub.fecha_inicio && sub.Plan) {
-                const startDate = new Date(sub.fecha_inicio + 'T12:00:00');
-                startDate.setHours(0, 0, 0, 0);
-                
-                // Duración en días calendario para que se venza el sábado (si empieza el lunes)
-                // Semanal: empieza Lunes, vence Sábado (5 días)
-                // Quincenal: vence Sábado de la segunda semana (12 días)
-                // Mensual: vence Sábado de la cuarta semana (26 días)
-                let diasCalendario = 0;
-                if (sub.Plan.nombre === 'Semanal') diasCalendario = 5;
-                else if (sub.Plan.nombre === 'Quincenal') diasCalendario = 12;
-                else if (sub.Plan.nombre === 'Mensual') diasCalendario = 26;
-                else diasCalendario = sub.Plan.dias_duracion; // Fallback
-                
-                const expirationDate = new Date(startDate);
-                expirationDate.setDate(expirationDate.getDate() + diasCalendario);
+                const { diasRestantes } = calcularVencimiento(
+                    sub.fecha_inicio,
+                    sub.Plan.nombre,
+                    sub.Plan.dias_duracion,
+                    feriadosArray,
+                    sub.estado
+                );
 
-                if (currentDate >= expirationDate) {
+                if (diasRestantes <= 0) {
                     sub.estado = 'Vencido';
                     await sub.save();
                     vencidasCount++;

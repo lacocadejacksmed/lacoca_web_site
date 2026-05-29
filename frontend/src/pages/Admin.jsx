@@ -29,13 +29,36 @@ import {
   Mail,
   ChefHat,
   Utensils,
-  UserPlus
+  UserPlus,
+  PieChart as PieChartIcon
 } from 'lucide-react';
-import api from '../services/api';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+} from 'chart.js';
+import { Bar, Pie } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement
+);
+import api, { API_URL } from '../services/api';
 import { exportExcel } from '../services/exportService';
 import { jsPDF } from "jspdf";
 import Swal from 'sweetalert2';
 import ClientEditorModal from '../components/ClientEditorModal';
+import ExportModal from '../components/ExportModal';
 import RegistrationWizard from '../components/RegistrationWizard';
 import CoverageMap from '../components/CoverageMap';
 
@@ -44,10 +67,19 @@ export default function Admin() {
   const [clients, setClients] = useState([]);
   const [payments, setPayments] = useState([]);
   const [statsPeriod, setStatsPeriod] = useState('mes');
+  const [customDate, setCustomDate] = useState('');
   const [loading, setLoading] = useState(true);
   const [repartidores, setRepartidores] = useState([]);
   const [repartidorAsignado, setRepartidorAsignado] = useState(null);
   const [plans, setPlans] = useState([]);
+
+  // Stats
+  const [dashboardStats, setDashboardStats] = useState({
+    income: 0, active: 0, pending: 0, expiring: 0, byCocas: 0, byFake: 0, byNotReflected: 0
+  });
+  const [strategyStats, setStrategyStats] = useState({
+    mrr: 0, planData: [], deliveryData: [], cocasData: [], topBarrios: [], topRestricciones: []
+  });
   
   // Filters
   const [clientSearch, setClientSearch] = useState('');
@@ -57,6 +89,8 @@ export default function Admin() {
 
   const [selectedClient, setSelectedClient] = useState(null);
   const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportModalType, setExportModalType] = useState('todos');
   const [selectedComprobante, setSelectedComprobante] = useState(null);
   const [feriados, setFeriados] = useState([]);
   const [newFeriado, setNewFeriado] = useState({ fecha: '', descripcion: '' });
@@ -105,13 +139,26 @@ export default function Admin() {
             const plan = sub.Plan || {};
             planNombre = (plan.nombre || 'N/A').toLowerCase();
             subStatus = (sub.estado || 'pendiente').toLowerCase();
-            const venc = new Date(sub.fecha_creacion);
-            const duracion = plan.dias_duracion || (planNombre === 'semanal' ? 7 : planNombre === 'quincenal' ? 15 : 30);
-            venc.setDate(venc.getDate() + duracion);
-            fechaVenc = venc.toISOString().split('T')[0];
-            const hoy = new Date();
-            dias = Math.ceil((venc - hoy) / (1000 * 60 * 60 * 24));
+            
+            // Usar valores calculados inteligentemente por el backend
+            fechaVenc = sub.fecha_vencimiento || '';
+            dias = sub.dias_restantes || 0;
+            
+            // Reflejo inmediato en UI si los días se agotaron
+            if (dias <= 0 && subStatus === 'activo') {
+               subStatus = 'vencido';
+            }
           }
+
+          let esFraudulento = false;
+          subs.forEach(s => {
+             const comps = s.Comprobantes || (s.Comprobante ? [s.Comprobante] : []);
+             comps.forEach(comp => {
+                if (comp.estado === 'Rechazado' && comp.motivo_rechazo === 'Comprobante Falso') {
+                   esFraudulento = true;
+                }
+             });
+          });
 
           const mainDir = (sub && sub.direcciones && sub.direcciones.length > 0) ? (sub.direcciones.find(d => d.es_principal) || sub.direcciones[0]) : null;
 
@@ -130,6 +177,7 @@ export default function Admin() {
             fechaVencimiento: fechaVenc,
             alergias: sub?.alergias,
             restricciones: sub?.restricciones,
+            esFraudulento,
             raw: c // Keep full data
           };
         });
@@ -180,6 +228,7 @@ export default function Admin() {
       }
 
       await fetchRepartidores();
+      await fetchStrategyStats();
     } catch (err) {
       console.error(err);
       Swal.fire({ icon: 'error', title: 'Error de conexión', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000 });
@@ -254,30 +303,33 @@ export default function Admin() {
     }
   };
 
-  const getStats = () => {
-    const now = new Date();
-    let filterDate = new Date();
-    if (statsPeriod === 'hoy') filterDate.setHours(0,0,0,0);
-    else if (statsPeriod === 'semana') filterDate.setDate(now.getDate() - 7);
-    else if (statsPeriod === 'quincena') filterDate.setDate(now.getDate() - 15);
-    else if (statsPeriod === 'mes') filterDate.setMonth(now.getMonth() - 1);
-    else filterDate = new Date(0);
-
-    const approved = payments.filter(p => p.status === 'aprobado' && new Date(p.fecha) >= filterDate);
-    const income = approved.reduce((s, p) => s + p.monto, 0);
-    const active = clients.filter(c => c.status === 'activo').length;
-    const pending = payments.filter(p => p.status === 'pendiente').length;
-    const expiring = clients.filter(c => c.status === 'activo' && c.diasRestantes <= 5).length;
-
-    // Rechazos por motivo (respetando el filtro de fecha)
-    const rejected = payments.filter(p => p.status === 'rechazado' && new Date(p.fecha) >= filterDate);
-
-    const byCocas = rejected.filter(p => p.motivo_rechazo === 'Mentira Juego Cocas').length;
-    const byFake = rejected.filter(p => p.motivo_rechazo === 'Comprobante Falso').length;
-    const byNotReflected = rejected.filter(p => p.motivo_rechazo === 'No Reflejado').length;
-
-    return { income, active, pending, expiring, byCocas, byFake, byNotReflected };
+  const fetchDashboardStats = async () => {
+    try {
+      const res = await api.get(`/admin/dashboard-stats?period=${statsPeriod}&date=${customDate}`);
+      if (res.data.success) {
+        setDashboardStats(res.data.stats);
+      }
+    } catch (err) {
+      console.error("Error fetching dashboard stats:", err);
+    }
   };
+
+  const fetchStrategyStats = async () => {
+    try {
+      const res = await api.get(`/admin/strategy-stats`);
+      if (res.data.success) {
+        setStrategyStats(res.data);
+      }
+    } catch (err) {
+      console.error("Error fetching strategy stats:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (usuario.rol === 'admin') {
+      fetchDashboardStats();
+    }
+  }, [statsPeriod, customDate]);
 
   const filteredClients = clients.filter(c => 
     (c.nombre.toLowerCase().includes(clientSearch.toLowerCase()) || c.cedula.includes(clientSearch)) &&
@@ -289,7 +341,8 @@ export default function Admin() {
     (paymentStatusFilter === '' || p.status === paymentStatusFilter)
   );
 
-  const stats = getStats();
+  const stats = dashboardStats;
+  const COLORS = ['#f97316', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6'];
 
   return (
     <div className="flex min-h-screen bg-gray-50 text-slate-900">
@@ -315,25 +368,32 @@ export default function Admin() {
           <nav className="space-y-2">
             {[
               { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-              { id: 'cocina', label: 'Cocina en Vivo', icon: ChefHat },
+              { id: 'estrategia', label: 'Estrategia (BI)', icon: TrendingUp },
               { id: 'pagos', label: 'Validar Pagos', icon: CreditCard, badge: payments.filter(p => p.status === 'pendiente').length },
               { id: 'clientes', label: 'Lista Clientes', icon: Users },
-              { id: 'repartidores', label: 'Repartidores', icon: MapPin },
-              { id: 'feriados', label: 'Festivos', icon: CalendarDays },
               { id: 'mapa', label: 'Mapa Cobertura', icon: MapPin },
-              { id: 'menu', label: 'Menú Semanal', icon: ImageIcon }
+              { id: 'feriados', label: 'Festivos', icon: CalendarDays },
+              { id: 'menu', label: 'Menú Semanal', icon: ImageIcon },
+              { id: 'repartidores', label: 'Repartidores', icon: MapPin, proximamente: true },
+              { id: 'cocina', label: 'Cocina en Vivo', icon: ChefHat, proximamente: true }
             ].map(item => (
               <button 
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => !item.proximamente && setActiveTab(item.id)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-black transition-all ${
+                  item.proximamente ? 'opacity-60 cursor-not-allowed text-slate-500' :
                   activeTab === item.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30' : 'text-slate-400 hover:text-white hover:bg-slate-800'
                 }`}
               >
-                <item.icon size={18} />
-                {item.label}
-                {item.badge > 0 && (
-                  <span className="ml-auto bg-red-500 text-[10px] px-2 py-0.5 rounded-full animate-pulse">{item.badge}</span>
+                <div className="shrink-0">
+                  <item.icon size={18} />
+                </div>
+                <span className="truncate">{item.label}</span>
+                {item.proximamente && (
+                  <span className="ml-auto bg-slate-800 text-slate-400 text-[9px] px-1.5 py-0.5 rounded uppercase font-bold">Pronto</span>
+                )}
+                {item.badge > 0 && !item.proximamente && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full animate-pulse">{item.badge}</span>
                 )}
               </button>
             ))}
@@ -345,7 +405,14 @@ export default function Admin() {
               {['todos', 'activos', 'cocina', 'produccion'].map(type => (
                 <button 
                   key={type}
-                  onClick={() => exportExcel(type, clients, payments)}
+                  onClick={() => {
+                    if (type === 'produccion') {
+                      exportExcel('produccion', clients, payments);
+                    } else {
+                      setExportModalType(type);
+                      setIsExportModalOpen(true);
+                    }
+                  }}
                   className="w-full text-left px-4 py-2 text-xs text-slate-400 hover:text-white transition-colors font-bold uppercase tracking-tight flex items-center gap-2"
                 >
                   <FileDown size={14} />
@@ -397,60 +464,290 @@ export default function Admin() {
         </header>
 
         <AnimatePresence mode="wait">
+
           {activeTab === 'dashboard' && (
             <motion.div 
               key="dash"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
+              className="space-y-6"
             >
-              <div className="flex items-center justify-between mb-8">
-                <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-100 flex">
-                  {['hoy', 'semana', 'mes', 'total'].map(p => (
-                    <button 
-                      key={p}
-                      onClick={() => setStatsPeriod(p)}
-                      className={`px-4 py-2 text-xs font-black uppercase rounded-lg transition-all ${
-                        statsPeriod === p ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
+              <div className="flex items-center justify-between mb-2">
+                <div className="bg-white p-1 rounded-xl shadow-sm border border-gray-100 flex items-center flex-wrap gap-2">
+                  <div className="flex">
+                    {['hoy', 'semana', 'mes', 'total'].map(p => (
+                      <button 
+                        key={p}
+                        onClick={() => { setStatsPeriod(p); setCustomDate(''); }}
+                        className={`px-4 py-2 text-xs font-black uppercase rounded-lg transition-all ${
+                          statsPeriod === p ? 'bg-orange-500 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="hidden sm:block h-6 w-px bg-gray-200 mx-1"></div>
+                  <div className="flex items-center gap-2 px-2 pb-1 sm:pb-0">
+                    <span className="text-xs font-bold text-slate-400 uppercase">Día:</span>
+                    <input 
+                      type="date"
+                      value={customDate}
+                      onChange={e => {
+                        setCustomDate(e.target.value);
+                        if (e.target.value) setStatsPeriod('custom');
+                        else setStatsPeriod('mes');
+                      }}
+                      className="bg-gray-50 border-none rounded-lg px-3 py-1.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                 <StatCard title="Ingresos Aprobados" value={`$${stats.income.toLocaleString()}`} icon={DollarSign} color="bg-green-500" desc="Ventas netas aprobadas" />
+              {/* STATS RAPIDOS */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                 <StatCard title="Ingresos Aprobados" value={`$${stats.income.toLocaleString()}`} icon={DollarSign} color="bg-green-500" desc="Ventas netas" />
                  <StatCard title="Clientes Activos" value={stats.active} icon={Users} color="bg-blue-500" desc="Suscripciones vigentes" />
-                 <StatCard title="Pendientes" value={stats.pending} icon={CreditCard} color="bg-amber-500" desc="Pagos por verificar" urgent={stats.pending > 0} />
-                 <StatCard title="Por Vencer" value={stats.expiring} icon={AlertTriangle} color="bg-red-500" desc="Vencen en menos de 5 días" urgent={stats.expiring > 0} />
+                 <StatCard title="Pagos Pendientes" value={stats.pending} icon={CreditCard} color="bg-amber-500" desc="Por verificar" urgent={stats.pending > 0} />
+                 <StatCard title="Rechazos (Fraude)" value={stats.byFake} icon={AlertTriangle} color="bg-red-600" desc="Comprobantes falsos" urgent={stats.byFake > 0} />
               </div>
 
-              {/* Rejections Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+              {/* ZONA DE ALERTAS Y ACTIVIDAD */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                 
+                 {/* Alertas Urgentes */}
+                 <div className="md:col-span-1 space-y-4">
+                    <div className="bg-red-50 p-5 rounded-3xl border border-red-100 shadow-sm relative overflow-hidden">
+                       <div className="absolute -top-4 -right-4 text-red-100/50">
+                          <AlertCircle size={100} />
+                       </div>
+                       <h3 className="text-xs font-black uppercase text-red-600 tracking-widest mb-4 relative z-10 flex items-center gap-2">
+                         <AlertTriangle size={16}/> Alertas Urgentes
+                       </h3>
+                       
+                       <div className="space-y-3 relative z-10">
+                          {(() => {
+                             const expiring = clients.filter(c => c.status === 'activo' && c.diasRestantes <= 3);
+                             const pendingPayments = payments.filter(p => p.status === 'pendiente');
+                             
+                             return (
+                               <>
+                                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-red-100 flex justify-between items-center cursor-pointer hover:border-red-300 transition-colors" onClick={() => setActiveTab('pagos')}>
+                                   <div>
+                                     <div className="text-xs font-black text-slate-800">Validar Pagos</div>
+                                     <div className="text-[10px] text-slate-500 font-bold">Comprobantes subidos</div>
+                                   </div>
+                                   <div className={`px-2 py-1 rounded-lg text-xs font-black ${pendingPayments.length > 0 ? 'bg-red-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                     {pendingPayments.length}
+                                   </div>
+                                 </div>
+                                 
+                                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-red-100 flex justify-between items-center cursor-pointer hover:border-red-300 transition-colors" onClick={() => setActiveTab('clientes')}>
+                                   <div>
+                                     <div className="text-xs font-black text-slate-800">Vencimientos</div>
+                                     <div className="text-[10px] text-slate-500 font-bold">Planes por vencer (≤ 3 días)</div>
+                                   </div>
+                                   <div className={`px-2 py-1 rounded-lg text-xs font-black ${expiring.length > 0 ? 'bg-orange-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                     {expiring.length}
+                                   </div>
+                                 </div>
+                               </>
+                             );
+                          })()}
+                       </div>
+                    </div>
 
-                <StatCard 
-                  title="Mentira Cocas" 
-                  value={stats.byCocas} 
-                  icon={Package} 
-                  color="bg-amber-500" 
-                  desc="Nuevos sin juego" 
-                />
-                <StatCard 
-                  title="Comp. Falsos" 
-                  value={stats.byFake} 
-                  icon={AlertTriangle} 
-                  color="bg-red-600" 
-                  desc="Posible fraude" 
-                />
-                <StatCard 
-                  title="No Reflejados" 
-                  value={stats.byNotReflected} 
-                  icon={Clock} 
-                  color="bg-slate-700" 
-                  desc="Error bancario" 
-                />
+                    <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+                       <h3 className="text-xs font-black uppercase text-slate-400 tracking-widest mb-4">Otros Rechazos</h3>
+                       <div className="flex justify-between items-center border-b border-gray-50 pb-2 mb-2">
+                         <span className="text-xs font-bold text-slate-700 flex items-center gap-2"><Package size={14} className="text-amber-500"/> Mentira Cocas</span>
+                         <span className="text-xs font-black text-slate-900">{stats.byCocas}</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                         <span className="text-xs font-bold text-slate-700 flex items-center gap-2"><Clock size={14} className="text-slate-400"/> No Reflejados</span>
+                         <span className="text-xs font-black text-slate-900">{stats.byNotReflected}</span>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Actividad Reciente */}
+                 <div className="md:col-span-2 bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col h-full">
+                    <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+                       <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest">Actividad Reciente</h3>
+                       <span className="text-[10px] font-bold text-slate-400 uppercase bg-slate-50 px-2 py-1 rounded-lg">Últimos Pagos</span>
+                    </div>
+                    <div className="p-2 flex-1">
+                       {(() => {
+                         const recent = [...payments].sort((a,b) => b.id - a.id).slice(0, 6);
+                         if (recent.length === 0) return <div className="p-5 text-center text-xs text-slate-400 font-bold">No hay actividad reciente</div>;
+                         return recent.map(p => (
+                           <div key={p.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-2xl transition-colors cursor-pointer group" onClick={() => setActiveTab('pagos')}>
+                             <div className="flex items-center gap-3">
+                               <div className={`w-10 h-10 rounded-full flex items-center justify-center ${p.status === 'aprobado' ? 'bg-green-100 text-green-600' : p.status === 'rechazado' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                                 {p.status === 'aprobado' ? <Check size={16} /> : p.status === 'rechazado' ? <X size={16} /> : <Clock size={16} />}
+                               </div>
+                               <div>
+                                 <div className="text-sm font-black text-slate-900 group-hover:text-orange-500 transition-colors">{p.clienteNombre}</div>
+                                 <div className="text-[10px] font-bold text-slate-500 uppercase">{p.plan} • {p.fecha}</div>
+                               </div>
+                             </div>
+                             <div className="text-right">
+                               <div className="text-sm font-black text-slate-900">${p.monto.toLocaleString()}</div>
+                               <div className={`text-[10px] font-bold uppercase tracking-widest ${p.status === 'aprobado' ? 'text-green-500' : p.status === 'rechazado' ? 'text-red-500' : 'text-amber-500'}`}>{p.status}</div>
+                             </div>
+                           </div>
+                         ));
+                       })()}
+                    </div>
+                 </div>
+
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'estrategia' && (
+            <motion.div 
+              key="estrategia"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-8"
+            >
+              <div className="flex justify-between items-center bg-slate-900 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500 rounded-full blur-3xl opacity-30"></div>
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-orange-400 mb-1">Métrica Estrella</h3>
+                  <div className="text-3xl font-black">${strategyStats.mrr.toLocaleString()} COP</div>
+                  <p className="text-[10px] text-slate-400 font-bold mt-1">Ingreso Mensual Recurrente Estimado (MRR)</p>
+                </div>
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
+                  <TrendingUp size={32} className="text-orange-400" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Top Barrios (Heatmap)</h3>
+                  <div className="h-64">
+                    <Bar 
+                      options={{
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
+                        },
+                        scales: {
+                          x: { display: false },
+                          y: { border: { display: false }, grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' }, color: '#64748b' } }
+                        }
+                      }} 
+                      data={{
+                        labels: strategyStats.topBarrios.map(b => b.name),
+                        datasets: [{
+                          data: strategyStats.topBarrios.map(b => b.cantidad),
+                          backgroundColor: '#f97316',
+                          borderRadius: 8,
+                          barPercentage: 0.6
+                        }]
+                      }} 
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Distribución de Planes</h3>
+                  <div className="h-64">
+                    <Pie 
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: 'bottom', labels: { font: { size: 10, weight: 'bold' }, usePointStyle: true, boxWidth: 8 } },
+                          tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
+                        }
+                      }}
+                      data={{
+                        labels: strategyStats.planData.map(d => d.name),
+                        datasets: [{
+                          data: strategyStats.planData.map(d => d.value),
+                          backgroundColor: COLORS.slice(0, strategyStats.planData.length),
+                          borderWidth: 0,
+                          hoverOffset: 4
+                        }]
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Modalidad de Entrega</h3>
+                  <div className="h-48">
+                    <Pie 
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: 'bottom', labels: { font: { size: 10, weight: 'bold' }, usePointStyle: true, boxWidth: 8 } },
+                          tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
+                        }
+                      }}
+                      data={{
+                        labels: strategyStats.deliveryData.map(d => d.name),
+                        datasets: [{
+                          data: strategyStats.deliveryData.map(d => d.value),
+                          backgroundColor: ['#3b82f6', '#8b5cf6'],
+                          borderWidth: 0,
+                          hoverOffset: 4
+                        }]
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Demanda de Cocas</h3>
+                  <div className="h-48">
+                    <Pie 
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { position: 'bottom', labels: { font: { size: 10, weight: 'bold' }, usePointStyle: true, boxWidth: 8 } },
+                          tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
+                        }
+                      }}
+                      data={{
+                        labels: strategyStats.cocasData.map(d => d.name),
+                        datasets: [{
+                          data: strategyStats.cocasData.map(d => d.value),
+                          backgroundColor: ['#f43f5e', '#10b981'],
+                          borderWidth: 0,
+                          hoverOffset: 4
+                        }]
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 overflow-y-auto max-h-[265px]">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-4 sticky top-0 bg-white z-10 pb-2">Alergias & Restricciones</h3>
+                  <div className="space-y-2">
+                    {strategyStats.topRestricciones.map((r, i) => (
+                      <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
+                        <span className="text-xs font-bold text-slate-700 capitalize">{r.name.toLowerCase()}</span>
+                        <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full text-[10px] font-black">{r.value}</span>
+                      </div>
+                    ))}
+                    {strategyStats.topRestricciones.length === 0 && (
+                      <p className="text-xs text-slate-400 text-center py-4">No hay datos suficientes</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </motion.div>
           )}
@@ -756,7 +1053,7 @@ export default function Admin() {
                     <div className="bg-slate-900 rounded-[40px] p-2 aspect-[4/5] overflow-hidden shadow-2xl relative group">
                       {(menuPreview || weeklyMenu.imagen_url) ? (
                         <img 
-                          src={menuPreview || weeklyMenu.imagen_url}
+                          src={menuPreview || (weeklyMenu.imagen_url ? (weeklyMenu.imagen_url.startsWith('http') ? weeklyMenu.imagen_url : API_URL + weeklyMenu.imagen_url) : '')}
                           alt="Vista previa menú"
                           className="w-full h-full object-cover rounded-[32px]"
                         />
@@ -796,7 +1093,7 @@ export default function Admin() {
                             <td className="px-8 py-4">
                               <div className="w-12 h-16 bg-slate-900 rounded-lg overflow-hidden border border-gray-100">
                                 {m.imagen_url ? (
-                                  <img src={m.imagen_url} className="w-full h-full object-cover" />
+                                  <img src={m.imagen_url.startsWith('http') ? m.imagen_url : API_URL + m.imagen_url} className="w-full h-full object-cover" />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center text-[8px] text-white font-black">N/A</div>
                                 )}
@@ -861,7 +1158,7 @@ export default function Admin() {
                     >
                        <div className="flex items-center gap-6">
                           <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center overflow-hidden transition-all group-hover:scale-105">
-                             <img src={p.comprobante} alt="Comprobante" className="w-full h-full object-cover" />
+                             <img src={p.comprobante ? (p.comprobante.startsWith('http') ? p.comprobante : API_URL + p.comprobante) : ''} alt="Comprobante" className="w-full h-full object-cover" />
                           </div>
                           <div>
                              <h4 className="font-black text-slate-900 group-hover:text-orange-600 transition-colors">{p.clienteNombre}</h4>
@@ -993,9 +1290,14 @@ export default function Admin() {
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {filteredClients.map(c => (
-                      <tr key={c.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr key={c.id} className={`${c.esFraudulento ? 'bg-red-50/50 hover:bg-red-100/50' : 'hover:bg-gray-50/50'} transition-colors`}>
                         <td className="px-8 py-5">
-                          <div className="font-bold text-slate-900">{c.nombre}</div>
+                          <div className="font-bold text-slate-900 flex items-center gap-2">
+                             {c.nombre}
+                             {c.esFraudulento && (
+                               <span className="bg-red-500 text-white text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-widest" title="Historial de comprobantes falsos">Fraude</span>
+                             )}
+                          </div>
                           <div className="text-xs text-gray-400">{c.cedula}</div>
                         </td>
                         <td className="px-8 py-5">
@@ -1006,12 +1308,22 @@ export default function Admin() {
                            </span>
                         </td>
                         <td className="px-8 py-5">
-                          <div className="text-sm font-bold text-slate-600 uppercase tracking-tight">{c.plan}</div>
+                          {['cancelado', 'rechazado'].includes(c.status?.toLowerCase()) ? (
+                            <span className="text-sm font-bold text-slate-300">-</span>
+                          ) : (
+                            <div className="text-sm font-bold text-slate-600 uppercase tracking-tight">{c.plan}</div>
+                          )}
                         </td>
                         <td className="px-8 py-5">
-                          <div className={`text-sm font-black ${c.diasRestantes <= 5 ? 'text-red-500 animate-pulse' : 'text-slate-900'}`}>
-                            {c.diasRestantes}d
-                          </div>
+                          {['cancelado', 'rechazado'].includes(c.status?.toLowerCase()) ? (
+                            <span className="text-sm font-bold text-slate-300">-</span>
+                          ) : c.diasRestantes <= 0 ? (
+                            <span className="bg-red-100 text-red-600 px-2 py-1 rounded text-xs font-black uppercase">Vencido</span>
+                          ) : (
+                            <div className={`text-sm font-black ${c.diasRestantes <= 5 ? 'text-red-500 animate-pulse' : 'text-slate-900'}`}>
+                              {c.diasRestantes}d
+                            </div>
+                          )}
                         </td>
                         <td className="px-8 py-5">
                           <button 
@@ -1031,7 +1343,7 @@ export default function Admin() {
         </AnimatePresence>
       </main>
 
-      {/* Full Client Detail Modal */}
+      {/* Modales */}
       {selectedClient && (
         <ClientEditorModal 
           client={selectedClient} 
@@ -1040,13 +1352,20 @@ export default function Admin() {
           plans={plans}
         />
       )}
-      {/* Creator Modal */}
       <RegistrationWizard 
         isOpen={isCreatorModalOpen}
         onClose={() => setIsCreatorModalOpen(false)} 
         onUpdate={fetchData}
         initialPlan="quincenal"
         plans={plans}
+      />
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        initialType={exportModalType}
+        onExport={(group, columns) => {
+          exportExcel({ group, columns }, clients, payments);
+        }}
       />
       {/* Comprobante Modal (Full Data & Edit) */}
       {selectedComprobante && (
@@ -1135,7 +1454,7 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
           <div className="md:w-1/2 bg-gray-100 flex items-center justify-center p-6 min-h-[300px]">
             <div className="relative group w-full h-full flex items-center justify-center">
               <img 
-                src={comprobante.comprobante} 
+                src={comprobante.comprobante ? (comprobante.comprobante.startsWith('http') ? comprobante.comprobante : API_URL + comprobante.comprobante) : ''} 
                 alt="Comprobante Full" 
                 className="max-w-full max-h-full object-contain rounded-3xl shadow-2xl border-4 border-white" 
               />

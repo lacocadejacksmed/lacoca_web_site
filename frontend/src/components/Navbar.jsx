@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Menu, X, LogOut, User, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }) {
+export default function Navbar({ onOpenWizard, onMenuToggle }) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -17,8 +17,8 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
   const menuLinks = [
     { name: 'Menú', href: '#menu' },
     { name: 'Planes', href: '#planes' },
-    { name: 'Pagos', onClick: onOpenPaymentInfo },
     { name: 'Beneficios', href: '#beneficios' },
+    { name: 'Preguntas', href: '#faq' },
   ];
 
   const isLoggedIn = !!localStorage.getItem('token');
@@ -34,7 +34,7 @@ export default function Navbar({ onOpenWizard, onOpenPaymentInfo, onMenuToggle }
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           {/* Brand Section */}
-          <a href="#" className="flex items-center gap-3 no-underline group">
+          <a href="/" className="flex items-center gap-3 no-underline group">
             {/* Image - Hidden on Mobile, visible from LG */}
             <div className="relative hidden lg:block">
               <img

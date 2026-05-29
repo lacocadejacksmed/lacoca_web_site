@@ -11,6 +11,7 @@ const router = express.Router();
 router.post("/auth/register", authController.register);
 router.post("/auth/login", authController.login);
 router.get("/auth/me", protect, authController.getMe);
+router.put("/auth/me", protect, authController.updateProfile);
 router.get("/client/suscripciones", protect, authController.getMySubscriptions);
 
 // Rutas Públicas (Landing Page)
@@ -25,6 +26,8 @@ router.get("/geocode", orderController.geocodeAddress); // Proxy para Nominatim
 
 // Rutas Administrativas (Protegidas)
 router.get("/admin/stats", [protect, admin], adminController.getStats);
+router.get("/admin/dashboard-stats", [protect, admin], adminController.getDashboardStats);
+router.get("/admin/strategy-stats", [protect, admin], adminController.getStrategyStats);
 router.get("/admin/comprobantes", [protect, admin], adminController.getComprobantes);
 router.get("/admin/comprobantes/:id", [protect, admin], adminController.getComprobanteById);
 router.post("/admin/comprobantes/:id/estado", [protect, admin], adminController.updateComprobanteStatus);

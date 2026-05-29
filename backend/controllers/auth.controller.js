@@ -5,6 +5,8 @@ const Suscripcion = require('../models/Suscripcion');
 const Plan = require('../models/Plan');
 const Comprobante = require('../models/Comprobante');
 const DireccionEntrega = require('../models/DireccionEntrega');
+const Feriado = require('../models/Feriado');
+const { calcularVencimiento } = require('../utils/dateUtils');
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET || 'secret_key_lacoca', {
@@ -126,6 +128,49 @@ exports.getMe = async (req, res) => {
     }
 };
 
+exports.updateProfile = async (req, res) => {
+    try {
+        const { nombre, email, password, celular } = req.body;
+        const usuarioId = req.user.id;
+
+        const usuario = await Usuario.findByPk(usuarioId);
+        if (!usuario) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+        }
+
+        // Check if email is being changed and if it already exists
+        if (email && email !== usuario.email) {
+            const emailExists = await Usuario.findOne({ where: { email } });
+            if (emailExists) {
+                return res.status(400).json({ success: false, message: 'El correo ya está en uso' });
+            }
+        }
+
+        // Update Usuario
+        if (nombre) usuario.nombre = nombre;
+        if (email) usuario.email = email;
+        if (password && password.length >= 6) usuario.password = password; 
+
+        await usuario.save();
+
+        // Update Cliente if cedula exists
+        if (usuario.cedula) {
+            const cliente = await Cliente.findByPk(usuario.cedula);
+            if (cliente) {
+                if (nombre) cliente.nombre = nombre;
+                if (email) cliente.correo = email;
+                if (celular) cliente.celular = celular;
+                await cliente.save();
+            }
+        }
+
+        res.json({ success: true, message: 'Perfil actualizado exitosamente' });
+    } catch (error) {
+        console.error('Error actualizando perfil:', error);
+        res.status(500).json({ success: false, message: 'Error interno del servidor' });
+    }
+};
+
 exports.getMySubscriptions = async (req, res) => {
     try {
         const usuario = await Usuario.findByPk(req.user.id);
@@ -133,7 +178,7 @@ exports.getMySubscriptions = async (req, res) => {
             return res.json({ success: true, suscripciones: [] });
         }
 
-        const suscripciones = await Suscripcion.findAll({
+        let suscripciones = await Suscripcion.findAll({
             where: { cliente_cedula: usuario.cedula },
             include: [
                 { model: Plan },
@@ -143,36 +188,43 @@ exports.getMySubscriptions = async (req, res) => {
             order: [['fecha_creacion', 'DESC']]
         });
 
-        // Lógica para comprobar si la suscripción ha vencido
-        const currentDate = new Date();
-        currentDate.setHours(0, 0, 0, 0);
+        // Obtener feriados para el cálculo exacto de días
+        const feriadosDB = await Feriado.findAll();
+        const feriadosArray = feriadosDB.map(f => f.fecha);
 
+        const responseSubs = [];
+
+        // Refinamos las suscripciones con fecha_vencimiento y dias_restantes
         for (let sub of suscripciones) {
-            if (sub.estado === 'Activo' && sub.fecha_inicio && sub.Plan) {
-                const startDate = new Date(sub.fecha_inicio + 'T12:00:00');
-                startDate.setHours(0, 0, 0, 0);
-                
-                // Para una lógica más precisa, usaremos duraciones en calendario para vencer en fin de semana
-                // Semanal -> Vence a los 5 días (sábado)
-                // Quincenal -> Vence a los 12 días (sábado semana 2)
-                // Mensual -> Vence a los 26 días (sábado semana 4)
-                let diasCalendario = 0;
-                if (sub.Plan.nombre === 'Semanal') diasCalendario = 5;
-                else if (sub.Plan.nombre === 'Quincenal') diasCalendario = 12;
-                else if (sub.Plan.nombre === 'Mensual') diasCalendario = 26;
-                else diasCalendario = sub.Plan.dias_duracion; // Fallback
-                
-                const expirationDate = new Date(startDate);
-                expirationDate.setDate(expirationDate.getDate() + diasCalendario);
+            const planNombre = sub.Plan ? sub.Plan.nombre : null;
+            const planDias = sub.Plan ? sub.Plan.dias_duracion : 5;
+            
+            const calc = calcularVencimiento(
+                sub.fecha_inicio,
+                planNombre,
+                planDias,
+                feriadosArray,
+                sub.estado
+            );
 
-                if (currentDate > expirationDate) {
-                    sub.estado = 'Vencido';
-                    await sub.save();
-                }
+            let statusChanged = false;
+
+            if (calc.diasRestantes <= 0 && sub.estado === 'Activo') {
+                sub.estado = 'Vencido';
+                statusChanged = true;
             }
+
+            if (statusChanged) {
+                await sub.save();
+            }
+
+            const plainSub = sub.get({ plain: true });
+            plainSub.fecha_vencimiento = calc.fechaVencimiento;
+            plainSub.dias_restantes = calc.diasRestantes;
+            responseSubs.push(plainSub);
         }
 
-        res.json({ success: true, suscripciones });
+        res.json({ success: true, suscripciones: responseSubs });
     } catch (error) {
         console.error("Error obteniendo mis suscripciones:", error);
         res.status(500).json({ success: false, message: error.message });

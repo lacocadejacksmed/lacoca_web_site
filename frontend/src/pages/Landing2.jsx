@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import api from '../services/api';
+import { useNavigate, useLocation } from 'react-router-dom';
+import api, { API_URL } from '../services/api';
 import Navbar from '../components/Navbar';
 import RegistrationWizard from '../components/RegistrationWizard';
-import PaymentInfo from '../components/PaymentInfo';
+
 import FAQ from '../components/FAQ';
 import Plans from '../components/Plans';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,9 +25,11 @@ import {
   Share2
 } from 'lucide-react';
 
-export default function Landing2() {
-  const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [isPaymentInfoOpen, setIsPaymentInfoOpen] = useState(false);
+export default function Landing2({ defaultWizardOpen = false }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [isWizardOpen, setIsWizardOpen] = useState(defaultWizardOpen);
+
   const [selectedPlan, setSelectedPlan] = useState('quincenal');
   const [isMenuExpanded, setIsMenuExpanded] = useState(false);
   const [weeklyMenu, setWeeklyMenu] = useState({ 
@@ -57,7 +60,6 @@ export default function Landing2() {
     <div className="min-h-screen bg-white font-['Outfit'] selection:bg-orange-500 selection:text-white overflow-x-hidden">
       <Navbar 
         onOpenWizard={() => openWizard()} 
-        onOpenPaymentInfo={() => setIsPaymentInfoOpen(true)} 
       />
 
       {/* --- HERO SECTION 2.0 --- */}
@@ -80,10 +82,13 @@ export default function Landing2() {
               Almuerzos Ejecutivos • Medellín
             </div>
 
-            <h1 className="text-6xl md:text-[84px] leading-[0.95] font-black text-slate-900 tracking-tighter mb-8">
-              La <span className="font-['Fredoka'] text-orange-500">Coca</span> <br />
-              <span className="font-['Alex+Brush'] text-slate-400 text-6xl md:text-8xl lowercase ml-4">de</span> <br />
-              <span className="font-['Fredoka'] text-orange-500">Jacks</span>
+            <h1 className="flex flex-col mb-8 w-fit">
+              <span className="text-7xl md:text-[110px] font-bold leading-[0.8] tracking-tight text-slate-900" style={{ fontFamily: 'Fredoka, sans-serif' }}>
+                La Coca
+              </span>
+              <span className="self-end text-6xl md:text-[90px] text-orange-500 mt-2" style={{ fontFamily: 'Alex Brush, cursive' }}>
+                de Jacks
+              </span>
             </h1>
 
             <p className="text-xl text-slate-500 font-medium leading-relaxed mb-10 max-w-lg">
@@ -148,8 +153,8 @@ export default function Landing2() {
 
             {/* Floating Badges */}
             <motion.div 
-              animate={{ y: [0, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              animate={{ y: [-12, 12] }}
+              transition={{ duration: 3.5, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
               className="absolute top-4 -right-6 lg:-right-10 bg-white p-6 rounded-3xl shadow-xl border border-slate-50 z-20 hidden md:block"
             >
                <div className="flex items-center gap-3">
@@ -164,8 +169,8 @@ export default function Landing2() {
             </motion.div>
 
             <motion.div 
-              animate={{ y: [0, 10, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              animate={{ y: [12, -12] }}
+              transition={{ duration: 4, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
               className="absolute bottom-4 -left-6 lg:-left-10 bg-white p-6 rounded-3xl shadow-xl border border-slate-50 z-20 hidden md:block"
             >
                <div className="flex items-center gap-3">
@@ -196,7 +201,7 @@ export default function Landing2() {
                      <div className="absolute -inset-4 bg-orange-500/5 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
                      <div className="relative bg-slate-50 p-4 rounded-[48px] shadow-2xl border border-slate-100 overflow-hidden">
                         <img 
-                          src={weeklyMenu.imagen_url} 
+                          src={weeklyMenu.imagen_url ? (weeklyMenu.imagen_url.startsWith('http') ? weeklyMenu.imagen_url : API_URL + weeklyMenu.imagen_url) : '/weekly_menu_preview_1778475988702.png'} 
                           alt="Menú Semanal Jacks" 
                           className="w-full h-auto rounded-[36px] shadow-sm transform transition-transform duration-700 group-hover:scale-[1.02]"
                         />
@@ -259,7 +264,7 @@ export default function Landing2() {
       />
 
       {/* --- HOW IT WORKS 2.0 --- */}
-      <section className="py-32 bg-slate-50 relative overflow-hidden">
+      <section id="beneficios" className="py-32 bg-slate-50 relative overflow-hidden">
          <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-b from-white to-transparent"></div>
          
          <div className="max-w-7xl mx-auto px-6 relative z-10 text-center">
@@ -379,18 +384,16 @@ export default function Landing2() {
       {/* --- MODALS --- */}
       <RegistrationWizard 
         isOpen={isWizardOpen} 
-        onClose={() => setIsWizardOpen(false)} 
+        onClose={() => {
+          setIsWizardOpen(false);
+          if (location.pathname === '/registro') {
+            navigate('/');
+          }
+        }} 
         initialPlan={selectedPlan}
       />
 
-      <PaymentInfo 
-        isOpen={isPaymentInfoOpen} 
-        onClose={() => setIsPaymentInfoOpen(false)}
-        onReturn={() => {
-          setIsPaymentInfoOpen(false);
-          setIsWizardOpen(true);
-        }}
-      />
+
 
       {/* Floating CTA Mobile */}
       <AnimatePresence>
@@ -434,7 +437,7 @@ export default function Landing2() {
                </button>
                <div className="bg-white p-2 rounded-[40px] shadow-2xl overflow-hidden">
                   <img 
-                    src={weeklyMenu.imagen_url} 
+                    src={weeklyMenu.imagen_url ? (weeklyMenu.imagen_url.startsWith('http') ? weeklyMenu.imagen_url : API_URL + weeklyMenu.imagen_url) : '/weekly_menu_preview_1778475988702.png'} 
                     alt="Menú semanal completo" 
                     className="w-full h-auto rounded-[32px]"
                   />

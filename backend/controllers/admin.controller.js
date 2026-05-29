@@ -7,6 +7,8 @@ const DireccionEntrega = require("../models/DireccionEntrega");
 const Usuario = require("../models/Usuario");
 const { sendTextMessage } = require('../services/whatsapp.service');
 const { Op } = require("sequelize");
+const Feriado = require("../models/Feriado");
+const { calcularVencimiento } = require("../utils/dateUtils");
 
 const fs = require("fs");
 const path = require("path");
@@ -30,7 +32,185 @@ try {
   console.warn("Módulo pdfkit no instalado. Exportación PDF deshabilitada.");
 }
 
-// Obtener estadísticas para el dashboard
+// Obtener estadísticas avanzadas para el dashboard
+const getDashboardStats = async (req, res) => {
+  try {
+    const { period, date } = req.query;
+    
+    // Configurar fecha de filtro
+    const now = new Date();
+    let filterDate = new Date();
+    
+    if (period === 'hoy') filterDate.setHours(0,0,0,0);
+    else if (period === 'semana') filterDate.setDate(now.getDate() - 7);
+    else if (period === 'quincena') filterDate.setDate(now.getDate() - 15);
+    else if (period === 'mes') filterDate.setMonth(now.getMonth() - 1);
+    else filterDate = new Date(0); // 'total'
+    
+    const isMatch = (fechaStr) => {
+      if (period === 'custom' && date) {
+        return fechaStr.startsWith(date);
+      }
+      return new Date(fechaStr) >= filterDate;
+    };
+
+    // Obtener comprobantes
+    const comprobantes = await Comprobante.findAll({
+      attributes: ['estado', 'fecha_creacion', 'motivo_rechazo'],
+      include: [{ model: Suscripcion, attributes: ['precio_total'] }]
+    });
+
+    let income = 0;
+    let pending = 0;
+    let byCocas = 0;
+    let byFake = 0;
+    let byNotReflected = 0;
+
+    comprobantes.forEach(comp => {
+      const fecha = comp.fecha_creacion.toISOString();
+      const status = comp.estado.toLowerCase();
+      const match = isMatch(fecha);
+
+      if (status === 'aprobado' && match) {
+        income += Number(comp.Suscripcion ? comp.Suscripcion.precio_total : 0);
+      } else if (status === 'pendiente') {
+        pending++; // Pendientes son globales usualmente, o podemos filtrarlos
+      } else if (status === 'rechazado' && match) {
+        if (comp.motivo_rechazo === 'Mentira Juego Cocas') byCocas++;
+        else if (comp.motivo_rechazo === 'Comprobante Falso') byFake++;
+        else if (comp.motivo_rechazo === 'No Reflejado') byNotReflected++;
+      }
+    });
+
+    // Obtener clientes activos para "Activos" y "Por Vencer"
+    const activeClients = await Suscripcion.findAll({
+      where: { estado: 'Activo' },
+      include: [Cliente, Plan]
+    });
+
+    const active = activeClients.length;
+    let expiring = 0;
+
+    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha'] });
+    const feriadosArray = feriadosDocs.map(f => f.fecha);
+
+    activeClients.forEach(sub => {
+      const { diasRestantes } = calcularVencimiento(
+        sub.fecha_inicio,
+        sub.Plan ? sub.Plan.nombre : '',
+        sub.Plan ? sub.Plan.dias_duracion : 0,
+        feriadosArray,
+        sub.estado
+      );
+      if (diasRestantes <= 5 && diasRestantes > 0) {
+        expiring++;
+      }
+    });
+
+    res.json({
+      success: true,
+      stats: { income, active, pending, expiring, byCocas, byFake, byNotReflected }
+    });
+  } catch (error) {
+    console.error("Error en getDashboardStats:", error);
+    res.status(500).json({ success: false, message: "Error obteniendo estadísticas del dashboard" });
+  }
+};
+
+const getStrategyStats = async (req, res) => {
+  try {
+    const activeSubs = await Suscripcion.findAll({
+      where: { estado: 'Activo' },
+      include: [Cliente, Plan, { model: DireccionEntrega, as: 'direcciones' }]
+    });
+
+    let mrr = 0;
+    const planCounts = { semanal: 0, quincenal: 0, mensual: 0, otro: 0 };
+    const deliveryCounts = { fija: 0, hibrida: 0 };
+    const barrioMap = {};
+    const restriccionesMap = {};
+    const cocasStats = { compraron: 0, tenian: 0 };
+
+    activeSubs.forEach(sub => {
+      // MRR
+      const price = Number(sub.precio_total) || 0;
+      const days = sub.Plan?.dias_duracion || 7;
+      const dailyRate = price / days;
+      mrr += (dailyRate * 30);
+
+      // Plan Types
+      const planName = (sub.Plan?.nombre || '').toLowerCase();
+      if (planName.includes('semana')) planCounts.semanal++;
+      else if (planName.includes('quince')) planCounts.quincenal++;
+      else if (planName.includes('mes') || planName.includes('mensual')) planCounts.mensual++;
+      else planCounts.otro++;
+
+      // Delivery Types
+      const tipo = (sub.tipo_entrega || 'fija').toLowerCase();
+      if (tipo === 'hibrida') deliveryCounts.hibrida++;
+      else deliveryCounts.fija++;
+
+      // Cocas
+      if (sub.necesita_cocas) cocasStats.compraron++;
+      else cocasStats.tenian++;
+
+      // Barrios
+      if (sub.direcciones && sub.direcciones.length > 0) {
+         const mainDir = sub.direcciones.find(d => d.es_principal) || sub.direcciones[0];
+         if (mainDir.barrio) {
+            const cleanBarrio = mainDir.barrio.trim().toUpperCase();
+            barrioMap[cleanBarrio] = (barrioMap[cleanBarrio] || 0) + 1;
+         }
+      }
+
+      // Restricciones y Alergias
+      const addRestrictions = (str) => {
+        if (!str) return;
+        str.split(',').forEach(s => {
+           const clean = s.trim().toUpperCase();
+           if (clean.length > 2) restriccionesMap[clean] = (restriccionesMap[clean] || 0) + 1;
+        });
+      };
+      addRestrictions(sub.alergias);
+      addRestrictions(sub.restricciones);
+    });
+
+    const topBarrios = Object.keys(barrioMap)
+      .map(b => ({ name: b, cantidad: barrioMap[b] }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 10);
+
+    const topRestricciones = Object.keys(restriccionesMap)
+      .map(r => ({ name: r, value: restriccionesMap[r] }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 15);
+
+    res.json({
+      success: true,
+      mrr: Math.round(mrr),
+      planData: [
+        { name: 'Semanal', value: planCounts.semanal },
+        { name: 'Quincenal', value: planCounts.quincenal },
+        { name: 'Mensual', value: planCounts.mensual }
+      ].filter(d => d.value > 0),
+      deliveryData: [
+        { name: 'Fija', value: deliveryCounts.fija },
+        { name: 'Híbrida', value: deliveryCounts.hibrida }
+      ].filter(d => d.value > 0),
+      cocasData: [
+        { name: 'Compraron', value: cocasStats.compraron },
+        { name: 'Ya Tenían', value: cocasStats.tenian }
+      ].filter(d => d.value > 0),
+      topBarrios,
+      topRestricciones
+    });
+  } catch (error) {
+    console.error("Error en getStrategyStats:", error);
+    res.status(500).json({ success: false, message: "Error obteniendo estadísticas de estrategia" });
+  }
+};
+
+// Obtener estadísticas simples para compatibilidad
 const getStats = async (req, res) => {
   try {
     const totalClientesActivos = await Cliente.count({
@@ -350,7 +530,29 @@ const getClientes = async (req, res) => {
       }],
       order: [["fecha_creacion", "DESC"]],
     });
-    res.json({ success: true, clientes });
+
+    // Calcular vencimientos de forma centralizada
+    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha'] });
+    const feriadosArray = feriadosDocs.map(f => f.fecha);
+
+    const clientesConVencimiento = clientes.map(cliente => {
+      const c = cliente.toJSON();
+      if (c.Suscripcions && c.Suscripcions.length > 0) {
+        c.Suscripcions = c.Suscripcions.map(sub => {
+          const { fechaVencimiento, diasRestantes } = calcularVencimiento(
+            sub.fecha_inicio,
+            sub.Plan ? sub.Plan.nombre : '',
+            sub.Plan ? sub.Plan.dias_duracion : 0,
+            feriadosArray,
+            sub.estado
+          );
+          return { ...sub, fecha_vencimiento: fechaVencimiento, dias_restantes: diasRestantes };
+        });
+      }
+      return c;
+    });
+
+    res.json({ success: true, clientes: clientesConVencimiento });
   } catch (error) {
     console.error("Error obteniendo clientes:", error);
     res.status(500).json({ success: false, message: "Error obteniendo clientes" });
@@ -364,7 +566,23 @@ const getSubscriptions = async (req, res) => {
       include: [Cliente, Comprobante, Plan, { model: DireccionEntrega, as: 'direcciones' }],
       order: [["fecha_creacion", "DESC"]],
     });
-    res.json({ success: true, subscriptions: subs });
+
+    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha'] });
+    const feriadosArray = feriadosDocs.map(f => f.fecha);
+
+    const subsConVencimiento = subs.map(subModel => {
+      const sub = subModel.toJSON();
+      const { fechaVencimiento, diasRestantes } = calcularVencimiento(
+        sub.fecha_inicio,
+        sub.Plan ? sub.Plan.nombre : '',
+        sub.Plan ? sub.Plan.dias_duracion : 0,
+        feriadosArray,
+        sub.estado
+      );
+      return { ...sub, fecha_vencimiento: fechaVencimiento, dias_restantes: diasRestantes };
+    });
+
+    res.json({ success: true, subscriptions: subsConVencimiento });
   } catch (error) {
     console.error("Error obteniendo suscripciones:", error);
     res.status(500).json({ success: false, message: "Error obteniendo suscripciones" });
@@ -556,8 +774,6 @@ const updateSubscription = async (req, res) => {
   }
 };
 
-const Feriado = require("../models/Feriado");
-
 // ... existing code ...
 
 const getFeriados = async (req, res) => {
@@ -649,6 +865,8 @@ const updateCoverage = async (req, res) => {
 
 module.exports = {
   getStats,
+  getDashboardStats,
+  getStrategyStats,
   getComprobantes,
   getCupos,
   getComprobanteById,

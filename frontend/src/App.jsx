@@ -26,6 +26,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Landing2 />} />
+        <Route path="/registro" element={<Landing2 defaultWizardOpen={true} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route 

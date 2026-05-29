@@ -140,7 +140,7 @@ export default function StepPayment({ register, errors, watch, setValue, getAdju
               {...register('facturacion')}
             />
             <div className="w-6 h-6 border-2 border-slate-200 rounded-lg flex items-center justify-center transition-all duration-300 group-active:scale-90 peer-checked:bg-orange-500 peer-checked:border-orange-500 peer-checked:shadow-lg peer-checked:shadow-orange-500/30">
-              <Check size={16} strokeWidth={4} className="text-white scale-0 peer-checked:scale-100 transition-transform duration-300" />
+              <Check size={16} strokeWidth={4} className={`text-white transition-transform duration-300 ${facturacion ? 'scale-100' : 'scale-0'}`} />
             </div>
           </div>
           <span className="text-xs font-bold text-gray-500 group-hover:text-slate-900 transition-colors">
@@ -161,7 +161,7 @@ export default function StepPayment({ register, errors, watch, setValue, getAdju
                   ? 'border-orange-500 bg-orange-50' 
                   : 'border-slate-200 peer-checked:bg-orange-500 peer-checked:border-orange-500 peer-checked:shadow-lg peer-checked:shadow-orange-500/30'
               }`}>
-                <Check size={16} strokeWidth={4} className="text-white scale-0 peer-checked:scale-100 transition-transform duration-300" />
+                <Check size={16} strokeWidth={4} className={`text-white transition-transform duration-300 ${terms ? 'scale-100' : 'scale-0'}`} />
               </div>
             </div>
             <span className={`text-xs font-bold transition-colors flex items-center gap-1.5 ${errors.terms ? 'text-orange-600' : 'text-gray-500 group-hover:text-slate-900'}`}>

@@ -107,6 +107,23 @@ const createOrder = async (req, res) => {
             // Si no existe por cédula, verificamos si el correo ya está en uso por OTRA cédula
             const clientePorEmail = await Cliente.findOne({ where: { correo: email } });
             if (clientePorEmail) {
+                // Verificar si la cuenta asociada al email es fraudulenta
+                const fraudeEmail = await Suscripcion.findOne({
+                    where: { cliente_cedula: clientePorEmail.cedula },
+                    include: [{
+                        model: Comprobante,
+                        where: { estado: 'Rechazado', motivo_rechazo: 'Comprobante Falso' },
+                        required: true
+                    }]
+                });
+
+                if (fraudeEmail) {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'No es posible procesar reservas para este usuario en este momento. Por favor contacta a soporte.' 
+                    });
+                }
+
                 return res.status(400).json({ 
                     success: false, 
                     message: `El correo ${email} ya está registrado con otro número de documento (#${clientePorEmail.cedula}). Por favor usa tus datos correctos.` 
@@ -117,8 +134,24 @@ const createOrder = async (req, res) => {
                 cedula, nombre, correo: email, celular, esta_activo: false
             });
         } else {
+            // Verificar fraude en el cliente encontrado por cédula
+            const fraudeCedula = await Suscripcion.findOne({
+                where: { cliente_cedula: cedula },
+                include: [{
+                    model: Comprobante,
+                    where: { estado: 'Rechazado', motivo_rechazo: 'Comprobante Falso' },
+                    required: true
+                }]
+            });
+
+            if (fraudeCedula) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'No es posible procesar reservas para este usuario en este momento. Por favor contacta a soporte.' 
+                });
+            }
+
             // Si existe por cédula, verificamos si tiene un pago PENDIENTE (esperando validación)
-            // Bloqueamos sólo si ya envió un pago y el administrador no lo ha revisado
             const subPendiente = await Suscripcion.findOne({ 
                 where: { 
                     cliente_cedula: cedula, 
@@ -275,6 +308,66 @@ const checkClient = async (req, res) => {
 
     if (!cliente) {
       return res.json({ success: false, found: false });
+    }
+
+    // Verificación de fraude
+    const Comprobante = require('../models/Comprobante');
+    const fraudeCedula = await Suscripcion.findOne({
+        where: { cliente_cedula: cedula },
+        include: [{
+            model: Comprobante,
+            where: { estado: 'Rechazado', motivo_rechazo: 'Comprobante Falso' },
+            required: true
+        }]
+    });
+    if (fraudeCedula) {
+        return res.json({ 
+            success: true, found: true, blocked: true,
+            message: 'No es posible procesar reservas para este usuario en este momento. Por favor contacta a soporte.'
+        });
+    }
+
+    // Verificación de pedido pendiente
+    const subPendiente = await Suscripcion.findOne({ where: { cliente_cedula: cedula, estado: 'Pendiente' } });
+    if (subPendiente) {
+        return res.json({
+            success: true, found: true, blocked: true,
+            message: 'Ya tienes un pedido en proceso de validación. Por favor espera a que sea aprobado.'
+        });
+    }
+
+    // Verificación de reglas de renovación
+    const Plan = require('../models/Plan');
+    const subActiva = await Suscripcion.findOne({ 
+        where: { cliente_cedula: cedula, estado: 'Activo' },
+        include: [{ model: Plan }]
+    });
+
+    if (subActiva) {
+        const Feriado = require('../models/Feriado');
+        const { calcularVencimiento } = require('../utils/dateUtils');
+        const feriadosDB = await Feriado.findAll();
+        const feriadosArray = feriadosDB.map(f => f.fecha);
+        const planNombre = subActiva.Plan ? subActiva.Plan.nombre : null;
+        const planDias = subActiva.Plan ? subActiva.Plan.dias_duracion : 5;
+        const calc = calcularVencimiento(subActiva.fecha_inicio, planNombre, planDias, feriadosArray, subActiva.estado);
+
+        const isExpiringSoon = calc.diasRestantes <= 5;
+        const today = new Date().getDay();
+
+        if (!isExpiringSoon) {
+            return res.json({
+                success: true, found: true, blocked: true,
+                message: `Tu suscripción actual aún tiene ${calc.diasRestantes} días. Solo puedes renovar cuando falten 5 días o menos.`
+            });
+        }
+
+        if (today === 1 || today === 2) {
+            return res.json({
+                success: true, found: true, blocked: true,
+                message: 'Las renovaciones para la próxima semana se habilitan a partir de cada miércoles. ¡Vuelve pronto!'
+            });
+        }
     }
 
     // Extraer última dirección si existe

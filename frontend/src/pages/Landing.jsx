@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import api from '../services/api';
+import api, { API_URL } from '../services/api';
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
 import Plans from '../components/Plans';
@@ -109,7 +109,7 @@ export default function Landing() {
                 <div className="absolute inset-0 bg-orange-500/20 blur-[100px] rounded-full group-hover:bg-orange-500/30 transition-all"></div>
                 <div className="relative bg-white p-4 rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden transform group-hover:-rotate-1 transition-all duration-500">
                   <img
-                    src={weeklyMenu.imagen_url || '/weekly_menu_preview_1778475988702.png'}
+                    src={weeklyMenu.imagen_url ? (weeklyMenu.imagen_url.startsWith('http') ? weeklyMenu.imagen_url : API_URL + weeklyMenu.imagen_url) : '/weekly_menu_preview_1778475988702.png'}
                     alt={`Menú de la Semana ${weeklyMenu.fechas}`}
                     className="w-full h-auto rounded-[32px] shadow-sm"
                   />
@@ -339,7 +339,7 @@ export default function Landing() {
 
               <div className="bg-white p-2 md:p-4 rounded-[32px] md:rounded-[48px] shadow-2xl overflow-hidden overflow-y-auto w-full">
                 <img
-                  src={weeklyMenu.imagen_url || '/weekly_menu_preview_1778475988702.png'}
+                  src={weeklyMenu.imagen_url ? (weeklyMenu.imagen_url.startsWith('http') ? weeklyMenu.imagen_url : API_URL + weeklyMenu.imagen_url) : '/weekly_menu_preview_1778475988702.png'}
                   alt="Menú semanal completo"
                   className="w-full h-auto rounded-[24px] md:rounded-[40px]"
                 />
