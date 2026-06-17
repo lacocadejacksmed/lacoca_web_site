@@ -5,7 +5,9 @@ import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Downl
 import api from '../services/api';
 import Swal from 'sweetalert2';
 import BankRedirect from './BankRedirect';
+import { isBarrioCompatibleWithZone, validateAddressNumbers } from '../hooks/useCoverage';
 import * as turf from '@turf/turf';
+import { wizardStep1Schema, wizardStep2Schema, wizardStep3Schema, wizardStep4Schema, validateComprobanteFile } from '../schemas/validationSchemas';
 import axios from 'axios';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -41,21 +43,39 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
   const [loading, setLoading] = useState(false);
   const [coberturaData, setCoberturaData] = useState({ type: 'FeatureCollection', features: [] });
   const fileInputRef = useRef(null);
+  const [fetchedPlans, setFetchedPlans] = useState([]);
+
+  useEffect(() => {
+    if (isOpen && (!dynamicPlans || dynamicPlans.length === 0)) {
+      const fetchPlanes = async () => {
+        try {
+          const res = await api.get('/planes');
+          if (res.data?.success && res.data.planes) {
+            setFetchedPlans(res.data.planes);
+          }
+        } catch (err) {
+          console.error("Error al cargar planes en wizard:", err);
+        }
+      };
+      fetchPlanes();
+    }
+  }, [isOpen, dynamicPlans]);
 
   const activePlans = useMemo(() => {
-    if (dynamicPlans && Array.isArray(dynamicPlans) && dynamicPlans.length > 0) {
+    const sourcePlans = (dynamicPlans && dynamicPlans.length > 0) ? dynamicPlans : fetchedPlans;
+    if (sourcePlans && Array.isArray(sourcePlans) && sourcePlans.length > 0) {
       const formatted = {};
-      dynamicPlans.forEach(p => {
+      sourcePlans.forEach(p => {
         const id = (p.nombre || p.name || '').toLowerCase();
         formatted[id] = {
           name: p.nombre || p.name,
-          price: Number(p.precio || p.price || 0)
+          price: Number(p.precio || p.price || p.precio_base || 0)
         };
       });
       return formatted;
     }
     return plans; // Fallback to static plans defined outside
-  }, [dynamicPlans]);
+  }, [dynamicPlans, fetchedPlans]);
 
   const [formData, setFormData] = useState({
     nombre: '', documento: '', facturacion: false, telefono: '', email: '',
@@ -122,13 +142,18 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     });
 
     if (zoneName) {
-      setStatus({ status: 'ok', zone: zoneName });
-      setFormData(prev => ({ 
-        ...prev, 
-        [`zona_${num}`]: zoneName, 
-        [`lat_${num}`]: lat, 
-        [`lng_${num}`]: lng 
-      }));
+      const barrioVal = num === 1 ? formData.barrio : formData.barrio2;
+      if (barrioVal && !isBarrioCompatibleWithZone(barrioVal, zoneName)) {
+        setStatus({ status: 'mismatch', zone: zoneName });
+      } else {
+        setStatus({ status: 'ok', zone: zoneName });
+        setFormData(prev => ({ 
+          ...prev, 
+          [`zona_${num}`]: zoneName, 
+          [`lat_${num}`]: lat, 
+          [`lng_${num}`]: lng 
+        }));
+      }
     } else {
       setStatus({ status: 'no_coverage', zone: null });
     }
@@ -323,7 +348,13 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       });
 
       if (res.data && res.data.features && res.data.features.length > 0) {
-        const [lng, lat] = res.data.features[0].center;
+        const firstFeat = res.data.features[0];
+        if (!validateAddressNumbers(address, firstFeat)) {
+          setStatus({ status: 'no_coverage', zone: null });
+          return;
+        }
+
+        const [lng, lat] = firstFeat.center;
         const pt = turf.point([parseFloat(lng), parseFloat(lat)]);
         let zoneName = null;
 
@@ -335,13 +366,17 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
         });
 
         if (zoneName) {
-          setStatus({ status: 'ok', zone: zoneName });
-          setFormData(prev => ({ 
-            ...prev, 
-            [`zona_${num}`]: zoneName, 
-            [`lat_${num}`]: lat, 
-            [`lng_${num}`]: lng 
-          }));
+          if (barrio && !isBarrioCompatibleWithZone(barrio, zoneName)) {
+            setStatus({ status: 'mismatch', zone: zoneName });
+          } else {
+            setStatus({ status: 'ok', zone: zoneName });
+            setFormData(prev => ({ 
+              ...prev, 
+              [`zona_${num}`]: zoneName, 
+              [`lat_${num}`]: lat, 
+              [`lng_${num}`]: lng 
+            }));
+          }
         } else {
           // Encontró la coordenada, pero cae fuera de los polígonos de entrega
           setStatus({ status: 'no_coverage', zone: null });
@@ -387,57 +422,78 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
 
   const validateStep = () => {
     const errors = {};
+
     if (step === 1) {
-      if (!formData.nombre.trim())
-        errors.nombre = 'Por favor, dinos tu nombre para saber quién eres';
-      else if (formData.nombre.trim().length < 3)
-        errors.nombre = 'El nombre es muy corto, por favor usa al menos 3 letras';
-
-      if (!formData.documento.trim())
-        errors.documento = 'Necesitamos tu documento para la factura y el seguro';
-      else if (formData.documento.trim().length < 5)
-        errors.documento = 'Este número de documento parece muy corto, revísalo';
-
-      if (!formData.fecha_inicio)
-        errors.fecha_inicio = 'Debes elegir en qué semana quieres empezar a recibir tus cocas';
-    }
-    if (step === 2) {
-      if (!formData.email.trim())
-        errors.email = 'El correo es obligatorio para enviarte el menú';
-      else if (!formData.email.includes('@') || !formData.email.includes('.'))
-        errors.email = 'El correo debe tener un formato válido como: nombre@ejemplo.com';
-
-      if (!formData.telefono.trim())
-        errors.telefono = 'Danos tu WhatsApp para avisarte cuando estemos llegando';
-      else {
-        const cleaned = formData.telefono.replace(/\D/g, '');
-        if (cleaned.length !== 10)
-          errors.telefono = 'Tu WhatsApp debe tener exactamente 10 números (ej: 3001234567)';
+      const result = wizardStep1Schema.safeParse({
+        nombre: formData.nombre,
+        documento: formData.documento,
+        fecha_inicio: formData.fecha_inicio
+      });
+      if (!result.success) {
+        result.error.issues.forEach(issue => {
+          errors[issue.path[0]] = issue.message;
+        });
+      }
+      // Validate documento is only digits
+      if (!errors.documento && formData.documento && !/^\d+$/.test(formData.documento)) {
+        errors.documento = 'El documento solo puede contener números';
       }
     }
+
+    if (step === 2) {
+      const result = wizardStep2Schema.safeParse({
+        email: formData.email,
+        telefono: formData.telefono.replace(/\D/g, '')
+      });
+      if (!result.success) {
+        result.error.issues.forEach(issue => {
+          errors[issue.path[0]] = issue.message;
+        });
+      }
+    }
+
     if (step === 3) {
-      if (!formData.direccion.trim()) errors.direccion = 'Dinos en qué dirección entregamos tu primer pedido';
-      if (!formData.barrio.trim()) errors.barrio = 'Indica el barrio para organizar nuestra ruta';
-      
-      // SOLO BLOQUEAR si la API explícitamente dice que está FUERA de cobertura.
+      const result = wizardStep3Schema.safeParse({
+        direccion: formData.direccion,
+        barrio: formData.barrio,
+        tipoEntrega: formData.tipoEntrega,
+        direccion2: formData.direccion2,
+        barrio2: formData.barrio2
+      });
+      if (!result.success) {
+        result.error.issues.forEach(issue => {
+          errors[issue.path[0]] = issue.message;
+        });
+      }
+
+      // Coverage checks layered on top of schema validation
+      // SOLO BLOQUEAR si la API explícitamente dice que está FUERA de cobertura o si hay discrepancia.
       // Si dice 'not_found' o 'api_error', permitimos pasar porque OSM no entiende muchas direcciones colombianas.
       if (coverage1.status === 'no_coverage') {
         errors.direccion = 'La dirección 1 se encuentra fuera de nuestra zona de cobertura actual.';
       }
+      if (coverage1.status === 'mismatch') {
+        errors.direccion = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${coverage1.zone}). Por favor verifica la dirección, el barrio o ubícalo en el mapa.`;
+      }
 
       if (formData.tipoEntrega === 'hibrida') {
-        if (!formData.direccion2.trim()) errors.direccion2 = 'Al ser modo híbrido, necesitamos la segunda dirección';
-        if (!formData.barrio2.trim()) errors.barrio2 = 'Indica el barrio de tu segunda ubicación';
-        
         if (coverage2.status === 'no_coverage') {
           errors.direccion2 = 'La dirección 2 se encuentra fuera de nuestra zona de cobertura actual.';
         }
+        if (coverage2.status === 'mismatch') {
+          errors.direccion2 = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${coverage2.zone}). Por favor verifica la dirección, el barrio o ubícalo en el mapa.`;
+        }
       }
     }
+
     if (step === 4) {
-      if (!formData.comprobanteFile) errors.comprobante = 'Por favor adjunta la captura o PDF de tu transferencia';
+      // Validate file type and size
+      const fileError = validateComprobanteFile(formData.comprobanteFile);
+      if (fileError) errors.comprobante = fileError;
+
       if (!formData.terms) errors.terms = 'Es necesario que aceptes nuestras políticas de servicio';
     }
+
     if (Object.keys(errors).length > 0) {
       setError(errors);
       return false;
@@ -472,19 +528,19 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
   // Helper to check if a specific field is valid for real-time icon swapping
   const isFieldValid = (name) => {
     switch(name) {
-      case 'nombre': return formData.nombre.trim().length >= 3;
-      case 'documento': return formData.documento.trim().length >= 5;
+      case 'nombre': return formData.nombre.trim().length >= 3 && /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s.'-]+$/.test(formData.nombre.trim());
+      case 'documento': return formData.documento.trim().length >= 5 && /^\d+$/.test(formData.documento.trim());
       case 'fecha_inicio': return !!formData.fecha_inicio;
-      case 'email': return formData.email.includes('@') && formData.email.includes('.');
+      case 'email': return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(formData.email);
       case 'telefono': {
         const cleaned = formData.telefono.replace(/\D/g, '');
-        return cleaned.length === 10;
+        return cleaned.length === 10 && cleaned.startsWith('3');
       }
-      case 'direccion': return !!formData.direccion.trim();
-      case 'barrio': return !!formData.barrio.trim();
-      case 'direccion2': return !!formData.direccion2.trim();
-      case 'barrio2': return !!formData.barrio2.trim();
-      case 'comprobante': return !!formData.comprobanteFile;
+      case 'direccion': return formData.direccion.trim().length >= 5;
+      case 'barrio': return formData.barrio.trim().length >= 2;
+      case 'direccion2': return formData.direccion2.trim().length >= 5;
+      case 'barrio2': return formData.barrio2.trim().length >= 2;
+      case 'comprobante': return !!formData.comprobanteFile && !validateComprobanteFile(formData.comprobanteFile);
       case 'terms': return !!formData.terms;
       default: return false;
     }
@@ -1017,30 +1073,46 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                       )}
                     </h5>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input 
-                        className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all ${
-                          fieldErrors.direccion ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
-                        }`}
-                        value={formData.direccion}
-                        onChange={e => {
-                          setFormData({...formData, direccion: e.target.value});
-                          if(fieldErrors.direccion) setFieldErrors({...fieldErrors, direccion: null});
-                        }}
-                        onBlur={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
-                        placeholder="Dirección"
-                      />
-                      <input 
-                        className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all ${
-                          fieldErrors.barrio ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
-                        }`}
-                        value={formData.barrio}
-                        onChange={e => {
-                          setFormData({...formData, barrio: e.target.value});
-                          if(fieldErrors.barrio) setFieldErrors({...fieldErrors, barrio: null});
-                        }}
-                        onBlur={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
-                        placeholder="Barrio"
-                      />
+                      <div className="flex flex-col space-y-1">
+                        <input 
+                          className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full ${
+                            fieldErrors.direccion ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
+                          }`}
+                          value={formData.direccion}
+                          onChange={e => {
+                            setFormData({...formData, direccion: e.target.value});
+                            if(fieldErrors.direccion) setFieldErrors({...fieldErrors, direccion: null});
+                            setCoverage1({ status: 'pending', zone: null });
+                          }}
+                          onBlur={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
+                          placeholder="Dirección"
+                        />
+                        {fieldErrors.direccion && (
+                          <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
+                            <AlertCircle size={10} /> {fieldErrors.direccion}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col space-y-1">
+                        <input 
+                          className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full ${
+                            fieldErrors.barrio ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
+                          }`}
+                          value={formData.barrio}
+                          onChange={e => {
+                            setFormData({...formData, barrio: e.target.value});
+                            if(fieldErrors.barrio) setFieldErrors({...fieldErrors, barrio: null});
+                            setCoverage1({ status: 'pending', zone: null });
+                          }}
+                          onBlur={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
+                          placeholder="Barrio"
+                        />
+                        {fieldErrors.barrio && (
+                          <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
+                            <AlertCircle size={10} /> {fieldErrors.barrio}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     
                     {/* Badge de Cobertura */}
@@ -1057,23 +1129,32 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                             <AlertCircle size={12} /> ⚠️ FUERA DE COBERTURA
                           </div>
                         )}
+                        {coverage1.status === 'mismatch' && (
+                          <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm animate-pulse">
+                            <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage1.zone})
+                          </div>
+                        )}
                         
                         {/* Botón siempre disponible */}
-                        {['ok', 'not_found', 'api_error', 'no_coverage'].includes(coverage1.status) && !showMap1 && (
+                        {['ok', 'not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage1.status) && !showMap1 && (
                           <button 
                             onClick={() => setShowMap1(true)}
                             className="text-[10px] bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors"
                           >
-                            <MapPin size={12} className="text-orange-500" /> {coverage1.status === 'ok' ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
+                            <MapPin size={12} className="text-orange-500" /> {['ok', 'mismatch'].includes(coverage1.status) ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
                           </button>
                         )}
                       </div>
 
-                      {['not_found', 'api_error', 'no_coverage'].includes(coverage1.status) && !showMap1 && (
+                      {['not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage1.status) && !showMap1 && (
                         <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col gap-2 shadow-sm">
                           <div className="flex items-start gap-2">
                             <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> 
-                            <span>No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.</span>
+                            <span>
+                              {coverage1.status === 'mismatch' 
+                                ? 'Si el barrio geolocalizado en el mapa es incorrecto, haz clic en "Ajustar Pin en Mapa" para fijarlo manualmente.'
+                                : 'No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.'}
+                            </span>
                           </div>
                         </div>
                       )}
@@ -1123,30 +1204,46 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                         )}
                       </h5>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <input 
-                          className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all ${
-                            fieldErrors.direccion2 ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
-                          }`}
-                          value={formData.direccion2}
-                          onChange={e => {
-                            setFormData({...formData, direccion2: e.target.value});
-                            if(fieldErrors.direccion2) setFieldErrors({...fieldErrors, direccion2: null});
-                          }}
-                          onBlur={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
-                          placeholder="Dirección"
-                        />
-                        <input 
-                          className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all ${
-                            fieldErrors.barrio2 ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
-                          }`}
-                          value={formData.barrio2}
-                          onChange={e => {
-                            setFormData({...formData, barrio2: e.target.value});
-                            if(fieldErrors.barrio2) setFieldErrors({...fieldErrors, barrio2: null});
-                          }}
-                          onBlur={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
-                          placeholder="Barrio"
-                        />
+                        <div className="flex flex-col space-y-1">
+                          <input 
+                            className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full ${
+                              fieldErrors.direccion2 ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
+                            }`}
+                            value={formData.direccion2}
+                            onChange={e => {
+                              setFormData({...formData, direccion2: e.target.value});
+                              if(fieldErrors.direccion2) setFieldErrors({...fieldErrors, direccion2: null});
+                              setCoverage2({ status: 'pending', zone: null });
+                            }}
+                            onBlur={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
+                            placeholder="Dirección"
+                          />
+                          {fieldErrors.direccion2 && (
+                            <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
+                              <AlertCircle size={10} /> {fieldErrors.direccion2}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col space-y-1">
+                          <input 
+                            className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full ${
+                              fieldErrors.barrio2 ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
+                            }`}
+                            value={formData.barrio2}
+                            onChange={e => {
+                              setFormData({...formData, barrio2: e.target.value});
+                              if(fieldErrors.barrio2) setFieldErrors({...fieldErrors, barrio2: null});
+                              setCoverage2({ status: 'pending', zone: null });
+                            }}
+                            onBlur={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
+                            placeholder="Barrio"
+                          />
+                          {fieldErrors.barrio2 && (
+                            <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
+                              <AlertCircle size={10} /> {fieldErrors.barrio2}
+                            </p>
+                          )}
+                        </div>
                       </div>
                       
                       {/* Badge de Cobertura 2 */}
@@ -1163,23 +1260,33 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                               <AlertCircle size={12} /> ⚠️ FUERA DE COBERTURA
                             </div>
                           )}
+                          {coverage2.status === 'mismatch' && (
+                            <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm animate-pulse">
+                              <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage2.zone})
+                            </div>
+                          )}
 
                           {/* Botón siempre disponible */}
-                          {['ok', 'not_found', 'api_error', 'no_coverage'].includes(coverage2.status) && !showMap2 && (
+                          {['ok', 'not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage2.status) && !showMap2 && (
                             <button 
+                              type="button"
                               onClick={() => setShowMap2(true)}
                               className="text-[10px] bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors"
                             >
-                              <MapPin size={12} className="text-orange-500" /> {coverage2.status === 'ok' ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
+                              <MapPin size={12} className="text-orange-500" /> {['ok', 'mismatch'].includes(coverage2.status) ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
                             </button>
                           )}
                         </div>
 
-                        {['not_found', 'api_error', 'no_coverage'].includes(coverage2.status) && !showMap2 && (
+                        {['not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage2.status) && !showMap2 && (
                           <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col gap-2 shadow-sm">
                             <div className="flex items-start gap-2">
                               <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> 
-                              <span>No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.</span>
+                              <span>
+                                {coverage2.status === 'mismatch'
+                                  ? 'Si el barrio geolocalizado en el mapa es incorrecto, haz clic en "Ajustar Pin en Mapa" para fijarlo manualmente.'
+                                  : 'No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.'}
+                              </span>
                             </div>
                           </div>
                         )}
@@ -1235,153 +1342,93 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                           !formData.tieneCocas ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-gray-500'
                         }`}
                       >
-                        Deseo comprarlos
+                        Deseo comprarlo
                       </button>
                     </div>
                   </div>
 
-                  {/* 1. Total Final */}
-                  <div className="bg-slate-900 text-white p-6 rounded-2xl flex justify-between items-center shadow-2xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
-                    <div>
-                      <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Final</div>
-                      <div className="text-3xl font-black">${priceInfo.total.toLocaleString()}</div>
-                      <div className="text-[10px] font-bold text-slate-400 mt-1">
-                        Plan + Cocas {priceInfo.discount > 0 && <span className="text-orange-400 font-black">• DESCUENTO APLICADO</span>}
+                  {/* Contenedor Unificado de Pago */}
+                  <div className="bg-slate-900 text-white rounded-[24px] p-6 shadow-xl space-y-6 relative overflow-hidden border border-slate-800">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/10 rounded-full -mr-24 -mt-24 blur-3xl pointer-events-none"></div>
+                    
+                    {/* Fila 1: Total y Cuenta */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-white/10 relative z-10">
+                      <div>
+                        <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total a Transferir</div>
+                        <div className="text-3xl font-black text-white">${priceInfo.total.toLocaleString()}</div>
+                        <div className="text-[10px] font-bold text-slate-400 mt-1">
+                          Plan + Cocas {priceInfo.discount > 0 && <span className="text-orange-400 font-black">• DESCUENTO APLICADO</span>}
+                        </div>
+                        {priceInfo.discount > 0 && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="bg-orange-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black">
+                              -${priceInfo.discount.toLocaleString()}
+                            </span>
+                            <span className="text-[9px] font-bold text-orange-200 uppercase">
+                              {priceInfo.holidaysFound} festivo(s)
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-1 md:text-right md:flex md:flex-col md:items-end md:justify-center">
+                        <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Bancolombia Ahorros</div>
+                        <div className="flex items-center gap-2 md:justify-end">
+                          <span className="text-xl font-black text-white tracking-tight">238-000045-84</span>
+                          <button 
+                            type="button"
+                            onClick={() => copyToClipboard('238-000045-84')}
+                            className={`p-2.5 rounded-xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-white/10 text-slate-300 hover:text-white hover:bg-white/20'}`}
+                            title="Copiar cuenta"
+                          >
+                            {copied ? <Check size={14} strokeWidth={3} /> : <Copy size={14} strokeWidth={3} />}
+                          </button>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400 mt-1">Titular: Daniel</div>
                       </div>
                     </div>
-                    {priceInfo.discount > 0 && (
-                      <div className="text-right">
-                        <div className="bg-orange-500 text-white px-3 py-1 rounded-full text-[10px] font-black animate-bounce mb-2">
-                          -${priceInfo.discount.toLocaleString()}
-                        </div>
-                        <div className="text-[9px] font-bold text-orange-200 uppercase">
-                          {priceInfo.holidaysFound} DÍA(S) FESTIVO(S)
-                        </div>
+
+                    {/* Fila 2: Subida de comprobante compacta */}
+                    <div className="space-y-3 relative z-10" id="field-comprobante">
+                      <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-1.5">
+                          Adjuntar Comprobante
+                          {isFieldValid('comprobante') ? (
+                            <CheckCircle2 size={12} className="text-green-500 animate-in zoom-in" />
+                          ) : (
+                            <AlertCircle size={10} className="text-orange-500" />
+                          )}
+                        </label>
+                        {formData.comprobanteName && (
+                          <span className="text-[9px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Listo</span>
+                        )}
                       </div>
-                    )}
-                  </div>
-
-                  {/* 2. Métodos de Pago */}
-                  <div className="space-y-4">
-                    <label className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] block ml-1">Selecciona cómo pagar</label>
-                    <div className="flex bg-slate-100/50 p-1 rounded-2xl gap-1 border border-slate-100">
-                      {Object.entries(paymentMethods).map(([id, method]) => (
-                        <button
-                          key={id}
-                          onClick={() => setFormData({ ...formData, paymentMethod: id })}
-                          className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all flex items-center justify-center gap-2 ${
-                            formData.paymentMethod === id 
-                              ? 'bg-white text-slate-900 shadow-sm' 
-                              : 'text-slate-400 hover:text-slate-600'
-                          }`}
-                        >
-                          <img src={method.icon} alt={method.name} className="h-4 w-4 object-contain opacity-80" />
-                          {method.name}
-                        </button>
-                      ))}
-                    </div>
-
-                    <AnimatePresence mode="wait">
-                      <motion.div
-                        key={formData.paymentMethod}
-                        initial={{ opacity: 0, scale: 0.98 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.98 }}
-                        className="space-y-4"
+                      
+                      <div 
+                        onClick={() => fileInputRef.current.click()}
+                        className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                          fieldErrors.comprobante 
+                            ? 'border-orange-500 bg-orange-500/5' 
+                            : 'border-white/20 hover:border-orange-500 bg-white/5 hover:bg-white/10'
+                        }`}
                       >
-                        {/* Info Card */}
-                        <div className="bg-white border border-slate-100 rounded-[28px] p-6 shadow-sm space-y-5">
-                          <div className="flex justify-between items-center">
-                            <div className="space-y-1">
-                              <div className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Cuenta {paymentMethods[formData.paymentMethod].type}</div>
-                              <div className="flex items-center gap-3">
-                                <span className="text-2xl font-black text-slate-900 tracking-tighter">
-                                  {paymentMethods[formData.paymentMethod].account}
-                                </span>
-                                <button 
-                                  onClick={() => copyToClipboard(paymentMethods[formData.paymentMethod].account)}
-                                  className={`p-2.5 rounded-xl transition-all shadow-sm ${copied ? 'bg-green-500 text-white' : 'bg-slate-50 text-slate-400 hover:text-orange-500 hover:bg-orange-50'}`}
-                                >
-                                  {copied ? <Check size={16} strokeWidth={3} /> : <Copy size={16} strokeWidth={3} />}
-                                </button>
-                              </div>
-                            </div>
-                            <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center p-2 border border-slate-100 shadow-inner">
-                              <img src={paymentMethods[formData.paymentMethod].icon} alt="logo" className="w-full h-full object-contain" />
-                            </div>
-                          </div>
-
-                          <div className="flex items-end justify-between pt-4 border-t border-slate-50">
-                            <div className="space-y-3">
-                              <div>
-                                <div className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-1">Titular</div>
-                                <div className="text-sm font-black text-slate-700">{paymentMethods[formData.paymentMethod].holder}</div>
-                              </div>
-                              <button 
-                                onClick={() => downloadQr(paymentMethods[formData.paymentMethod].qr, paymentMethods[formData.paymentMethod].name)}
-                                className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-orange-600 transition-colors bg-slate-50 px-4 py-2 rounded-xl border border-slate-100"
-                              >
-                                 <Download size={14} strokeWidth={3} /> Guardar QR
-                              </button>
-                            </div>
-                            
-                            <div 
-                              onClick={() => {
-                                setSelectedQr(paymentMethods[formData.paymentMethod]);
-                                setIsQrModalOpen(true);
-                              }}
-                              className="relative w-20 h-20 bg-slate-50 rounded-2xl border border-slate-100 p-2 shadow-sm cursor-pointer group hover:border-orange-200 transition-all"
-                            >
-                               <img src={paymentMethods[formData.paymentMethod].qr} alt="QR" className="w-full h-full object-contain opacity-40 group-hover:opacity-100 transition-opacity" />
-                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
-                                  <div className="bg-white/90 backdrop-blur-sm p-1.5 rounded-lg shadow-xl">
-                                     <ExternalLink size={12} className="text-orange-500" />
-                                  </div>
-                               </div>
-                               <div className="absolute -bottom-1 -right-1 bg-orange-500 text-white p-1 rounded-lg shadow-lg">
-                                  <Check size={8} strokeWidth={4} />
-                                </div>
-                            </div>
-                          </div>
+                        <div className="flex items-center justify-center gap-3">
+                          <Upload className={fieldErrors.comprobante ? 'text-orange-500' : 'text-slate-400 group-hover:text-white'} size={20} />
+                          <span className="text-xs font-black text-slate-200">
+                            {formData.comprobanteName || 'Haz clic para subir la captura o PDF'}
+                          </span>
                         </div>
-
-                        {/* Botón de Redirección Inteligente */}
-                        <BankRedirect bankId={formData.paymentMethod} className="mb-6" />
-
-                      </motion.div>
-                    </AnimatePresence>
-                  </div>
-
-                  {/* 3. Subida de Comprobante */}
-                  <div className="space-y-4" id="field-comprobante">
-                    <label className="text-[10px] font-black text-slate-900 uppercase tracking-[0.2em] ml-1 flex items-center gap-1.5">
-                      Adjuntar Pago
-                      {isFieldValid('comprobante') ? (
-                        <CheckCircle2 size={12} className="text-green-500 animate-in zoom-in" />
-                      ) : (
-                        <AlertCircle size={10} className="text-orange-500" />
+                        <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => {
+                          handleFileChange(e);
+                          if(fieldErrors.comprobante) setFieldErrors({...fieldErrors, comprobante: null});
+                        }} />
+                      </div>
+                      {fieldErrors.comprobante && (
+                        <p className="text-[10px] font-bold text-orange-400 mt-1 flex items-center gap-1">
+                          <AlertCircle size={10} /> {fieldErrors.comprobante}
+                        </p>
                       )}
-                    </label>
-                    <div 
-                      onClick={() => fileInputRef.current.click()}
-                      className={`group border-2 border-dashed rounded-[32px] p-8 text-center cursor-pointer transition-all ${
-                        fieldErrors.comprobante ? 'border-orange-500 bg-orange-50/50 shadow-inner' : 'border-slate-200 hover:border-orange-400 bg-slate-50 hover:bg-orange-50'
-                      }`}
-                    >
-                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                        <Upload className={fieldErrors.comprobante ? 'text-orange-500' : 'text-slate-300 group-hover:text-orange-500'} size={28} />
-                      </div>
-                      <div className={`text-sm font-black ${fieldErrors.comprobante ? 'text-orange-600' : 'text-slate-600 group-hover:text-orange-700'}`}>
-                        {formData.comprobanteName || 'Subir Comprobante de Pago'}
-                      </div>
-                      <p className="text-[9px] text-slate-400 mt-2 font-black uppercase tracking-widest">Imagen o PDF del recibo</p>
-                      <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => {
-                        handleFileChange(e);
-                        if(fieldErrors.comprobante) setFieldErrors({...fieldErrors, comprobante: null});
-                      }} />
                     </div>
-                    {fieldErrors.comprobante && <p className="text-[10px] font-bold text-orange-600 mt-1 ml-4 flex items-center gap-1"><AlertCircle size={10} /> {fieldErrors.comprobante}</p>}
                   </div>
 
                   <div className="space-y-4 pt-2">

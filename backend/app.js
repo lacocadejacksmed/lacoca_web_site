@@ -49,13 +49,13 @@ const startServer = async () => {
     const alterDB = process.env.NODE_ENV !== 'production';
     await sequelize.sync({ alter: alterDB });
     console.log(`✅ Modelos sincronizados con la base de datos (alter: ${alterDB}).`);
-    
+
     initCronJobs();
 
     app.listen(PORT, () => {
       console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
       console.log(
-        `📡 Esperando conexión con Meta en http://localhost:${PORT}/webhook`,
+        `📡 Esperando conexión con Meta en http://localhost:${PORT}/`,
       );
     });
   } catch (error) {

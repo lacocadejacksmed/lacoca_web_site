@@ -6,7 +6,7 @@ USE lacocadejacks;
 -- ==========================================
 CREATE TABLE IF NOT EXISTS configuraciones (
     `clave` VARCHAR(255) NOT NULL,
-    `valor` JSON NOT NULL,
+    `valor` VARCHAR(255) NOT NULL,
     `fecha_creacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `fecha_actualizacion` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (`clave`)

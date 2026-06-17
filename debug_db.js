@@ -1,4 +1,5 @@
 const Plan = require('./backend/models/Plan');
+const Configuracion = require('./backend/models/Configuracion');
 const { sequelize } = require('./backend/config/database');
 
 async function checkPlans() {
@@ -7,6 +8,9 @@ async function checkPlans() {
         console.log('DB Connected.');
         const plans = await Plan.findAll();
         console.log('Current Plans:', JSON.stringify(plans, null, 2));
+
+        const config = await Configuracion.findAll();
+        console.log('Current Configuraciones:', JSON.stringify(config, null, 2));
         
         if (plans.length === 0) {
             console.log('Seeding default plans...');

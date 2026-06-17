@@ -8,7 +8,7 @@ const Configuracion = sequelize.define('Configuracion', {
         allowNull: false
     },
     valor: {
-        type: DataTypes.JSON,
+        type: DataTypes.STRING,
         allowNull: false
     }
 }, {

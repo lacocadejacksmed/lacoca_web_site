@@ -87,11 +87,10 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
                   <button
                     onClick={() => { localStorage.clear(); window.location.reload(); }}
                     title="Cerrar Sesión"
-                    className={`p-2.5 rounded-xl transition-all duration-300 hidden md:flex items-center justify-center border-none cursor-pointer ${
-                      isScrolled 
-                        ? 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white' 
+                    className={`p-2.5 rounded-xl transition-all duration-300 hidden md:flex items-center justify-center border-none cursor-pointer ${isScrolled
+                        ? 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white'
                         : 'bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-600 shadow-sm shadow-red-500/5'
-                    }`}
+                      }`}
                   >
                     <LogOut size={16} strokeWidth={2.5} />
                   </button>

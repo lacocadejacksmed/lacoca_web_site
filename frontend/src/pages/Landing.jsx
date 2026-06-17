@@ -34,9 +34,10 @@ export default function Landing() {
   const [isMenuExpanded, setIsMenuExpanded] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState('quincenal');
   const [weeklyMenu, setWeeklyMenu] = useState({ fechas: 'Del 11 al 15 de Mayo', imagen_url: '/weekly_menu_preview_1778475988702.png' });
+  const [planes, setPlanes] = useState([]);
 
   useEffect(() => {
-    const fetchMenu = async () => {
+    const fetchMenuAndPlanes = async () => {
       try {
         const res = await api.get('/menu');
         if (res.data.success && res.data.menu) {
@@ -45,8 +46,17 @@ export default function Landing() {
       } catch (err) {
         console.error("Error al cargar menú:", err);
       }
+      
+      try {
+        const res = await api.get('/planes');
+        if (res.data.success && res.data.planes) {
+          setPlanes(res.data.planes);
+        }
+      } catch (err) {
+        console.error("Error al cargar planes:", err);
+      }
     };
-    fetchMenu();
+    fetchMenuAndPlanes();
   }, []);
 
   const openWizard = (planId) => {
@@ -163,6 +173,7 @@ export default function Landing() {
         </section>
 
         <Plans
+          plans={planes}
           selectedPlan={selectedPlan}
           setSelectedPlan={setSelectedPlan}
           onOpenWizard={openWizard}
@@ -283,6 +294,7 @@ export default function Landing() {
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
         initialPlan={selectedPlan}
+        plans={planes}
       />
 
       <PaymentInfo

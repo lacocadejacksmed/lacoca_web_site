@@ -30,7 +30,10 @@ import {
   ChefHat,
   Utensils,
   UserPlus,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Settings,
+  Eye,
+  Pencil
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -57,7 +60,9 @@ import api, { API_URL } from '../services/api';
 import { exportExcel } from '../services/exportService';
 import { jsPDF } from "jspdf";
 import Swal from 'sweetalert2';
+import { validateComprobanteEdit, validateConfig, validateConfigValue, validatePlan, validateMenu, validateFeriado } from '../schemas/validationSchemas';
 import ClientEditorModal from '../components/ClientEditorModal';
+import ClientViewModal from '../components/ClientViewModal';
 import ExportModal from '../components/ExportModal';
 import RegistrationWizard from '../components/RegistrationWizard';
 import CoverageMap from '../components/CoverageMap';
@@ -88,6 +93,7 @@ export default function Admin() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('pendiente');
 
   const [selectedClient, setSelectedClient] = useState(null);
+  const [viewingClient, setViewingClient] = useState(null);
   const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportModalType, setExportModalType] = useState('todos');
@@ -100,6 +106,8 @@ export default function Admin() {
   const [menuPreview, setMenuPreview] = useState(null);
   const [menuHistory, setMenuHistory] = useState([]);
   const [menuLoading, setMenuLoading] = useState(false);
+  const [configuraciones, setConfiguraciones] = useState([]);
+  const [adminPlanes, setAdminPlanes] = useState([]);
   const navigate = useNavigate();
   const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
 
@@ -117,14 +125,247 @@ export default function Admin() {
     fetchData();
   }, []);
 
+  const handleAddConfig = async () => {
+    const { value: formValues } = await Swal.fire({
+      title: 'Nueva Configuración',
+      html:
+        '<input id="swal-input1" class="swal2-input" placeholder="Clave (ej: max_cupos)">' +
+        '<input id="swal-input2" class="swal2-input" placeholder="Valor (Texto o número)">',
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const key = document.getElementById('swal-input1').value;
+        const val = document.getElementById('swal-input2').value;
+        const configError = validateConfig(key, val);
+        if (configError) {
+          Swal.showValidationMessage(configError);
+          return false;
+        }
+        return [key, val];
+      }
+    });
+
+    if (formValues && formValues[0] && formValues[1]) {
+      try {
+        await api.post('/admin/configuraciones', { clave: formValues[0], valor: formValues[1] });
+        Swal.fire('Éxito', 'Configuración guardada', 'success');
+        fetchData();
+      } catch (error) {
+        Swal.fire('Error', error.response?.data?.message || 'Error al guardar', 'error');
+      }
+    }
+  };
+
+  const handleEditConfig = async (config) => {
+    const { value: newVal } = await Swal.fire({
+      title: `Editar ${config.clave}`,
+      input: 'text',
+      inputValue: config.valor,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: (value) => {
+        const valError = validateConfigValue(value);
+        if (valError) {
+          Swal.showValidationMessage(valError);
+          return false;
+        }
+        return value;
+      }
+    });
+
+    if (newVal !== undefined && newVal !== config.valor) {
+      try {
+        await api.post('/admin/configuraciones', { clave: config.clave, valor: newVal });
+        Swal.fire('Éxito', 'Configuración actualizada', 'success');
+        fetchData();
+      } catch (error) {
+        Swal.fire('Error', error.response?.data?.message || 'Error al guardar', 'error');
+      }
+    }
+  };
+
+  const handleDeleteConfig = async (clave) => {
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: `Se eliminará la configuración ${clave}`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await api.delete(`/admin/configuraciones/${clave}`);
+        Swal.fire('Eliminado', 'La configuración ha sido eliminada', 'success');
+        fetchData();
+      } catch (error) {
+        Swal.fire('Error', error.response?.data?.message || 'Error al eliminar', 'error');
+      }
+    }
+  };
+
+  const handleAddPlan = async () => {
+    const { value: formValues } = await Swal.fire({
+      title: 'Nuevo Plan',
+      html:
+        '<input id="swal-p1" class="swal2-input" placeholder="Nombre (ej: Semanal)">' +
+        '<input id="swal-p2" type="number" class="swal2-input" placeholder="Precio Base">' +
+        '<input id="swal-p3" type="number" class="swal2-input" placeholder="Días de Duración">',
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const name = document.getElementById('swal-p1').value;
+        const price = document.getElementById('swal-p2').value;
+        const days = document.getElementById('swal-p3').value;
+        const planError = validatePlan(name, price, days);
+        if (planError) {
+          Swal.showValidationMessage(planError);
+          return false;
+        }
+        return [name, price, days];
+      }
+    });
+
+    if (formValues && formValues[0] && formValues[1] && formValues[2]) {
+      try {
+        await api.post('/admin/planes', {
+          nombre: formValues[0],
+          precio_base: parseFloat(formValues[1]),
+          dias_duracion: parseInt(formValues[2], 10),
+          esta_activo: true
+        });
+        Swal.fire('Éxito', 'Plan creado', 'success');
+        fetchData();
+      } catch (error) {
+        Swal.fire('Error', error.response?.data?.message || 'Error al guardar', 'error');
+      }
+    }
+  };
+
+  const handleEditPlan = async (plan) => {
+    const { value: formValues } = await Swal.fire({
+      title: `Editar Plan ${plan.nombre}`,
+      html:
+        `<input id="swal-p1" class="swal2-input" placeholder="Nombre" value="${plan.nombre}">` +
+        `<input id="swal-p2" type="number" class="swal2-input" placeholder="Precio Base" value="${plan.precio_base}">` +
+        `<input id="swal-p3" type="number" class="swal2-input" placeholder="Días de Duración" value="${plan.dias_duracion}">`,
+      focusConfirm: false,
+      showCancelButton: true,
+      confirmButtonText: 'Guardar',
+      cancelButtonText: 'Cancelar',
+      preConfirm: () => {
+        const name = document.getElementById('swal-p1').value;
+        const price = document.getElementById('swal-p2').value;
+        const days = document.getElementById('swal-p3').value;
+        const planError = validatePlan(name, price, days);
+        if (planError) {
+          Swal.showValidationMessage(planError);
+          return false;
+        }
+        return [name, price, days];
+      }
+    });
+
+    if (formValues && formValues[0] && formValues[1] && formValues[2]) {
+      try {
+        await api.post('/admin/planes', {
+          id: plan.id,
+          nombre: formValues[0],
+          precio_base: parseFloat(formValues[1]),
+          dias_duracion: parseInt(formValues[2], 10),
+          esta_activo: plan.esta_activo
+        });
+        Swal.fire('Éxito', 'Plan actualizado', 'success');
+        fetchData();
+      } catch (error) {
+        Swal.fire('Error', error.response?.data?.message || 'Error al guardar', 'error');
+      }
+    }
+  };
+
+  const handleTogglePlanState = async (plan) => {
+    try {
+      await api.post('/admin/planes', {
+        id: plan.id,
+        nombre: plan.nombre,
+        precio_base: plan.precio_base,
+        dias_duracion: plan.dias_duracion,
+        esta_activo: !plan.esta_activo
+      });
+      Swal.fire('Éxito', `Plan ${!plan.esta_activo ? 'activado' : 'desactivado'}`, 'success');
+      fetchData();
+    } catch (error) {
+      Swal.fire('Error', error.response?.data?.message || 'Error al actualizar', 'error');
+    }
+  };
+
+  const handleDeletePlan = async (id, nombre) => {
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: `Se intentará eliminar el plan ${nombre}. Si tiene suscripciones, se ocultará en su lugar.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, proceder',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await api.delete(`/admin/planes/${id}`);
+        Swal.fire('Operación Exitosa', res.data.message, 'success');
+        fetchData();
+      } catch (error) {
+        Swal.fire('Error', error.response?.data?.message || 'Error al eliminar', 'error');
+      }
+    }
+  };
+
+  const handleDeactivateClient = async (cedula, nombre) => {
+    const result = await Swal.fire({
+      title: '¿Desactivar Cliente?',
+      text: `El cliente ${nombre} será desactivado y pasará a estado inactivo.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, desactivar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        await api.delete(`/admin/clientes/${cedula}/desactivar`);
+        Swal.fire('Desactivado', 'El cliente ha sido desactivado', 'success');
+        fetchData();
+      } catch (error) {
+        Swal.fire('Error', error.response?.data?.message || 'Error al desactivar', 'error');
+      }
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [resClients, resPayments, resPlans] = await Promise.all([
+      const [resClients, resPayments, resPlans, resConfig, resAdminPlanes] = await Promise.all([
         api.get('/admin/clientes'),
         api.get('/admin/comprobantes'),
-        api.get('/planes')
+        api.get('/planes'),
+        api.get('/admin/configuraciones'),
+        api.get('/admin/planes')
       ]);
+
+      if (resConfig.data?.success) setConfiguraciones(resConfig.data.configuraciones || []);
+      if (resAdminPlanes.data?.success) setAdminPlanes(resAdminPlanes.data.planes || []);
 
       if (resClients.data.success) {
         const mappedClients = resClients.data.clientes.map(c => {
@@ -218,7 +459,7 @@ export default function Admin() {
       }
 
       const resMenu = await api.get('/menu');
-      if (resMenu.data.success) {
+      if (resMenu.data.success && resMenu.data.menu) {
         setWeeklyMenu(resMenu.data.menu);
       }
 
@@ -262,6 +503,11 @@ export default function Admin() {
 
   const handleMenuUpdate = async (e) => {
     e.preventDefault();
+    const menuError = validateMenu(weeklyMenu.fechas);
+    if (menuError) {
+      Swal.fire('Validación', menuError, 'warning');
+      return;
+    }
     setMenuLoading(true);
     try {
       const data = new FormData();
@@ -373,6 +619,7 @@ export default function Admin() {
               { id: 'clientes', label: 'Lista Clientes', icon: Users },
               { id: 'mapa', label: 'Mapa Cobertura', icon: MapPin },
               { id: 'feriados', label: 'Festivos', icon: CalendarDays },
+              { id: 'configuraciones', label: 'Configuraciones', icon: Settings },
               { id: 'menu', label: 'Menú Semanal', icon: ImageIcon },
               { id: 'repartidores', label: 'Repartidores', icon: MapPin, proximamente: true },
               { id: 'cocina', label: 'Cocina en Vivo', icon: ChefHat, proximamente: true }
@@ -435,6 +682,7 @@ export default function Admin() {
                activeTab === 'clientes' ? 'Gestión de Clientes' : 
                activeTab === 'repartidores' ? 'Gestión de Repartidores' : 
                activeTab === 'feriados' ? 'Calendario de Festivos' : 
+               activeTab === 'configuraciones' ? 'Configuraciones del Sistema' : 
                'Configuración de Menú'}
             </h2>
             <p className="text-gray-500 font-medium">Panel centralizado de operaciones</p>
@@ -893,10 +1141,19 @@ export default function Admin() {
                     />
                     <button 
                       onClick={async () => {
-                        if(!newFeriado.fecha) return;
-                        await api.post('/admin/feriados', newFeriado);
-                        setNewFeriado({ fecha: '', descripcion: '' });
-                        fetchData();
+                        const feriadoError = validateFeriado(newFeriado.fecha, newFeriado.descripcion);
+                        if (feriadoError) {
+                          Swal.fire('Validación', feriadoError, 'warning');
+                          return;
+                        }
+                        try {
+                          await api.post('/admin/feriados', newFeriado);
+                          setNewFeriado({ fecha: '', descripcion: '' });
+                          Swal.fire({ icon: 'success', title: 'Festivo registrado', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 2000 });
+                          fetchData();
+                        } catch (error) {
+                          Swal.fire('Error', error.response?.data?.message || 'Error al guardar', 'error');
+                        }
                       }}
                       className="bg-orange-600 text-white p-3 rounded-xl hover:bg-orange-700 transition-all"
                     >
@@ -944,6 +1201,156 @@ export default function Admin() {
                       {feriados.length === 0 && (
                         <tr>
                           <td colSpan="3" className="text-center py-20 text-gray-400 font-medium italic">No hay festivos registrados</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'configuraciones' && (
+            <motion.div 
+              key="configuraciones"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div className="p-10 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Variables de Sistema</h3>
+                  <p className="text-sm text-gray-500 font-medium">Gestiona parámetros globales y límites</p>
+                </div>
+                <button 
+                  onClick={handleAddConfig}
+                  className="bg-orange-600 text-white px-6 py-3 rounded-2xl font-black text-xs hover:bg-orange-700 shadow-lg shadow-orange-500/30 transition-all flex items-center gap-2"
+                >
+                  <Plus size={16} strokeWidth={3} />
+                  Nueva Variable
+                </button>
+              </div>
+              <div className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-y border-gray-100">
+                      <tr>
+                        <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Clave</th>
+                        <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Valor</th>
+                        <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {configuraciones.map(config => (
+                        <tr key={config.clave} className="hover:bg-gray-50/30 transition-colors">
+                          <td className="px-8 py-4">
+                            <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-black uppercase tracking-widest">{config.clave}</span>
+                          </td>
+                          <td className="px-8 py-4">
+                            <span className="text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                              {config.valor}
+                            </span>
+                          </td>
+                          <td className="px-8 py-4 text-right">
+                            <button 
+                              onClick={() => handleEditConfig(config)}
+                              className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all mr-2"
+                              title="Editar"
+                            >
+                              <Settings size={16} strokeWidth={2} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteConfig(config.clave)}
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              title="Eliminar"
+                            >
+                              <X size={16} strokeWidth={3} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {configuraciones.length === 0 && (
+                        <tr>
+                          <td colSpan="3" className="text-center py-20 text-gray-400 font-medium italic">No hay configuraciones registradas</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* TABLA DE PLANES */}
+              <div className="p-10 border-y border-gray-100 flex justify-between items-center bg-slate-50/50 mt-8">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900">Configuración de Planes</h3>
+                  <p className="text-sm text-gray-500 font-medium">Gestiona los planes de suscripción disponibles</p>
+                </div>
+                <button 
+                  onClick={handleAddPlan}
+                  className="bg-orange-600 text-white px-6 py-3 rounded-2xl font-black text-xs hover:bg-orange-700 shadow-lg shadow-orange-500/30 transition-all flex items-center gap-2"
+                >
+                  <Plus size={16} strokeWidth={3} />
+                  Nuevo Plan
+                </button>
+              </div>
+              <div className="p-0">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-50 border-y border-gray-100">
+                      <tr>
+                        <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Nombre</th>
+                        <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Precio Base</th>
+                        <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest">Días</th>
+                        <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">Estado</th>
+                        <th className="px-8 py-4 text-[10px] font-black uppercase text-slate-400 tracking-widest text-right">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 bg-white">
+                      {adminPlanes.map(plan => (
+                        <tr key={plan.id} className={`hover:bg-gray-50/30 transition-colors ${!plan.esta_activo ? 'opacity-50' : ''}`}>
+                          <td className="px-8 py-4">
+                            <span className="text-sm font-black text-slate-800 uppercase tracking-widest">{plan.nombre}</span>
+                          </td>
+                          <td className="px-8 py-4">
+                            <span className="text-sm font-bold text-slate-600">${parseFloat(plan.precio_base).toLocaleString()}</span>
+                          </td>
+                          <td className="px-8 py-4">
+                            <span className="text-sm font-bold text-slate-600">{plan.dias_duracion}</span>
+                          </td>
+                          <td className="px-8 py-4 text-center">
+                            <button
+                              onClick={() => handleTogglePlanState(plan)}
+                              className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${
+                                plan.esta_activo 
+                                  ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+                                  : 'bg-slate-200 text-slate-500 hover:bg-slate-300'
+                              }`}
+                            >
+                              {plan.esta_activo ? 'Activo' : 'Inactivo'}
+                            </button>
+                          </td>
+                          <td className="px-8 py-4 text-right">
+                            <button 
+                              onClick={() => handleEditPlan(plan)}
+                              className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-all mr-2"
+                              title="Editar"
+                            >
+                              <Settings size={16} strokeWidth={2} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeletePlan(plan.id, plan.nombre)}
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                              title="Eliminar / Ocultar"
+                            >
+                              <X size={16} strokeWidth={3} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                      {adminPlanes.length === 0 && (
+                        <tr>
+                          <td colSpan="5" className="text-center py-20 text-gray-400 font-medium italic">No hay planes registrados</td>
                         </tr>
                       )}
                     </tbody>
@@ -1016,8 +1423,20 @@ export default function Admin() {
                           type="file" 
                           onChange={e => {
                             const file = e.target.files[0];
-                            setMenuImage(file);
-                            if (file) setMenuPreview(URL.createObjectURL(file));
+                            if (file) {
+                              const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+                              if (!allowedTypes.includes(file.type)) {
+                                Swal.fire('Error de Archivo', 'Solo se permiten imágenes (JPG, PNG, WebP, GIF)', 'warning');
+                                return;
+                              }
+                              const maxSize = 5 * 1024 * 1024; // 5MB
+                              if (file.size > maxSize) {
+                                Swal.fire('Error de Archivo', 'La imagen no puede superar los 5MB', 'warning');
+                                return;
+                              }
+                              setMenuImage(file);
+                              setMenuPreview(URL.createObjectURL(file));
+                            }
                           }}
                           className="absolute inset-0 opacity-0 cursor-pointer z-10"
                           accept="image/*"
@@ -1326,12 +1745,29 @@ export default function Admin() {
                           )}
                         </td>
                         <td className="px-8 py-5">
-                          <button 
-                            onClick={() => setSelectedClient(c)}
-                            className="p-2 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all"
-                          >
-                            <MoreHorizontal size={20} />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setViewingClient(c)}
+                              className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                              title="Ver Detalles"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            <button 
+                              onClick={() => setSelectedClient(c)}
+                              className="p-2 text-slate-400 hover:text-orange-500 hover:bg-orange-50 rounded-xl transition-all"
+                              title="Editar"
+                            >
+                              <Pencil size={18} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeactivateClient(c.cedula, c.nombre)}
+                              className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                              title="Desactivar / Eliminar"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -1343,7 +1779,16 @@ export default function Admin() {
         </AnimatePresence>
       </main>
 
-      {/* Modales */}
+      {/* Modal Ver Detalles (read-only) */}
+      {viewingClient && (
+        <ClientViewModal
+          client={viewingClient}
+          onClose={() => setViewingClient(null)}
+          onEdit={() => { setSelectedClient(viewingClient); setViewingClient(null); }}
+        />
+      )}
+
+      {/* Modal Editar */}
       {selectedClient && (
         <ClientEditorModal 
           client={selectedClient} 
@@ -1389,8 +1834,17 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
     facturacionElectronica: comprobante.facturacionElectronica === true || comprobante.facturacionElectronica === 'Si' ? 'Si' : 'No'
   });
   const [selectedRepartidor, setSelectedRepartidor] = useState(comprobante.repartidorId || '');
+  const [editErrors, setEditErrors] = useState({});
 
   const handleSave = async () => {
+    // Validate before saving
+    const validationErrors = validateComprobanteEdit(editedData);
+    if (validationErrors) {
+      setEditErrors(validationErrors);
+      Swal.fire({ icon: 'warning', title: 'Datos incompletos', text: 'Por favor corrige los campos marcados en rojo.', toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000 });
+      return;
+    }
+    setEditErrors({});
     try {
       const response = await api.put(`/api/admin/suscripciones/${comprobante.subscriptionId}`, {
         nombre: editedData.clienteNombre,
@@ -1467,11 +1921,14 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
             <div className="mb-8">
               <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Verificando Reserva de:</div>
               {isEditing ? (
-                <input 
-                  className="text-2xl font-black text-slate-900 w-full border-b-2 border-orange-200 focus:border-orange-500 bg-transparent outline-none py-1"
-                  value={editedData.clienteNombre}
-                  onChange={e => setEditedData({...editedData, clienteNombre: e.target.value})}
-                />
+                <>
+                  <input 
+                    className={`text-2xl font-black text-slate-900 w-full border-b-2 focus:border-orange-500 bg-transparent outline-none py-1 ${editErrors.clienteNombre ? 'border-red-400' : 'border-orange-200'}`}
+                    value={editedData.clienteNombre}
+                    onChange={e => { setEditedData({...editedData, clienteNombre: e.target.value}); if(editErrors.clienteNombre) setEditErrors({...editErrors, clienteNombre: null}); }}
+                  />
+                  {editErrors.clienteNombre && <p className="text-[9px] font-bold text-red-500 mt-1">{editErrors.clienteNombre}</p>}
+                </>
               ) : (
                 <h3 className="text-3xl font-black text-slate-900 leading-tight mb-2">{editedData.clienteNombre}</h3>
               )}
@@ -1488,11 +1945,14 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Email</label>
                   {isEditing ? (
-                    <input 
-                      className="w-full text-sm font-bold text-slate-700 bg-gray-50 p-2 rounded-xl border border-gray-200"
-                      value={editedData.clienteEmail}
-                      onChange={e => setEditedData({...editedData, clienteEmail: e.target.value})}
-                    />
+                    <>
+                      <input 
+                        className={`w-full text-sm font-bold text-slate-700 bg-gray-50 p-2 rounded-xl border ${editErrors.clienteEmail ? 'border-red-300 bg-red-50/30' : 'border-gray-200'}`}
+                        value={editedData.clienteEmail}
+                        onChange={e => { setEditedData({...editedData, clienteEmail: e.target.value}); if(editErrors.clienteEmail) setEditErrors({...editErrors, clienteEmail: null}); }}
+                      />
+                      {editErrors.clienteEmail && <p className="text-[9px] font-bold text-red-500 mt-1">{editErrors.clienteEmail}</p>}
+                    </>
                   ) : (
                     <div className="text-sm font-bold text-slate-700 break-all">{editedData.clienteEmail}</div>
                   )}
@@ -1500,11 +1960,18 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">WhatsApp</label>
                   {isEditing ? (
-                    <input 
-                      className="w-full text-sm font-bold text-slate-700 bg-gray-50 p-2 rounded-xl border border-gray-200"
-                      value={editedData.clienteCelular}
-                      onChange={e => setEditedData({...editedData, clienteCelular: e.target.value})}
-                    />
+                    <>
+                      <input 
+                        className={`w-full text-sm font-bold text-slate-700 bg-gray-50 p-2 rounded-xl border ${editErrors.clienteCelular ? 'border-red-300 bg-red-50/30' : 'border-gray-200'}`}
+                        value={editedData.clienteCelular}
+                        onChange={e => { 
+                          const cleaned = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          setEditedData({...editedData, clienteCelular: cleaned}); 
+                          if(editErrors.clienteCelular) setEditErrors({...editErrors, clienteCelular: null}); 
+                        }}
+                      />
+                      {editErrors.clienteCelular && <p className="text-[9px] font-bold text-red-500 mt-1">{editErrors.clienteCelular}</p>}
+                    </>
                   ) : (
                     <div className="text-sm font-bold text-slate-700">{editedData.clienteCelular}</div>
                   )}
@@ -1524,16 +1991,40 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
                         <div className="space-y-2">
                           <input 
                             placeholder="Dirección"
-                            className="w-full text-sm font-black text-slate-900 bg-white p-2 rounded-lg border border-gray-200"
+                            className={`w-full text-sm font-black text-slate-900 bg-white p-2 rounded-lg border ${editErrors[`direccion_${i}`] ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}
                             value={dir.direccion}
-                            onChange={e => handleDirChange(i, 'direccion', e.target.value)}
+                            onChange={e => {
+                              handleDirChange(i, 'direccion', e.target.value);
+                              if (editErrors[`direccion_${i}`]) {
+                                const newErrs = { ...editErrors };
+                                delete newErrs[`direccion_${i}`];
+                                setEditErrors(newErrs);
+                              }
+                            }}
                           />
+                          {editErrors[`direccion_${i}`] && (
+                            <p className="text-[9px] font-bold text-red-500 mt-1 flex items-center gap-1">
+                              <AlertCircle size={10} /> {editErrors[`direccion_${i}`]}
+                            </p>
+                          )}
                           <input 
                             placeholder="Barrio"
-                            className="w-full text-xs font-bold text-gray-500 bg-white p-2 rounded-lg border border-gray-200"
+                            className={`w-full text-xs font-bold text-gray-500 bg-white p-2 rounded-lg border ${editErrors[`barrio_${i}`] ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}
                             value={dir.barrio}
-                            onChange={e => handleDirChange(i, 'barrio', e.target.value)}
+                            onChange={e => {
+                              handleDirChange(i, 'barrio', e.target.value);
+                              if (editErrors[`barrio_${i}`]) {
+                                const newErrs = { ...editErrors };
+                                delete newErrs[`barrio_${i}`];
+                                setEditErrors(newErrs);
+                              }
+                            }}
                           />
+                          {editErrors[`barrio_${i}`] && (
+                            <p className="text-[9px] font-bold text-red-500 mt-1 flex items-center gap-1">
+                              <AlertCircle size={10} /> {editErrors[`barrio_${i}`]}
+                            </p>
+                          )}
                           <input 
                             placeholder="Días de entrega"
                             className="w-full text-[10px] font-black text-slate-400 bg-white p-2 rounded-lg border border-gray-200"
@@ -1559,30 +2050,6 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
                     </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Repartidor Assignment */}
-              <div className="bg-slate-50 p-6 rounded-[32px] border border-gray-100">
-                 <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Asignación de Reparto</h5>
-                 <div className="flex gap-4">
-                    <select 
-                      className="flex-1 bg-white border-none rounded-xl px-4 py-3 text-sm font-bold shadow-sm"
-                      value={selectedRepartidor}
-                      onChange={e => setSelectedRepartidor(e.target.value)}
-                    >
-                       <option value="">Seleccionar Repartidor...</option>
-                       {repartidores.map(r => (
-                         <option key={r.id} value={r.id}>{r.nombre} ({r.zona_asignada || 'Sin zona'})</option>
-                       ))}
-                    </select>
-                    <button 
-                      onClick={() => onAssignRepartidor(comprobante.subscriptionId, selectedRepartidor)}
-                      disabled={!selectedRepartidor}
-                      className="bg-slate-900 text-white px-6 rounded-xl font-black text-xs hover:bg-orange-600 transition-all disabled:opacity-50"
-                    >
-                       Asignar
-                    </button>
-                 </div>
               </div>
 
               {/* Preferences & Restrictions */}

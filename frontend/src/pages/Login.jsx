@@ -2,39 +2,30 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn, ArrowLeft } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { loginSchema } from '../schemas/validationSchemas';
 import api from '../services/api';
 import Swal from 'sweetalert2';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const validate = () => {
-    const newErrors = {};
-    if (!email) {
-      newErrors.email = 'El correo es obligatorio';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'El formato del correo no es válido';
-    }
-    
-    if (!password) {
-      newErrors.password = 'La contraseña es obligatoria';
-    }
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+    mode: 'onBlur'
+  });
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    if (!validate()) return;
-
+  const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', { email: data.email.trim(), password: data.password });
       if (res.data.success) {
         localStorage.setItem('token', res.data.token);
         localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
@@ -78,25 +69,21 @@ export default function Login() {
           <p className="text-slate-400 font-medium mt-2">Accede a tu cuenta de La Coca de Jacks</p>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Correo Electrónico</label>
             <div className="relative">
               <Mail className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${errors.email ? 'text-red-400' : 'text-slate-300'}`} size={18} />
               <input 
                 type="email"
-                value={email}
-                onChange={e => {
-                  setEmail(e.target.value);
-                  if (errors.email) setErrors({...errors, email: null});
-                }}
+                {...register('email')}
                 placeholder="ejemplo@correo.com"
                 className={`w-full bg-gray-50 border-2 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold transition-all outline-none ${
                   errors.email ? 'border-red-100 ring-2 ring-red-50 bg-red-50/30 text-red-900' : 'border-transparent focus:ring-2 focus:ring-orange-500'
                 }`}
               />
             </div>
-            {errors.email && <p className="text-[10px] font-bold text-red-500 px-1 animate-in slide-in-from-top-1">{errors.email}</p>}
+            {errors.email && <p className="text-[10px] font-bold text-red-500 px-1 animate-in slide-in-from-top-1">{errors.email.message}</p>}
           </div>
 
           <div className="space-y-2">
@@ -105,18 +92,14 @@ export default function Login() {
               <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${errors.password ? 'text-red-400' : 'text-slate-300'}`} size={18} />
               <input 
                 type="password"
-                value={password}
-                onChange={e => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors({...errors, password: null});
-                }}
+                {...register('password')}
                 placeholder="••••••••"
                 className={`w-full bg-gray-50 border-2 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold transition-all outline-none ${
                   errors.password ? 'border-red-100 ring-2 ring-red-50 bg-red-50/30 text-red-900' : 'border-transparent focus:ring-2 focus:ring-orange-500'
                 }`}
               />
             </div>
-            {errors.password && <p className="text-[10px] font-bold text-red-500 px-1 animate-in slide-in-from-top-1">{errors.password}</p>}
+            {errors.password && <p className="text-[10px] font-bold text-red-500 px-1 animate-in slide-in-from-top-1">{errors.password.message}</p>}
           </div>
 
           <button 

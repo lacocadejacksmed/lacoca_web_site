@@ -33,6 +33,45 @@ const calculateBusinessDays = async (mondayDateStr) => {
 
     return 5 - holidays;
 };
+const MAIN_ZONES = [
+  { key: 'poblado', keywords: ['poblado'] },
+  { key: 'belen', keywords: ['belen', 'belén'] },
+  { key: 'laureles', keywords: ['laureles', 'estadio'] },
+  { key: 'centro', keywords: ['centro'] },
+  { key: 'envigado', keywords: ['envigado'] },
+  { key: 'sabaneta', keywords: ['sabaneta'] },
+  { key: 'itagui', keywords: ['itagui', 'itagüi', 'itagüí'] },
+  { key: 'bello', keywords: ['bello'] },
+  { key: 'guayabal', keywords: ['guayabal'] },
+  { key: 'norte', keywords: ['norte'] }
+];
+
+const isBarrioCompatibleWithZone = (barrio, zoneName) => {
+  if (!barrio || !zoneName) return true;
+  
+  const normalize = (text) => {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim();
+  };
+
+  const cleanBarrio = normalize(barrio);
+  const cleanZone = normalize(zoneName);
+
+  const matchedZone = MAIN_ZONES.find(zone =>
+    zone.keywords.some(kw => cleanBarrio.includes(kw))
+  );
+
+  if (matchedZone) {
+    const isMatch = matchedZone.keywords.some(kw => cleanZone.includes(kw)) || cleanZone.includes(matchedZone.key);
+    return isMatch;
+  }
+
+  return true;
+};
+
 // Configuración de Multer para guardar imágenes
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -59,6 +98,20 @@ const createOrder = async (req, res) => {
             alergias, restricciones,
             fecha_inicio
         } = req.body;
+
+        // 0. Validar compatibilidad de Barrio y Zona de Cobertura
+        if (zona_1 && barrio_1 && !isBarrioCompatibleWithZone(barrio_1, zona_1)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Discrepancia detectada: El barrio '${barrio_1}' no es compatible con la zona de cobertura geolocalizada '${zona_1}'.` 
+            });
+        }
+        if (delivery_type === 'Hibrida' && zona_2 && barrio_2 && !isBarrioCompatibleWithZone(barrio_2, zona_2)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: `Discrepancia detectada en la dirección 2: El barrio '${barrio_2}' no es compatible con la zona de cobertura geolocalizada '${zona_2}'.` 
+            });
+        }
 
         // 1. Calcular Fecha de Inicio por defecto si no viene
         let targetStartDate = fecha_inicio;

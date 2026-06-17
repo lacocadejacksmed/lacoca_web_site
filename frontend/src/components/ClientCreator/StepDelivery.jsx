@@ -14,7 +14,7 @@ function LocationMarker({ position, setPosition, onCoordsSelected }) {
   return position === null ? null : <Marker position={position}></Marker>;
 }
 
-export default function StepDelivery({ register, errors, watch, setValue }) {
+export default function StepDelivery({ register, errors, watch, setValue, setError, clearErrors }) {
   const { checkCoverageByAddress, checkCoverageByCoords } = useCoverage();
   
   const [coverage1, setCoverage1] = useState({ status: 'pending', zone: null });
@@ -61,9 +61,26 @@ export default function StepDelivery({ register, errors, watch, setValue }) {
     setCoverage({ status: result.status, zone: result.zone });
     
     if (result.zone) {
-      setValue(`zona_${num}`, result.zone);
-      setValue(`lat_${num}`, result.lat);
-      setValue(`lng_${num}`, result.lng);
+      if (result.status === 'mismatch') {
+        setError(`direccion${num === 1 ? '' : '2'}`, {
+          type: 'manual',
+          message: `La dirección no coincide con el barrio (geolocalizada en: ${result.zone})`
+        });
+      } else {
+        clearErrors(`direccion${num === 1 ? '' : '2'}`);
+        setValue(`zona_${num}`, result.zone);
+        setValue(`lat_${num}`, result.lat);
+        setValue(`lng_${num}`, result.lng);
+      }
+    } else {
+      if (result.status === 'no_coverage') {
+        setError(`direccion${num === 1 ? '' : '2'}`, {
+          type: 'manual',
+          message: 'La dirección se encuentra fuera de nuestra zona de cobertura.'
+        });
+      } else {
+        clearErrors(`direccion${num === 1 ? '' : '2'}`);
+      }
     }
   };
 
@@ -71,13 +88,31 @@ export default function StepDelivery({ register, errors, watch, setValue }) {
     const setCoverage = num === 1 ? setCoverage1 : setCoverage2;
     setCoverage({ status: 'loading', zone: null });
     
-    const result = checkCoverageByCoords(lat, lng);
+    const bar = num === 1 ? barrio1 : barrio2;
+    const result = checkCoverageByCoords(lat, lng, bar);
     setCoverage({ status: result.status, zone: result.zone });
     
     if (result.zone) {
-      setValue(`zona_${num}`, result.zone);
-      setValue(`lat_${num}`, result.lat);
-      setValue(`lng_${num}`, result.lng);
+      if (result.status === 'mismatch') {
+        setError(`direccion${num === 1 ? '' : '2'}`, {
+          type: 'manual',
+          message: `La dirección no coincide con el barrio (geolocalizada en: ${result.zone})`
+        });
+      } else {
+        clearErrors(`direccion${num === 1 ? '' : '2'}`);
+        setValue(`zona_${num}`, result.zone);
+        setValue(`lat_${num}`, result.lat);
+        setValue(`lng_${num}`, result.lng);
+      }
+    } else {
+      if (result.status === 'no_coverage') {
+        setError(`direccion${num === 1 ? '' : '2'}`, {
+          type: 'manual',
+          message: 'La dirección se encuentra fuera de nuestra zona de cobertura.'
+        });
+      } else {
+        clearErrors(`direccion${num === 1 ? '' : '2'}`);
+      }
     }
   };
 
@@ -143,20 +178,47 @@ export default function StepDelivery({ register, errors, watch, setValue }) {
           )}
         </h5>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <input 
-            {...register('direccion', { onBlur: () => handleBlurAddress(1) })}
-            className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all ${
-              errors.direccion ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
-            }`}
-            placeholder="Dirección"
-          />
-          <input 
-            {...register('barrio', { onBlur: () => handleBlurAddress(1) })}
-            className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all ${
-              errors.barrio ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
-            }`}
-            placeholder="Barrio"
-          />
+          <div className="flex flex-col space-y-1">
+            <input 
+              {...register('direccion', { 
+                onBlur: () => handleBlurAddress(1),
+                onChange: () => {
+                  setCoverage1({ status: 'pending', zone: null });
+                  clearErrors('direccion');
+                }
+              })}
+              className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full ${
+                errors.direccion ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
+              }`}
+              placeholder="Dirección"
+            />
+            {errors.direccion && (
+              <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
+                <AlertCircle size={10} /> {errors.direccion.message}
+              </p>
+            )}
+          </div>
+          <div className="flex flex-col space-y-1">
+            <input 
+              {...register('barrio', { 
+                onBlur: () => handleBlurAddress(1),
+                onChange: () => {
+                  setCoverage1({ status: 'pending', zone: null });
+                  clearErrors('barrio');
+                  clearErrors('direccion');
+                }
+              })}
+              className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full ${
+                errors.barrio ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
+              }`}
+              placeholder="Barrio"
+            />
+            {errors.barrio && (
+              <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
+                <AlertCircle size={10} /> {errors.barrio.message}
+              </p>
+            )}
+          </div>
         </div>
         
         {/* Coverage Badge 1 */}
@@ -173,18 +235,36 @@ export default function StepDelivery({ register, errors, watch, setValue }) {
                 <AlertCircle size={12} /> ⚠️ FUERA DE COBERTURA
               </div>
             )}
+            {coverage1.status === 'mismatch' && (
+              <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm animate-pulse">
+                <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage1.zone})
+              </div>
+            )}
             
-            {['ok', 'not_found', 'api_error', 'no_coverage'].includes(coverage1.status) && !showMap1 && (
+            {['ok', 'not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage1.status) && !showMap1 && (
               <button 
                 type="button"
                 onClick={() => setShowMap1(true)}
                 className="text-[10px] bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors"
               >
-                <MapPin size={12} className="text-orange-500" /> {coverage1.status === 'ok' ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
+                <MapPin size={12} className="text-orange-500" /> {['ok', 'mismatch'].includes(coverage1.status) ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
               </button>
             )}
           </div>
           
+          {['not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage1.status) && !showMap1 && (
+            <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col gap-2 shadow-sm">
+              <div className="flex items-start gap-2">
+                <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> 
+                <span>
+                  {coverage1.status === 'mismatch' 
+                    ? 'Si el barrio geolocalizado en el mapa es incorrecto, haz clic en "Ajustar Pin en Mapa" para fijarlo manualmente.'
+                    : 'No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.'}
+                </span>
+              </div>
+            </div>
+          )}
+
           {showMap1 && (
             <div className="mt-2 rounded-xl overflow-hidden border-2 border-orange-500 shadow-lg relative h-[250px] z-0">
               <div className="absolute top-2 left-2 right-2 bg-white/90 backdrop-blur-md z-[400] text-center text-[10px] font-black text-slate-800 py-2 px-3 rounded-lg shadow-sm border border-slate-200">
@@ -231,20 +311,47 @@ export default function StepDelivery({ register, errors, watch, setValue }) {
             )}
           </h5>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input 
-              {...register('direccion2', { onBlur: () => handleBlurAddress(2) })}
-              className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all ${
-                errors.direccion2 ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
-              }`}
-              placeholder="Dirección"
-            />
-            <input 
-              {...register('barrio2', { onBlur: () => handleBlurAddress(2) })}
-              className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all ${
-                errors.barrio2 ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
-              }`}
-              placeholder="Barrio"
-            />
+            <div className="flex flex-col space-y-1">
+              <input 
+                {...register('direccion2', { 
+                  onBlur: () => handleBlurAddress(2),
+                  onChange: () => {
+                    setCoverage2({ status: 'pending', zone: null });
+                    clearErrors('direccion2');
+                  }
+                })}
+                className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full ${
+                  errors.direccion2 ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
+                }`}
+                placeholder="Dirección"
+              />
+              {errors.direccion2 && (
+                <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
+                  <AlertCircle size={10} /> {errors.direccion2.message}
+                </p>
+              )}
+            </div>
+            <div className="flex flex-col space-y-1">
+              <input 
+                {...register('barrio2', { 
+                  onBlur: () => handleBlurAddress(2),
+                  onChange: () => {
+                    setCoverage2({ status: 'pending', zone: null });
+                    clearErrors('barrio2');
+                    clearErrors('direccion2');
+                  }
+                })}
+                className={`bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full ${
+                  errors.barrio2 ? 'ring-2 ring-orange-500 bg-orange-50/50 shadow-inner' : 'focus:ring-2 focus:ring-orange-500'
+                }`}
+                placeholder="Barrio"
+              />
+              {errors.barrio2 && (
+                <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
+                  <AlertCircle size={10} /> {errors.barrio2.message}
+                </p>
+              )}
+            </div>
           </div>
           
           {/* Coverage Badge 2 */}
@@ -261,17 +368,35 @@ export default function StepDelivery({ register, errors, watch, setValue }) {
                   <AlertCircle size={12} /> ⚠️ FUERA DE COBERTURA
                 </div>
               )}
+              {coverage2.status === 'mismatch' && (
+                <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm animate-pulse">
+                  <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage2.zone})
+                </div>
+              )}
 
-              {['ok', 'not_found', 'api_error', 'no_coverage'].includes(coverage2.status) && !showMap2 && (
+              {['ok', 'not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage2.status) && !showMap2 && (
                 <button 
                   type="button"
                   onClick={() => setShowMap2(true)}
                   className="text-[10px] bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors"
                 >
-                  <MapPin size={12} className="text-orange-500" /> {coverage2.status === 'ok' ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
+                  <MapPin size={12} className="text-orange-500" /> {['ok', 'mismatch'].includes(coverage2.status) ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
                 </button>
               )}
             </div>
+
+            {['not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage2.status) && !showMap2 && (
+              <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col gap-2 shadow-sm">
+                <div className="flex items-start gap-2">
+                  <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> 
+                  <span>
+                    {coverage2.status === 'mismatch'
+                      ? 'Si el barrio geolocalizado en el mapa es incorrecto, haz clic en "Ajustar Pin en Mapa" para fijarlo manualmente.'
+                      : 'No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {showMap2 && (
               <div className="mt-2 rounded-xl overflow-hidden border-2 border-orange-500 shadow-lg relative h-[250px] z-0">

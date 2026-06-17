@@ -36,9 +36,10 @@ export default function Landing2({ defaultWizardOpen = false }) {
     fechas: 'Del 11 al 15 de Mayo', 
     imagen_url: '/weekly_menu_preview_1778475988702.png' 
   });
+  const [planes, setPlanes] = useState([]);
 
   useEffect(() => {
-    const fetchMenu = async () => {
+    const fetchMenuAndPlanes = async () => {
       try {
         const res = await api.get('/menu');
         if (res.data.success && res.data.menu) {
@@ -47,8 +48,17 @@ export default function Landing2({ defaultWizardOpen = false }) {
       } catch (err) {
         console.error("Error al cargar menú:", err);
       }
+      
+      try {
+        const res = await api.get('/planes');
+        if (res.data.success && res.data.planes) {
+          setPlanes(res.data.planes);
+        }
+      } catch (err) {
+        console.error("Error al cargar planes:", err);
+      }
     };
-    fetchMenu();
+    fetchMenuAndPlanes();
   }, []);
 
   const openWizard = (planId) => {
@@ -112,21 +122,36 @@ export default function Landing2({ defaultWizardOpen = false }) {
               </a>
             </div>
 
-            <div className="mt-12 flex items-center gap-10">
-               <div>
-                  <div className="text-3xl font-black text-slate-900">900+</div>
-                  <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Clientes</div>
-               </div>
-               <div className="w-px h-8 bg-slate-200"></div>
-               <div>
-                  <div className="text-3xl font-black text-slate-900">100%</div>
-                  <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Fresco</div>
-               </div>
-               <div className="w-px h-8 bg-slate-200"></div>
-               <div>
-                  <div className="text-3xl font-black text-slate-900 flex items-center gap-1">5.0 <Star size={18} fill="#f97316" className="text-orange-500" /></div>
-                  <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mt-1">Rating</div>
-               </div>
+            <div className="mt-12 flex flex-wrap items-center gap-2 lg:gap-6 -ml-4">
+               <motion.div 
+                 whileHover={{ y: -5, scale: 1.05 }}
+                 className="group cursor-pointer p-4 rounded-3xl hover:bg-white hover:shadow-xl hover:shadow-orange-500/10 transition-all border border-transparent hover:border-orange-100"
+               >
+                  <div className="text-3xl font-black text-slate-900 group-hover:text-orange-600 transition-colors">900+</div>
+                  <div className="text-[10px] font-black uppercase text-slate-400 group-hover:text-orange-400 tracking-widest mt-1 transition-colors">Clientes</div>
+               </motion.div>
+               
+               <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
+               
+               <motion.div 
+                 whileHover={{ y: -5, scale: 1.05 }}
+                 className="group cursor-pointer p-4 rounded-3xl hover:bg-white hover:shadow-xl hover:shadow-green-500/10 transition-all border border-transparent hover:border-green-100"
+               >
+                  <div className="text-3xl font-black text-slate-900 group-hover:text-green-600 transition-colors">100%</div>
+                  <div className="text-[10px] font-black uppercase text-slate-400 group-hover:text-green-400 tracking-widest mt-1 transition-colors">Fresco</div>
+               </motion.div>
+               
+               <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
+               
+               <motion.div 
+                 whileHover={{ y: -5, scale: 1.05 }}
+                 className="group cursor-pointer p-4 rounded-3xl hover:bg-white hover:shadow-xl hover:shadow-amber-500/10 transition-all border border-transparent hover:border-amber-100"
+               >
+                  <div className="text-3xl font-black text-slate-900 flex items-center gap-1 group-hover:text-amber-500 transition-colors">
+                    5.0 <Star size={18} fill="#f97316" className="text-orange-500 group-hover:text-amber-500 group-hover:scale-110 transition-all duration-300" />
+                  </div>
+                  <div className="text-[10px] font-black uppercase text-slate-400 group-hover:text-amber-400 tracking-widest mt-1 transition-colors">Rating</div>
+               </motion.div>
             </div>
           </motion.div>
 
@@ -139,16 +164,10 @@ export default function Landing2({ defaultWizardOpen = false }) {
             {/* Visual Representation of a Plate or Meal */}
             <div className="relative aspect-square rounded-[60px] bg-white shadow-2xl overflow-hidden border-[12px] border-white ring-1 ring-slate-100 group">
                <img 
-                 src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=1000&auto=format&fit=crop" 
+                 src="/hero.jpg" 
                  alt="Almuerzo Premium Jacks" 
                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                />
-               <div className="absolute inset-0 bg-gradient-to-t from-orange-900/40 to-transparent"></div>
-               
-               <div className="absolute bottom-8 left-8 right-8 bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-[32px] text-white">
-                  <p className="text-xs font-black uppercase tracking-widest mb-1 opacity-70">Hoy en el menú</p>
-                  <h3 className="text-2xl font-black">Lomo Saltado Premium</h3>
-               </div>
             </div>
 
             {/* Floating Badges */}
@@ -258,6 +277,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
 
       {/* --- PLANS SECTION --- */}
       <Plans 
+        plans={planes}
         selectedPlan={selectedPlan} 
         setSelectedPlan={setSelectedPlan} 
         onOpenWizard={openWizard} 
@@ -391,6 +411,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
           }
         }} 
         initialPlan={selectedPlan}
+        plans={planes}
       />
 
 

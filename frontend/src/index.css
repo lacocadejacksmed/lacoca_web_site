@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -16,8 +17,31 @@
 
   --color-primary: var(--color-arcilla);
   --color-secondary: var(--color-secundario);
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-serif: 'Outfit', 'Playfair Display', serif;
+  --font-sans: 'Space Grotesk', sans-serif;
+  --font-serif: 'Share Tech Mono', monospace;
+}
+
+* {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6,
+h1 *, h2 *, h3 *, h4 *, h5 *, h6 *,
+button,
+button *,
+.btn,
+.nav-link,
+nav a,
+nav span,
+.badge,
+[class*="font-['Fredoka']"],
+[class*="font-['Outfit']"],
+[class*="font-['Alex+Brush']"],
+.font-fredoka,
+.font-outfit,
+[style*="font-family"],
+[style*="fontFamily"] {
+  font-family: 'Share Tech Mono', monospace !important;
 }
 
 :root {

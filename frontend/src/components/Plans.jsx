@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
 import { Zap, TrendingUp, Star, Check, ArrowRight } from 'lucide-react';
 
-export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan }) {
-  const plans = [
+export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, plans: dynamicPlans }) {
+  const staticPlans = [
     {
       id: 'semanal',
       name: 'Plan Semanal',
@@ -39,6 +39,43 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan }) {
       features: ['Máximo ahorro ($15.000)', '20 días de almuerzos', 'Mejor precio por día', 'Planificación completa del mes', 'Atención prioritaria', 'Flexibilidad en menús']
     }
   ];
+
+  const plans = staticPlans.map(staticPlan => {
+    if (dynamicPlans && Array.isArray(dynamicPlans) && dynamicPlans.length > 0) {
+      const dynamicPlan = dynamicPlans.find(
+        dp => (dp.nombre || dp.name || '').toLowerCase() === staticPlan.id ||
+              (dp.nombre || dp.name || '').toLowerCase().includes(staticPlan.id)
+      );
+      if (dynamicPlan) {
+        const price = Number(dynamicPlan.precio_base || dynamicPlan.precio || dynamicPlan.price || staticPlan.price);
+        const days = Number(dynamicPlan.dias_duracion || dynamicPlan.dias || dynamicPlan.days || staticPlan.days);
+        const daily = Math.round(price / days);
+        return {
+          ...staticPlan,
+          name: dynamicPlan.nombre || dynamicPlan.name || staticPlan.name,
+          price,
+          days,
+          daily
+        };
+      }
+    }
+    return staticPlan;
+  });
+
+  // Calculate dynamic maximum savings for Monthly plan compared to Weekly daily price
+  const weeklyPlan = plans.find(p => p.id === 'semanal');
+  const monthlyPlan = plans.find(p => p.id === 'mensual');
+  if (weeklyPlan && monthlyPlan) {
+    const standardCostFor20Days = weeklyPlan.daily * monthlyPlan.days;
+    const saveAmount = standardCostFor20Days - monthlyPlan.price;
+    if (saveAmount > 0) {
+      monthlyPlan.save = saveAmount;
+      monthlyPlan.features[0] = `Máximo ahorro ($${saveAmount.toLocaleString('es-CO')})`;
+    } else {
+      monthlyPlan.save = null;
+      monthlyPlan.features[0] = `Planificación completa del mes`;
+    }
+  }
 
   const currentPlanData = plans.find(p => p.id === selectedPlan) || plans[1];
 

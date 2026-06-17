@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { CreditCard, CheckCircle2, AlertCircle, Upload, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Swal from 'sweetalert2';
 
 export default function StepPayment({ register, errors, watch, setValue, getAdjustedPriceInfo }) {
   const fileInputRef = useRef(null);
@@ -23,6 +24,16 @@ export default function StepPayment({ register, errors, watch, setValue, getAdju
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+      if (!allowedTypes.includes(file.type)) {
+        Swal.fire('Error de Archivo', 'Solo se permiten imágenes (JPG, PNG, WebP) o PDF', 'warning');
+        return;
+      }
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSize) {
+        Swal.fire('Error de Archivo', 'El archivo no puede superar los 5MB', 'warning');
+        return;
+      }
       setValue('comprobanteFile', file);
       setValue('comprobanteName', file.name);
     }

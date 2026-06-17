@@ -863,6 +863,85 @@ const updateCoverage = async (req, res) => {
   }
 };
 
+const getConfiguraciones = async (req, res) => {
+  try {
+    const configuraciones = await Configuracion.findAll();
+    res.json({ success: true, configuraciones });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const upsertConfiguracion = async (req, res) => {
+  try {
+    const { clave, valor } = req.body;
+    let config = await Configuracion.findByPk(clave);
+    if (config) {
+      config.valor = valor;
+      await config.save();
+    } else {
+      await Configuracion.create({ clave, valor });
+    }
+    res.json({ success: true, message: 'Configuración guardada correctamente' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const deleteConfiguracion = async (req, res) => {
+  try {
+    const { clave } = req.params;
+    await Configuracion.destroy({ where: { clave } });
+    res.json({ success: true, message: 'Configuración eliminada' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const getAllPlanesAdmin = async (req, res) => {
+  try {
+    const planes = await Plan.findAll();
+    res.json({ success: true, planes });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const upsertPlan = async (req, res) => {
+  try {
+    const { id, nombre, precio_base, dias_duracion, esta_activo } = req.body;
+    if (id) {
+      const plan = await Plan.findByPk(id);
+      if (!plan) return res.status(404).json({ success: false, message: 'Plan no encontrado' });
+      await plan.update({ nombre, precio_base, dias_duracion, esta_activo });
+    } else {
+      await Plan.create({ nombre, precio_base, dias_duracion, esta_activo });
+    }
+    res.json({ success: true, message: 'Plan guardado correctamente' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const deletePlan = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const plan = await Plan.findByPk(id);
+    if (!plan) return res.status(404).json({ success: false, message: 'Plan no encontrado' });
+    
+    const subCount = await Suscripcion.count({ where: { plan_id: id } });
+    if (subCount > 0) {
+      await plan.update({ esta_activo: false });
+      return res.json({ success: true, message: 'Plan ocultado ya que tiene suscripciones asociadas.' });
+    } else {
+      await plan.destroy();
+      return res.json({ success: true, message: 'Plan eliminado definitivamente.' });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getStats,
   getDashboardStats,
@@ -889,4 +968,10 @@ module.exports = {
   getCoverage,
   getPlanes,
   updateCoverage,
+  getConfiguraciones,
+  upsertConfiguracion,
+  deleteConfiguracion,
+  getAllPlanesAdmin,
+  upsertPlan,
+  deletePlan
 };

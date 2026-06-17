@@ -60,4 +60,14 @@ router.post("/admin/cobertura", [protect, admin], adminController.updateCoverage
 router.get("/admin/menus", [protect, admin], menuController.getMenus);
 router.post("/admin/menu", [protect, admin, orderController.upload.single("menu_image")], menuController.updateMenu);
 
+// Configuraciones
+router.get("/admin/configuraciones", [protect, admin], adminController.getConfiguraciones);
+router.post("/admin/configuraciones", [protect, admin], adminController.upsertConfiguracion);
+router.delete("/admin/configuraciones/:clave", [protect, admin], adminController.deleteConfiguracion);
+
+// Planes (Administración)
+router.get("/admin/planes", [protect, admin], adminController.getAllPlanesAdmin);
+router.post("/admin/planes", [protect, admin], adminController.upsertPlan);
+router.delete("/admin/planes/:id", [protect, admin], adminController.deletePlan);
+
 module.exports = router;

@@ -29,6 +29,8 @@ export default function ClientCreatorModal({ onClose, onUpdate, plans }) {
     watch,
     setValue,
     trigger,
+    setError,
+    clearErrors,
     formState: { errors, isValid }
   } = useForm({
     resolver: zodResolver(clientCreatorSchema),
@@ -360,6 +362,8 @@ export default function ClientCreatorModal({ onClose, onUpdate, plans }) {
                     errors={errors} 
                     watch={watch} 
                     setValue={setValue} 
+                    setError={setError}
+                    clearErrors={clearErrors}
                   />
                 )}
                 {step === 4 && (
