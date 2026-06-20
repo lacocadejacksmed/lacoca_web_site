@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema } from '../schemas/validationSchemas';
 import api from '../services/api';
 import Swal from 'sweetalert2';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function Register() {
   const [loading, setLoading] = useState(false);
@@ -75,6 +76,33 @@ export default function Register() {
         icon: 'error',
         title: 'Error de Registro',
         text: err.response?.data?.message || 'Hubo un problema al crear tu cuenta. Intenta de nuevo.'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/google', { credential: credentialResponse.credential });
+      if (res.data.success) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
+        Swal.fire({
+          icon: 'success',
+          title: 'Bienvenido con Google',
+          text: `Hola, ${res.data.usuario.nombre}`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+        navigate(res.data.usuario.rol === 'admin' ? '/admin' : '/dashboard');
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de Google',
+        text: err.response?.data?.message || 'No se pudo registrar/iniciar sesión con Google'
       });
     } finally {
       setLoading(false);
@@ -245,6 +273,29 @@ export default function Register() {
               </>
             )}
           </button>
+          
+          <div className="relative flex items-center py-2">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase tracking-widest">O</span>
+            <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+          
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Error',
+                  text: 'El registro con Google falló'
+                });
+              }}
+              useOneTap
+              shape="pill"
+              theme="outline"
+              size="large"
+            />
+          </div>
         </form>
 
         <div className="mt-8 text-center">

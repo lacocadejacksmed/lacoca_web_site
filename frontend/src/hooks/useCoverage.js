@@ -44,8 +44,11 @@ export const isBarrioCompatibleWithZone = (barrio, zoneName) => {
 
 export const validateAddressNumbers = (inputAddress, geocodedFeat) => {
   if (!inputAddress) return true;
-  if (!geocodedFeat || !geocodedFeat.address) {
-    return false;
+  if (!geocodedFeat) return false;
+  if (!geocodedFeat.address) {
+    // En Colombia, Mapbox rara vez devuelve el campo 'address' exacto.
+    // Confiamos en la coordenada de la calle devuelta.
+    return true;
   }
 
   const hashIdx = inputAddress.indexOf('#');

@@ -3,6 +3,8 @@ import Landing2 from './pages/Landing2';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import ClientDashboard from './pages/ClientDashboard';
 
 // Componente para proteger rutas con roles
@@ -29,6 +31,8 @@ function App() {
         <Route path="/registro" element={<Landing2 defaultWizardOpen={true} />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route 
           path="/dashboard" 
           element={

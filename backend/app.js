@@ -22,22 +22,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Middleware para servir archivos estáticos del frontend
-app.use(express.static(path.join(__dirname, "../frontend/dist")));
-app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
+// Middleware para servir archivos estáticos del backend (si los hay)
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Rutas base
 app.use("/webhook", webhookRoutes);
 app.use("/api", apiRoutes);
 
-// Catch-all para React Router (SPA)
+// 404 para rutas de API no encontradas
 app.use((req, res) => {
-  const indexPath = path.join(__dirname, "../frontend/dist/index.html");
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      res.status(404).send("Frontend build not found. Please run 'npm run build' in the frontend directory.");
-    }
-  });
+  res.status(404).json({ error: "Ruta no encontrada" });
 });
 
 // Iniciar servidor y conectar a DB

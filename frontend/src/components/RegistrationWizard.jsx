@@ -300,6 +300,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
 
     // Mejorar la nomenclatura colombiana para Mapbox
     let cleanAddress = address
+      .replace(/[#-]/g, ' ')
       .replace(/\b(cl|cll)\.?\s+/i, 'Calle ')
       .replace(/\b(cra|cr)\.?\s+/i, 'Carrera ')
       .replace(/\b(av)\.?\s+/i, 'Avenida ')
@@ -308,7 +309,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       .replace(/\b(cq|circ)\.?\s+/i, 'Circular ')
       .replace(/(\d+)\s+([a-zA-Z]{1,2})\b/g, '$1$2'); // Mapbox odia los espacios en ej: "65 B", lo pasa a "65B"
       
-    // En lugar de borrar # y -, los mantenemos porque Mapbox a veces los usa para entender la intersección
+    // Limpiamos # y - porque Mapbox en Colombia suele fallar y devolver 0 resultados con ellos.
     
     // Detectar municipio para no forzar Medellín si están en otra ciudad del Valle de Aburrá
     let needsMunicipio = true;
@@ -605,17 +606,28 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
   };
 
 
-  const getAdjustedPriceInfo = () => {
-    const currentPlan = activePlans[formData.plan];
-    if (!currentPlan) return { total: 0, discount: 0, effectiveDays: 5 };
-
-    const cocasPrice = formData.tieneCocas ? 0 : 70000;
+  const getPlanPriceDetails = (planId) => {
+    const currentPlan = activePlans[planId];
+    if (!currentPlan) return { planPrice: 0, discount: 0, effectiveDays: 5, holidaysFound: 0 };
     
-    if (!formData.fecha_inicio) return { total: currentPlan.price + cocasPrice, discount: 0, effectiveDays: 5 };
+    if (!formData.fecha_inicio) return { planPrice: currentPlan.price, discount: 0, effectiveDays: 5, holidaysFound: 0 };
 
     const monday = new Date(formData.fecha_inicio + 'T12:00:00');
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
+    const endDate = new Date(monday);
+    
+    const planName = (planId || '').toLowerCase();
+    let baseDays = 5;
+    let baseCalendarDays = 4;
+    
+    if (planName === 'semanal') { baseDays = 5; baseCalendarDays = 4; }
+    else if (planName === 'quincenal') { baseDays = 10; baseCalendarDays = 11; }
+    else if (planName === 'mensual') { baseDays = 20; baseCalendarDays = 25; }
+    else if (currentPlan.days) {
+      baseDays = currentPlan.days;
+      baseCalendarDays = baseDays > 0 ? baseDays - 1 : 4;
+    }
+
+    endDate.setDate(monday.getDate() + baseCalendarDays);
 
     const fmt = (d) => {
       const y = d.getFullYear();
@@ -626,25 +638,36 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     
     let holidaysFound = 0;
     const current = new Date(monday);
-    while (current <= friday) {
+    while (current <= endDate) {
       if (holidays.includes(fmt(current))) holidaysFound++;
       current.setDate(current.getDate() + 1);
     }
     
-    // Solo ajustamos para el plan Semanal (5 días) por ahora, según la regla
     let planPrice = currentPlan.price;
     let discount = 0;
-    if (formData.plan === 'semanal' && holidaysFound > 0) {
-      const dailyRate = currentPlan.price / 5;
+    if (holidaysFound > 0) {
+      const dailyRate = currentPlan.price / baseDays;
       discount = dailyRate * holidaysFound;
       planPrice = currentPlan.price - discount;
     }
 
     return {
-      total: planPrice + cocasPrice,
+      planPrice,
       discount,
-      effectiveDays: 5 - holidaysFound,
+      effectiveDays: baseDays - holidaysFound,
       holidaysFound
+    };
+  };
+
+  const getAdjustedPriceInfo = () => {
+    const details = getPlanPriceDetails(formData.plan);
+    const cocasPrice = formData.tieneCocas ? 0 : 70000;
+    
+    return {
+      total: details.planPrice + cocasPrice,
+      discount: details.discount,
+      effectiveDays: details.effectiveDays,
+      holidaysFound: details.holidaysFound
     };
   };
 
@@ -863,66 +886,68 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                   <div className="space-y-3">
                     <label className="text-xs font-black text-slate-900 uppercase tracking-widest">Selecciona tu Plan</label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      {Object.entries(activePlans).map(([id, p]) => (
-                        <button 
-                          key={id}
-                          onClick={() => setFormData({...formData, plan: id})}
-                          className={`p-4 rounded-2xl border-2 transition-all text-left ${
-                            formData.plan === id ? 'border-orange-500 bg-orange-50 shadow-sm' : 'border-gray-100 hover:border-orange-200'
-                          }`}
-                        >
-                          <div className="text-[10px] font-black uppercase text-gray-400 mb-1">{p.name}</div>
-                          <div className="text-lg font-black text-orange-600">${(p.price/1000).toFixed(0)}K</div>
-                        </button>
-                      ))}
+                      {Object.entries(activePlans).map(([id, p]) => {
+                        const priceDetails = getPlanPriceDetails(id);
+                        return (
+                          <button 
+                            key={id}
+                            onClick={() => setFormData({...formData, plan: id})}
+                            className={`p-4 rounded-2xl border-2 transition-all text-left relative overflow-hidden ${
+                              formData.plan === id ? 'border-orange-500 bg-orange-50 shadow-sm' : 'border-gray-100 hover:border-orange-200'
+                            }`}
+                          >
+                            <div className="text-[10px] font-black uppercase text-gray-400 mb-1">{p.name}</div>
+                            <div className="text-lg font-black text-orange-600">${(priceDetails.planPrice/1000).toFixed(0)}K</div>
+                            {priceDetails.discount > 0 && (
+                               <div className="absolute top-2 right-2 bg-orange-100 text-orange-600 text-[8px] font-black uppercase px-2 py-0.5 rounded-full">
+                                 - Festivo
+                               </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
 
                   <div className="space-y-3" id="field-fecha_inicio">
-                    <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
-                      ¿Cuándo deseas iniciar?
-                      {isFieldValid('fecha_inicio') ? (
-                        <CheckCircle2 size={12} className="text-green-500 animate-in zoom-in" />
-                      ) : (
-                        <AlertCircle size={10} className="text-orange-500" />
-                      )}
-                    </label>
-                    <div className={`grid grid-cols-1 sm:grid-cols-2 gap-3 p-1 rounded-2xl transition-all ${fieldErrors.fecha_inicio ? 'ring-2 ring-orange-500 bg-orange-50/30' : ''}`}>
-                      {availability.map((a, idx) => (
-                        <button 
-                          key={a.fecha}
-                          disabled={!a.disponible}
-                          onClick={() => {
-                            setFormData({...formData, fecha_inicio: a.fecha});
-                            if(fieldErrors.fecha_inicio) setFieldErrors({...fieldErrors, fecha_inicio: null});
-                          }}
-                          className={`p-3 rounded-xl border-2 transition-all text-left relative ${
-                            formData.fecha_inicio === a.fecha 
-                              ? 'border-orange-500 bg-orange-50 shadow-sm' 
-                              : a.disponible 
-                                ? 'border-gray-100 hover:border-orange-200 bg-white' 
-                                : 'border-gray-50 bg-gray-50 opacity-50 cursor-not-allowed'
-                          }`}
-                        >
-                          <div className="text-[9px] font-black uppercase text-gray-400 mb-1">
-                            Semana del {new Date(a.fecha + 'T12:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
-                          </div>
-                          <div className={`text-xs font-black ${!a.disponible ? 'text-gray-400' : 'text-slate-700'}`}>
-                            {!a.disponible ? 'AGOTADO' : (idx === 0 ? 'Próxima Semana' : 'Reserva Futura')}
-                          </div>
-                          {formData.fecha_inicio === a.fecha && (
-                            <div className="absolute top-2 right-2 text-orange-500">
-                              <Check size={14} strokeWidth={4} />
-                            </div>
-                          )}
-                        </button>
-                      ))}
+                    <div className="bg-green-50 p-4 rounded-2xl flex items-center gap-3 border border-green-100 text-slate-900">
+                      <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600 shrink-0">
+                        <Check size={20} strokeWidth={3} />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-0.5">Inicio del Plan</p>
+                        <p className="text-sm font-bold text-slate-800">
+                          {(() => {
+                            if (!availability.length || !formData.fecha_inicio) return 'Calculando fecha de inicio...';
+                            
+                            let current = new Date(formData.fecha_inicio + 'T12:00:00');
+                            let wasShifted = false;
+                            
+                            for (let i = 0; i < 5; i++) {
+                              const y = current.getFullYear();
+                              const m = String(current.getMonth() + 1).padStart(2, '0');
+                              const d = String(current.getDate()).padStart(2, '0');
+                              const dateStr = `${y}-${m}-${d}`;
+                              
+                              if (holidays.includes(dateStr)) {
+                                wasShifted = true;
+                                current.setDate(current.getDate() + 1);
+                              } else {
+                                break;
+                              }
+                            }
+                            
+                            const formattedDate = current.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '');
+                            
+                            if (wasShifted) {
+                              return `Por ser festivo, tu servicio iniciará el ${formattedDate}.`;
+                            } else {
+                              return `Tu servicio iniciará el ${formattedDate}.`;
+                            }
+                          })()}
+                        </p>
+                      </div>
                     </div>
-                    {availability[0] && !availability[0].disponible && formData.fecha_inicio !== availability[0].fecha && (
-                       <p className="text-[10px] font-bold text-orange-600 bg-orange-50 p-2 rounded-lg border border-orange-100">
-                         ⚠️ La próxima semana está llena. Hemos seleccionado la siguiente fecha disponible para ti.
-                       </p>
-                    )}
                   </div>
                 </motion.div>
               )}

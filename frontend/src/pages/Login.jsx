@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '../schemas/validationSchemas';
 import api from '../services/api';
 import Swal from 'sweetalert2';
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
@@ -43,6 +44,33 @@ export default function Login() {
         icon: 'error',
         title: 'Error de Acceso',
         text: err.response?.data?.message || 'Credenciales incorrectas o problema de conexión'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/google', { credential: credentialResponse.credential });
+      if (res.data.success) {
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
+        Swal.fire({
+          icon: 'success',
+          title: 'Bienvenido con Google',
+          text: `Hola, ${res.data.usuario.nombre}`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+        navigate(res.data.usuario.rol === 'admin' ? '/admin' : '/dashboard');
+      }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error de Google',
+        text: err.response?.data?.message || 'No se pudo iniciar sesión con Google'
       });
     } finally {
       setLoading(false);
@@ -100,6 +128,11 @@ export default function Login() {
               />
             </div>
             {errors.password && <p className="text-[10px] font-bold text-red-500 px-1 animate-in slide-in-from-top-1">{errors.password.message}</p>}
+            <div className="flex justify-end">
+              <Link to="/forgot-password" className="text-xs font-bold text-slate-400 hover:text-orange-500 transition-colors no-underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
           </div>
 
           <button 
@@ -116,6 +149,29 @@ export default function Login() {
               </>
             )}
           </button>
+          
+          <div className="relative flex items-center py-2">
+            <div className="flex-grow border-t border-slate-200"></div>
+            <span className="flex-shrink-0 mx-4 text-slate-400 text-xs font-bold uppercase tracking-widest">O</span>
+            <div className="flex-grow border-t border-slate-200"></div>
+          </div>
+          
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => {
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Error',
+                  text: 'El inicio de sesión con Google falló'
+                });
+              }}
+              useOneTap
+              shape="pill"
+              theme="outline"
+              size="large"
+            />
+          </div>
         </form>
 
         <div className="mt-8 text-center">

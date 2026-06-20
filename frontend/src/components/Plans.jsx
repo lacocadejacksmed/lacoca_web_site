@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion';
 import { Zap, TrendingUp, Star, Check, ArrowRight } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 
 export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, plans: dynamicPlans }) {
   const staticPlans = [
@@ -40,7 +42,33 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
     }
   ];
 
+  const [availableDate, setAvailableDate] = useState(null);
+  const [holidayDates, setHolidayDates] = useState([]);
+
+  useEffect(() => {
+    const checkHolidays = async () => {
+      try {
+        const [availRes, feriadosRes] = await Promise.all([
+          api.get('/availability'),
+          api.get('/feriados')
+        ]);
+        
+        if (availRes.data?.success && feriadosRes.data?.success) {
+          const firstAvailable = availRes.data.availability.find(a => a.disponible);
+          if (firstAvailable) {
+            setAvailableDate(firstAvailable.fecha);
+            setHolidayDates(feriadosRes.data.feriados.map(h => h.fecha));
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching holidays for Plans:", err);
+      }
+    };
+    checkHolidays();
+  }, []);
+
   const plans = staticPlans.map(staticPlan => {
+    let resultPlan = { ...staticPlan };
     if (dynamicPlans && Array.isArray(dynamicPlans) && dynamicPlans.length > 0) {
       const dynamicPlan = dynamicPlans.find(
         dp => (dp.nombre || dp.name || '').toLowerCase() === staticPlan.id ||
@@ -50,7 +78,7 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
         const price = Number(dynamicPlan.precio_base || dynamicPlan.precio || dynamicPlan.price || staticPlan.price);
         const days = Number(dynamicPlan.dias_duracion || dynamicPlan.dias || dynamicPlan.days || staticPlan.days);
         const daily = Math.round(price / days);
-        return {
+        resultPlan = {
           ...staticPlan,
           name: dynamicPlan.nombre || dynamicPlan.name || staticPlan.name,
           price,
@@ -59,7 +87,45 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
         };
       }
     }
-    return staticPlan;
+    
+    // Adjust plan if there are holidays in its specific date window
+    if (availableDate) {
+      const monday = new Date(availableDate + 'T12:00:00');
+      const endDate = new Date(monday);
+      
+      let baseCalendarDays = 4;
+      if (resultPlan.id === 'semanal') baseCalendarDays = 4;
+      else if (resultPlan.id === 'quincenal') baseCalendarDays = 11;
+      else if (resultPlan.id === 'mensual') baseCalendarDays = 25;
+      
+      endDate.setDate(monday.getDate() + baseCalendarDays);
+      
+      const fmt = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dayStr}`;
+      };
+      
+      let count = 0;
+      const current = new Date(monday);
+      while (current <= endDate) {
+        if (holidayDates.includes(fmt(current))) count++;
+        current.setDate(current.getDate() + 1);
+      }
+
+      if (count > 0) {
+        const dailyRate = resultPlan.price / resultPlan.days;
+        resultPlan.days = resultPlan.days - count;
+        resultPlan.price = resultPlan.price - (dailyRate * count);
+        resultPlan.features = [...resultPlan.features];
+        resultPlan.features[1] = `${resultPlan.days} días de almuerzos (Descuento por festivo)`;
+        resultPlan.save = (resultPlan.save || 0) + (dailyRate * count); 
+        resultPlan.isHolidayDiscount = true;
+      }
+    }
+    
+    return resultPlan;
   });
 
   // Calculate dynamic maximum savings for Monthly plan compared to Weekly daily price
@@ -111,11 +177,6 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
                   Más Popular
                 </div>
               )}
-              {plan.save && (
-                <div className="absolute top-4 right-4 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase">
-                  Ahorra ${plan.save.toLocaleString()}
-                </div>
-              )}
 
               <div className={`w-14 h-14 bg-gradient-to-br ${plan.gradient} rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-orange-500/20`}>
                 <plan.icon size={28} />
@@ -126,7 +187,19 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
                 <span className="text-4xl font-black tracking-tight">${(plan.price / 1000).toFixed(0)}K</span>
                 <span className="text-gray-400 font-bold text-sm">/ {plan.days} días</span>
               </div>
-              <div className="text-green-600 font-black text-sm mb-8">${plan.daily.toLocaleString()} por día</div>
+              <div className="text-green-600 font-black text-sm mb-3">${plan.daily.toLocaleString()} por día</div>
+
+              <div className="h-8 mb-4 flex items-start">
+                {plan.save && plan.isHolidayDiscount ? (
+                  <div className="bg-orange-100 text-orange-700 text-[10px] font-black px-3 py-1 rounded-full uppercase border border-orange-200">
+                    Descuento Festivo (-${plan.save.toLocaleString()})
+                  </div>
+                ) : plan.save ? (
+                  <div className="bg-green-100 text-green-700 text-[10px] font-black px-3 py-1 rounded-full uppercase border border-green-200">
+                    Ahorra ${plan.save.toLocaleString()}
+                  </div>
+                ) : null}
+              </div>
 
               <ul className="space-y-4 mb-10 flex-1">
                 {plan.features.map((feat, i) => (
