@@ -7,7 +7,7 @@
     "server": "nodemon backend/app.js",
     "client": "npm run dev --prefix frontend",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "build:full": "npm run build --prefix frontend",
+    "build:full": "npm install --prefix frontend && npm run build --prefix frontend",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
