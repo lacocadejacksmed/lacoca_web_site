@@ -62,9 +62,8 @@ const startServer = async () => {
     console.error("❌ Error fatal al iniciar el servidor:");
     if (error.name === "SequelizeConnectionRefusedError") {
       console.error(
-        "No se pudo conectar a MySQL. Asegúrate de que el servicio de MySQL esté iniciado.",
+        "No se pudo conectar a PostgreSQL. Asegúrate de que el servicio de base de datos esté iniciado y las credenciales sean correctas.",
       );
-      console.error("Si usas Windows, verifica que el servicio 'MYSQL80' esté en ejecución.");
     } else {
       console.error(error);
     }
