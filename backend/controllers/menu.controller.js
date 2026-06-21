@@ -27,8 +27,8 @@ exports.updateMenu = async (req, res) => {
         const newData = { fechas: fechas };
         
         if (req.file) {
-            newData.imagen_url = `/uploads/${req.file.filename}`;
-            console.log("Nueva entrada de menú histórico:", req.file.filename);
+            newData.imagen_url = req.file.path;
+            console.log("Nueva entrada de menú histórico guardada en Cloudinary");
         }
 
         // Siempre creamos uno nuevo para guardar el histórico

@@ -72,17 +72,8 @@ const isBarrioCompatibleWithZone = (barrio, zoneName) => {
   return true;
 };
 
-// Configuración de Multer para guardar imágenes
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, '../../uploads'));
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        const prefix = file.fieldname === 'menu_image' ? 'menu-' : 'comprobante-';
-        cb(null, prefix + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Configuración de Multer para guardar imágenes usando Cloudinary
+const { storage } = require('../config/cloudinary');
 const upload = multer({ storage: storage });
 
 const createOrder = async (req, res) => {
@@ -282,11 +273,10 @@ const createOrder = async (req, res) => {
             });
         }
 
-        // 7. Guardar Comprobante
         if (req.file) {
             await Comprobante.create({
                 suscripcion_id: nuevaSuscripcion.id,
-                url_imagen: `/uploads/${req.file.filename}`,
+                url_imagen: req.file.path,
                 estado: 'Pendiente'
             });
         }

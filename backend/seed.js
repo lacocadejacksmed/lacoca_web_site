@@ -1,14 +1,11 @@
-/**
- * seed.js — Inyección de 100 clientes de prueba con datos colombianos realistas.
- * Crea clientes, suscripciones, direcciones y comprobantes variados.
- * Uso: node seed.js
- */
 const { sequelize } = require('./config/database');
 const Cliente = require('./models/Cliente');
 const Suscripcion = require('./models/Suscripcion');
 const DireccionEntrega = require('./models/DireccionEntrega');
 const Comprobante = require('./models/Comprobante');
 const Plan = require('./models/Plan');
+const Usuario = require('./models/Usuario');
+const Configuracion = require('./models/Configuracion');
 
 // ── Datos base colombianos ──────────────────────────────────────────────────
 const nombres = [
@@ -73,10 +70,39 @@ function fechaISO(diasAtras) {
 async function seed() {
   try {
     await sequelize.authenticate();
-    console.log('✅ DB conectada. Iniciando seed...\n');
+    await sequelize.sync(); // Asegurar que las tablas existan antes de inyectar datos
+    console.log('✅ DB conectada y tablas sincronizadas. Iniciando seed...\n');
 
-    const planes = await Plan.findAll({ raw: true });
-    if (!planes.length) throw new Error('No hay planes en la BD. Ejecuta el schema primero.');
+    let planes = await Plan.findAll({ raw: true });
+    if (!planes.length) {
+      console.log('📦 Creando planes por defecto...');
+      await Plan.bulkCreate([
+        { nombre: 'Plan Semanal (5 días)', precio_base: 80000, dias_duracion: 5, esta_activo: true },
+        { nombre: 'Plan Quincenal (10 días)', precio_base: 150000, dias_duracion: 10, esta_activo: true },
+        { nombre: 'Plan Mensual (20 días)', precio_base: 280000, dias_duracion: 20, esta_activo: true }
+      ]);
+      planes = await Plan.findAll({ raw: true });
+    }
+
+    const admin = await Usuario.findOne({ where: { rol: 'admin' } });
+    if (!admin) {
+      console.log('👤 Creando usuario administrador por defecto...');
+      await Usuario.create({
+        nombre: 'Administrador',
+        email: 'lacocadejacks@gmail.com',
+        password: '123', 
+        rol: 'admin'
+      });
+    }
+
+    const config = await Configuracion.findOne({ where: { clave: 'precio_coca' } });
+    if (!config) {
+        console.log('⚙️ Creando configuraciones por defecto...');
+        await Configuracion.bulkCreate([
+            { clave: 'cupos_max', valor: '3000'},
+            { clave: 'juego_cocas', valor: '70000'},
+        ]);
+    }
 
     let creados = 0, fallidos = 0;
     const errores = [];
@@ -171,7 +197,7 @@ async function seed() {
 
     process.exit(0);
   } catch (error) {
-    console.error('\n❌ Error fatal:', error.message);
+    console.error('\n❌ Error fatal:', error);
     process.exit(1);
   }
 }
