@@ -759,7 +759,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       }
     } catch (err) {
       const msg = err.response?.data?.message || err.message || 'Error desconocido al enviar reserva';
-      showError(msg);
+      Swal.fire({ icon: 'error', title: 'Error en la reserva', text: msg, confirmButtonColor: '#ea580c' });
       console.error('Error en submit:', err);
     } finally {
       setLoading(false);

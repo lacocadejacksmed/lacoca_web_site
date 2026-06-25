@@ -1,5 +1,5 @@
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const { v2: cloudinary } = require('cloudinary');
+const multer = require('multer');
 const dotenv = require('dotenv');
 
 dotenv.config();
@@ -18,14 +18,17 @@ if (missing.length > 0) {
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    // Definimos la carpeta y formato base
+/**
+ * Storage engine personalizado para multer que sube directamente a Cloudinary v2.
+ * Reemplaza multer-storage-cloudinary (que solo soporta Cloudinary v1).
+ */
+const cloudinaryStorage = {
+  _handleFile(req, file, cb) {
+    // Determinar la carpeta según el campo del formulario
     let folder = 'lacocadejacks';
     if (file.fieldname === 'menu_image') {
       folder += '/menus';
@@ -33,14 +36,31 @@ const storage = new CloudinaryStorage({
       folder += '/comprobantes';
     }
 
-    return {
-      folder: folder,
-      public_id: file.fieldname + '-' + Date.now(),
-    };
+    const public_id = `${file.fieldname}-${Date.now()}`;
+
+    const uploadStream = cloudinary.uploader.upload_stream(
+      { folder, public_id },
+      (error, result) => {
+        if (error) return cb(error);
+        cb(null, {
+          path:     result.secure_url,   // URL pública de Cloudinary
+          filename: result.public_id,    // ID para eliminar si hace falta
+          size:     result.bytes,
+        });
+      }
+    );
+
+    file.stream.pipe(uploadStream);
   },
-});
+
+  _removeFile(req, file, cb) {
+    cloudinary.uploader.destroy(file.filename, { invalidate: true }, cb);
+  },
+};
+
+const storage = multer({ storage: cloudinaryStorage });
 
 module.exports = {
   cloudinary,
-  storage
+  storage,
 };

@@ -1,5 +1,4 @@
 const axios = require('axios');
-const multer = require('multer');
 const path = require('path');
 const Cliente = require('../models/Cliente');
 const Suscripcion = require('../models/Suscripcion');
@@ -73,8 +72,7 @@ const isBarrioCompatibleWithZone = (barrio, zoneName) => {
 };
 
 // Configuración de Multer para guardar imágenes usando Cloudinary
-const { storage } = require('../config/cloudinary');
-const upload = multer({ storage: storage });
+const { storage: upload } = require('../config/cloudinary');
 
 const createOrder = async (req, res) => {
     try {
