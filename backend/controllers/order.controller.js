@@ -137,7 +137,7 @@ const createOrder = async (req, res) => {
         }
 
         // 2. Buscar el Plan en la DB
-        const planDb = await Plan.findOne({ where: { nombre: plan, esta_activo: true } });
+        const planDb = await Plan.findOne({ where: { nombre: { [Op.iLike]: plan }, esta_activo: true } });
         if (!planDb) {
             return res.status(400).json({ success: false, message: 'El plan seleccionado no es válido.' });
         }
