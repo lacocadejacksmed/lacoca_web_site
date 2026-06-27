@@ -39,7 +39,7 @@ const cloudinaryStorage = {
     const public_id = `${file.fieldname}-${Date.now()}`;
 
     const uploadStream = cloudinary.uploader.upload_stream(
-      { folder, public_id },
+      { folder, public_id, timeout: 60000 },
       (error, result) => {
         if (error) return cb(error);
         cb(null, {
@@ -50,6 +50,11 @@ const cloudinaryStorage = {
       }
     );
 
+    file.stream.on('error', (err) => {
+      console.error('Error en file.stream:', err);
+      cb(err);
+    });
+    
     file.stream.pipe(uploadStream);
   },
 
