@@ -435,6 +435,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
           errors[issue.path[0]] = issue.message;
         });
       }
+      if (!formData.plan) {
+        errors.plan = 'Por favor selecciona un plan para continuar';
+      }
       // Validate documento is only digits
       if (!errors.documento && formData.documento && !/^\d+$/.test(formData.documento)) {
         errors.documento = 'El documento solo puede contener números';
@@ -507,7 +510,8 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     if (step === 1) {
       return formData.nombre.trim().length >= 3 &&
              formData.documento.trim().length >= 5 &&
-             !!formData.fecha_inicio;
+             !!formData.fecha_inicio &&
+             !!formData.plan;
     }
     if (step === 2) {
       const cleanedPhone = formData.telefono.replace(/\D/g, '');
@@ -883,8 +887,15 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                       )}
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    <label className="text-xs font-black text-slate-900 uppercase tracking-widest">Selecciona tu Plan</label>
+                  <div className="space-y-3" id="field-plan">
+                    <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-1.5">
+                      Selecciona tu Plan
+                      {formData.plan ? (
+                        <CheckCircle2 size={12} className="text-green-500 animate-in zoom-in" />
+                      ) : (
+                        <AlertCircle size={10} className="text-orange-500" />
+                      )}
+                    </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {Object.entries(activePlans).map(([id, p]) => {
                         const priceDetails = getPlanPriceDetails(id);
@@ -907,6 +918,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                         );
                       })}
                     </div>
+                    {fieldErrors.plan && <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10} /> {fieldErrors.plan}</p>}
                   </div>
 
                   <div className="space-y-3" id="field-fecha_inicio">

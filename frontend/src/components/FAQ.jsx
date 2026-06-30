@@ -96,12 +96,12 @@ export default function FAQ() {
   });
 
   return (
-    <section id="faq" className="py-24 bg-white">
+    <section id="faq" className="py-24 bg-[#FFF9F0]">
       <div className="max-w-3xl mx-auto px-6">
 
         <div className="text-center mb-16">
           <h2 className="text-4xl font-black mb-4 tracking-tight">Preguntas Frecuentes</h2>
-          <p className="text-lg text-gray-500 font-medium mb-8">Todo lo que necesitas saber antes de reservar</p>
+          <p className="text-lg text-[#7A6B5C] font-medium mb-8">Todo lo que necesitas saber antes de reservar</p>
           
           {/* Búsqueda Inteligente */}
           <div className="max-w-xl mx-auto relative mb-8">
@@ -113,7 +113,7 @@ export default function FAQ() {
               placeholder="Ej. ¿A qué hora llega el almuerzo?, pagos, cocas..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all font-medium text-gray-700 placeholder:text-gray-400"
+              className="w-full pl-12 pr-4 py-4 bg-[#FFF6EA] border border-[#EFD9B4] rounded-2xl focus:ring-2 focus:ring-[#F2641A] focus:border-transparent outline-none transition-all font-medium text-[#2B2118] placeholder:text-[#7A6B5C]"
             />
           </div>
 
@@ -128,8 +128,8 @@ export default function FAQ() {
                 }}
                 className={`px-5 py-2 rounded-full text-sm font-black transition-all ${
                   activeCategory === cat 
-                    ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/30' 
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    ? 'bg-[#F2641A] text-white shadow-lg shadow-[#F2641A]/30' 
+                    : 'bg-[#FFF6EA] text-[#7A6B5C] hover:bg-[#EFD9B4]/50'
                 }`}
               >
                 {cat}
@@ -141,19 +141,19 @@ export default function FAQ() {
         <div className="space-y-4">
           {filteredFaqs.length > 0 ? (
             filteredFaqs.map((faq, i) => (
-              <div key={i} className={`border rounded-2xl overflow-hidden transition-all duration-300 ${openIndex === i ? 'border-orange-200 shadow-md bg-orange-50/30' : 'border-gray-100 shadow-sm bg-white'}`}>
+              <div key={i} className={`border rounded-2xl overflow-hidden transition-all duration-300 ${openIndex === i ? 'border-[#F2641A]/20 shadow-md bg-[#FFF6EA]/50' : 'border-[#EFD9B4]/50 shadow-sm bg-white'}`}>
                 <button
                   onClick={() => setOpenIndex(openIndex === i ? null : i)}
                   className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50/50 transition-colors"
                 >
                   <div className="flex items-center gap-4 pr-8">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${openIndex === i ? 'bg-orange-100 text-orange-600' : 'bg-gray-50 text-gray-400'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${openIndex === i ? 'bg-[#F2641A]/10 text-[#F2641A]' : 'bg-[#FFF6EA] text-[#7A6B5C]'}`}>
                       <faq.icon size={20} strokeWidth={2.5} />
                     </div>
-                    <span className="font-bold text-gray-800 text-lg">{highlightMatch(faq.q)}</span>
+                    <span className="font-bold text-[#2B2118] text-lg">{highlightMatch(faq.q)}</span>
                   </div>
                   <ChevronDown
-                    className={`text-orange-500 shrink-0 transition-transform duration-300 ${openIndex === i ? 'rotate-180' : ''}`}
+                    className={`text-[#F2641A] shrink-0 transition-transform duration-300 ${openIndex === i ? 'rotate-180' : ''}`}
                     size={20}
                     strokeWidth={3}
                   />
@@ -166,7 +166,7 @@ export default function FAQ() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.3 }}
                     >
-                      <div className="px-6 pb-6 pt-2 pl-[88px] text-gray-600 leading-relaxed font-medium">
+                      <div className="px-6 pb-6 pt-2 pl-[88px] text-[#7A6B5C] leading-relaxed font-medium">
                         {faq.a}
                       </div>
                     </motion.div>
@@ -175,13 +175,13 @@ export default function FAQ() {
               </div>
             ))
           ) : (
-            <div className="text-center py-16 bg-gray-50 rounded-3xl border border-gray-100">
-              <MessageCircle className="mx-auto text-gray-300 mb-4" size={48} strokeWidth={1.5} />
-              <p className="text-gray-500 font-medium mb-6">No encontramos respuestas para "{searchQuery}" en esta categoría.</p>
+            <div className="text-center py-16 bg-[#FFF6EA] rounded-3xl border border-[#EFD9B4]">
+              <MessageCircle className="mx-auto text-[#EFD9B4] mb-4" size={48} strokeWidth={1.5} />
+              <p className="text-[#7A6B5C] font-medium mb-6">No encontramos respuestas para "{searchQuery}" en esta categoría.</p>
               <a
                 href="https://wa.me/573116437887"
                 target="_blank"
-                className="inline-flex items-center gap-2 bg-white border border-gray-200 text-orange-600 hover:border-orange-500 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm no-underline"
+                className="inline-flex items-center gap-2 bg-white border border-[#EFD9B4] text-[#F2641A] hover:border-[#F2641A] px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-sm no-underline"
               >
                 Pregúntanos por WhatsApp
               </a>
@@ -194,7 +194,7 @@ export default function FAQ() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-16 bg-gradient-to-br from-orange-500 to-amber-500 text-white rounded-[32px] p-10 text-center shadow-2xl shadow-orange-500/20"
+          className="mt-16 bg-gradient-to-br from-[#F2641A] to-[#F2A922] text-white rounded-[32px] p-10 text-center shadow-2xl shadow-[#F2641A]/20"
         >
           <h3 className="text-3xl font-black mb-4">¿Tienes más preguntas?</h3>
           <p className="text-orange-50 font-medium mb-8 max-w-md mx-auto leading-relaxed">
@@ -203,7 +203,7 @@ export default function FAQ() {
           <a
             href="https://wa.me/573116437887"
             target="_blank"
-            className="inline-flex items-center gap-3 bg-white text-orange-600 hover:bg-orange-50 px-10 py-4 rounded-2xl font-black text-lg transition-all shadow-xl hover:-translate-y-1 active:scale-95 no-underline"
+            className="inline-flex items-center gap-3 bg-white text-[#F2641A] hover:bg-[#FFF6EA] px-10 py-4 rounded-2xl font-black text-lg transition-all shadow-xl hover:-translate-y-1 active:scale-95 no-underline"
           >
             <MessageCircle size={24} fill="currentColor" />
             Contactar por WhatsApp

@@ -1,53 +1,85 @@
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+/* =============================================================
+   LA COCA DE JACKS — Design System (BrandBook v1.0)
+   =============================================================
+   Tipografía Principal: Baloo 2 (titulares, botones, nav)
+   Tipografía Secundaria: Work Sans (textos, párrafos, UI)
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Work+Sans:wght@300;400;500;600;700;800;900&display=swap');
 @import "tailwindcss";
 
+/* =============================================================
+   DESIGN TOKENS — Paleta BrandBook
+   ============================================================= */
 @theme {
-  --color-crema: #FBF8F1;
-  --color-arena: #EFD9B4;
-  --color-arcilla: #C4581F;
-  --color-carbon: #2B2520;
-  --color-secundario: #F1E5D0;
-  --color-apagado: #F0EBE2;
-  --color-atenuado: #7A6B5C;
-  --color-acento: #E3B477;
-  --color-borde: #DDD2C0;
+  /* --- 3.1 Colores Institucionales --- */
+  --color-naranja: #F2641A;         /* Naranja insignia */
+  --color-carbon: #2B2118;          /* Carbón */
+  --color-crema: #FFF6EA;           /* Crema institucional */
+  --color-verde: #92CB94;           /* Verde */
+
+  /* --- 3.2 Colores Secundarios --- */
+  --color-amarillo-intenso: #E0A52E;
+  --color-amarillo-domingo: #FFC857;
+  --color-amarillo-palido: #FFE3A8;
+  --color-verde-profundo: #5E8D62;
+  --color-verde-fresco: #AED9B0;
+  --color-verde-palido: #DCEEDD;
+
+  /* --- 3.3 Colores Complementarios --- */
+  --color-beige-claro: #F0E2C8;
+  --color-gris-calido: #C7BBA8;
+  --color-beige-gris: #A9A08D;
+  --color-carbon-suave: #564539;
+  --color-crema-comp: #FFECCC;
+
+  /* --- Colores Funcionales (Mantenidos para evitar romper la UI) --- */
   --color-exito: #3E8E5A;
   --color-destructivo: #D03B22;
   --color-advertencia: #E2A53F;
+  --color-borde: #E8DFD0;
+  --color-atenuado: #7A6B5C;
 
-  --color-primary: var(--color-arcilla);
-  --color-secondary: var(--color-secundario);
-  --font-sans: 'Space Grotesk', sans-serif;
-  --font-serif: 'Share Tech Mono', monospace;
+  /* --- Aliases para Tailwind (Retrocompatibilidad y convenciones) --- */
+  --color-primary: var(--color-naranja);
+  --color-secondary: var(--color-beige-claro);
+  
+  /* Mapeo de variables anteriores a la nueva paleta del BrandBook */
+  --color-amarillo: var(--color-amarillo-intenso);
+  --color-beige: var(--color-beige-claro);
+  --color-crema-suave: var(--color-crema-comp);
+  --color-verde-claro: var(--color-verde-fresco);
+  --color-verde-oscuro: var(--color-verde-profundo);
+
+  /* --- Tipografías --- */
+  --font-display: 'Baloo 2', cursive;
+  --font-body: 'Work Sans', sans-serif;
+  --font-sans: 'Work Sans', sans-serif;
+}
+
+/* =============================================================
+   GLOBAL DEFAULTS
+   ============================================================= */
+:root {
+  font-family: var(--font-body);
+  background-color: var(--color-crema);
+  color: var(--color-carbon);
 }
 
 * {
-  font-family: 'Space Grotesk', sans-serif;
+  font-family: var(--font-body);
 }
 
+/* Titulares y elementos de display usan Baloo 2 */
 h1, h2, h3, h4, h5, h6,
-h1 *, h2 *, h3 *, h4 *, h5 *, h6 *,
 button,
-button *,
 .btn,
 .nav-link,
 nav a,
 nav span,
 .badge,
-[class*="font-['Fredoka']"],
-[class*="font-['Outfit']"],
-[class*="font-['Alex+Brush']"],
-.font-fredoka,
-.font-outfit,
-[style*="font-family"],
-[style*="fontFamily"] {
-  font-family: 'Share Tech Mono', monospace !important;
-}
-
-:root {
-  font-family: var(--font-sans);
-  background-color: var(--color-crema);
-  color: var(--color-carbon);
+.font-display {
+  font-family: var(--font-display);
 }
 
 body {
@@ -58,19 +90,25 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Utilities or Global Styles if needed */
-.glass {
-  @apply bg-white/10 backdrop-blur-lg border border-white/20 shadow-xl;
-}
-
-* {
-  @apply transition-colors duration-200;
-}
-
 html {
   scroll-behavior: smooth;
 }
 
+/* =============================================================
+   UTILITY CLASSES — BrandBook helpers
+   ============================================================= */
+
+/* Glassmorphism */
+.glass {
+  @apply bg-white/10 backdrop-blur-lg border border-white/20 shadow-xl;
+}
+
+/* Smooth color transitions */
+* {
+  @apply transition-colors duration-200;
+}
+
+/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -80,12 +118,12 @@ html {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #e2e8f0;
+  background: var(--color-beige);
   border-radius: 10px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  background: var(--color-amarillo-palido);
 }
 
 @utility no-scrollbar {
