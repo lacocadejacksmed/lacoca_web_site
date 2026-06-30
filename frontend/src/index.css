@@ -33,28 +33,39 @@
   --color-carbon-suave: #564539;
   --color-crema-comp: #FFECCC;
 
-  /* --- Colores Funcionales (Mantenidos para evitar romper la UI) --- */
-  --color-exito: #3E8E5A;
-  --color-destructivo: #D03B22;
-  --color-advertencia: #E2A53F;
-  --color-borde: #E8DFD0;
-  --color-atenuado: #7A6B5C;
+  /* --- Sobrescribir colores genéricos de Tailwind usados en los componentes --- */
+  --color-orange-500: var(--color-naranja);
+  --color-orange-600: color-mix(in srgb, var(--color-naranja) 85%, black);
+  --color-orange-400: color-mix(in srgb, var(--color-naranja) 85%, white);
+  --color-orange-200: color-mix(in srgb, var(--color-naranja) 60%, white);
+  --color-orange-50: var(--color-crema);
 
-  /* --- Aliases para Tailwind (Retrocompatibilidad y convenciones) --- */
+  --color-slate-900: var(--color-carbon);
+  --color-slate-800: color-mix(in srgb, var(--color-carbon) 85%, white);
+  --color-gray-900: var(--color-carbon);
+  --color-gray-800: color-mix(in srgb, var(--color-carbon) 85%, white);
+
+  --color-amber-50: var(--color-crema);
+  --color-amber-100: var(--color-amarillo-palido);
+  --color-amber-600: var(--color-amarillo-intenso);
+  --color-amber-700: color-mix(in srgb, var(--color-amarillo-intenso) 85%, black);
+
+  --color-green-500: var(--color-verde);
+  --color-green-400: var(--color-verde-fresco);
+
+  /* --- Aliases para Tailwind (Retrocompatibilidad) --- */
   --color-primary: var(--color-naranja);
   --color-secondary: var(--color-beige-claro);
-  
-  /* Mapeo de variables anteriores a la nueva paleta del BrandBook */
   --color-amarillo: var(--color-amarillo-intenso);
   --color-beige: var(--color-beige-claro);
   --color-crema-suave: var(--color-crema-comp);
   --color-verde-claro: var(--color-verde-fresco);
   --color-verde-oscuro: var(--color-verde-profundo);
 
-  /* --- Tipografías --- */
+  /* --- Tipografías (Hacemos Baloo 2 la principal por defecto) --- */
+  --font-sans: 'Baloo 2', cursive;
   --font-display: 'Baloo 2', cursive;
   --font-body: 'Work Sans', sans-serif;
-  --font-sans: 'Work Sans', sans-serif;
 }
 
 /* =============================================================
