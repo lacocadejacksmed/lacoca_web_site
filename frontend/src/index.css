@@ -72,13 +72,8 @@
    GLOBAL DEFAULTS
    ============================================================= */
 :root {
-  font-family: var(--font-body);
   background-color: var(--color-crema);
   color: var(--color-carbon);
-}
-
-* {
-  font-family: var(--font-body);
 }
 
 /* Titulares y elementos de display usan Baloo 2 */
