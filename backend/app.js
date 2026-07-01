@@ -5,6 +5,7 @@ const helmet = require("helmet");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const hpp = require("hpp");
+const xssMiddleware = require("./utils/xss.middleware");
 const { connectDB, sequelize } = require("./config/database");
 const webhookRoutes = require("./routes/webhook.routes");
 const apiRoutes = require("./routes/api.routes");
@@ -52,6 +53,9 @@ app.use(express.json());
 // 4. HPP: Prevenir HTTP Parameter Pollution
 app.use(hpp());
 
+// 5. XSS Clean: Sanitizar body, query y params de ataques Cross-Site Scripting
+app.use(xssMiddleware);
+
 // Middleware para servir archivos estáticos del backend (si los hay)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
@@ -62,6 +66,20 @@ app.use("/api", apiRoutes);
 // 404 para rutas de API no encontradas
 app.use((req, res) => {
   res.status(404).json({ error: "Ruta no encontrada" });
+});
+
+// 6. Global Error Handler: Prevenir filtración de Stack Traces en Producción
+app.use((err, req, res, next) => {
+  console.error("Error Global:", err);
+  if (process.env.NODE_ENV === 'production') {
+    res.status(err.status || 500).json({ 
+      success: false, 
+      message: err.message && err.status ? err.message : "Error interno del servidor. Por favor intenta de nuevo más tarde." 
+    });
+  } else {
+    // En desarrollo, enviar el stack trace para debuggear
+    res.status(err.status || 500).json({ success: false, message: err.message, stack: err.stack });
+  }
 });
 
 // Iniciar servidor y conectar a DB

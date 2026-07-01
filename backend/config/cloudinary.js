@@ -63,7 +63,19 @@ const cloudinaryStorage = {
   },
 };
 
-const storage = multer({ storage: cloudinaryStorage });
+const storage = multer({ 
+  storage: cloudinaryStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Limitar archivos a 5 MB máximo para prevenir ataques DoS
+  fileFilter: (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'application/pdf'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      // Rechazar archivo malicioso o no soportado
+      cb(new Error('Formato de archivo no permitido por seguridad. Sube JPG, PNG, WEBP o PDF.'));
+    }
+  }
+});
 
 module.exports = {
   cloudinary,
