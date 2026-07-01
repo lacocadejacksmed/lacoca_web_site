@@ -447,7 +447,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="relative max-w-4xl w-full"
+              className="relative max-w-4xl w-full max-h-[90vh] flex flex-col"
               onClick={e => e.stopPropagation()}
             >
                <button 
@@ -456,11 +456,11 @@ export default function Landing2({ defaultWizardOpen = false }) {
                >
                   <X size={40} strokeWidth={3} />
                </button>
-               <div className="bg-white p-2 rounded-[40px] shadow-2xl overflow-hidden">
+               <div className="bg-white p-2 rounded-[40px] shadow-2xl overflow-hidden flex justify-center items-center h-full">
                   <img 
                     src={weeklyMenu.imagen_url ? (weeklyMenu.imagen_url.startsWith('http') ? weeklyMenu.imagen_url : API_URL + weeklyMenu.imagen_url) : '/weekly_menu_preview_1778475988702.png'} 
                     alt="Menú semanal completo" 
-                    className="w-full h-auto rounded-[32px]"
+                    className="w-full max-h-[85vh] object-contain rounded-[32px]"
                   />
                </div>
             </motion.div>
