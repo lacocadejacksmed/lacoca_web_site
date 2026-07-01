@@ -4,13 +4,21 @@ const adminController = require("../controllers/admin.controller");
 const menuController = require("../controllers/menu.controller");
 const authController = require("../controllers/auth.controller");
 const { protect, admin } = require("../utils/auth.middleware");
+const rateLimit = require("express-rate-limit");
 
 const router = express.Router();
 
+// Límite estricto para Login (Evitar ataques de fuerza bruta)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 5, // 5 intentos
+  message: { success: false, message: 'Demasiados intentos de inicio de sesión, por favor intenta de nuevo en 15 minutos.' }
+});
+
 // Autenticación
 router.post("/auth/register", authController.register);
-router.post("/auth/login", authController.login);
-router.post("/auth/google", authController.googleLogin);
+router.post("/auth/login", loginLimiter, authController.login);
+router.post("/auth/google", loginLimiter, authController.googleLogin);
 router.post("/auth/forgot-password", authController.forgotPassword);
 router.post("/auth/reset-password", authController.resetPassword);
 router.get("/auth/me", protect, authController.getMe);

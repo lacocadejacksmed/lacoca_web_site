@@ -1,4 +1,5 @@
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 export const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -24,16 +25,28 @@ api.interceptors.request.use(
 );
 
 // Interceptor para manejar errores 401 (token expirado o inválido)
+let isAlertShown = false; // Prevent multiple alerts on concurrent requests
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('usuario');
-      // No podemos usar window.location aquí si queremos evitar refrescos bruscos, 
-      // pero por ahora es lo más seguro.
-      if (!window.location.pathname.includes('/login')) {
-        window.location.href = '/login';
+      
+      if (!window.location.pathname.includes('/login') && !isAlertShown) {
+        isAlertShown = true;
+        const isExpired = error.response.data?.expired;
+        
+        Swal.fire({
+          icon: 'warning',
+          title: isExpired ? 'Sesión Expirada' : 'Acceso Denegado',
+          text: isExpired ? 'Tu sesión ha expirado por seguridad. Vuelve a iniciar sesión.' : 'No tienes permisos o tu token es inválido.',
+          confirmButtonColor: '#F2641A',
+          confirmButtonText: 'Ir al Login'
+        }).then(() => {
+          window.location.href = '/login';
+        });
       }
     }
     return Promise.reject(error);

@@ -18,8 +18,11 @@ const protect = async (req, res, next) => {
             
             next();
         } catch (error) {
-            console.error('Token error:', error);
-            res.status(401).json({ success: false, message: 'No autorizado, token fallido' });
+            console.error('Token error:', error.name);
+            if (error.name === 'TokenExpiredError') {
+                return res.status(401).json({ success: false, message: 'Tu sesión ha expirado por seguridad. Por favor, vuelve a iniciar sesión.', expired: true });
+            }
+            return res.status(401).json({ success: false, message: 'No autorizado, token inválido' });
         }
     }
 

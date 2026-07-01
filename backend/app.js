@@ -1,6 +1,10 @@
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
+const helmet = require("helmet");
+const cors = require("cors");
+const rateLimit = require("express-rate-limit");
+const hpp = require("hpp");
 const { connectDB, sequelize } = require("./config/database");
 const webhookRoutes = require("./routes/webhook.routes");
 const apiRoutes = require("./routes/api.routes");
@@ -10,17 +14,43 @@ const app = express();
 
 const PORT = process.env.PORT || 3000;
 
+// ==========================================
+// MEDIDAS DE SEGURIDAD (BEST PRACTICES)
+// ==========================================
+// 1. Helmet: Protege cabeceras HTTP
+app.use(helmet());
+
+// 2. CORS: Permitir peticiones solo de orígenes confiables (Frontend local y Producción)
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://www.lacocadejacks.com',
+  'https://lacocadejacks.com'
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1 || origin.includes('vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
+  credentials: true
+}));
+
+// 3. Rate Limiting Global: Prevenir ataques de fuerza bruta general y DDoS (100 req por 15 min)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 150,
+  message: { success: false, message: 'Demasiadas peticiones desde esta IP, por favor intenta de nuevo después de 15 minutos.' }
+});
+app.use('/api', limiter);
+
 // Middleware para parsear JSON
 app.use(express.json());
 
-// Habilitar CORS básico y responder preflight (OPTIONS)
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-  if (req.method === "OPTIONS") return res.sendStatus(200);
-  next();
-});
+// 4. HPP: Prevenir HTTP Parameter Pollution
+app.use(hpp());
 
 // Middleware para servir archivos estáticos del backend (si los hay)
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));

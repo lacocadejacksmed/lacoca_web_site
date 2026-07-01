@@ -16,7 +16,7 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (id) => {
     return jwt.sign({ id }, process.env.JWT_SECRET || 'secret_key_lacoca', {
-        expiresIn: '30d'
+        expiresIn: '1h' // Expira exactamente en 1 hora por seguridad
     });
 };
 
