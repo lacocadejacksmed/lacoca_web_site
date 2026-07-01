@@ -11,6 +11,30 @@ const showToast = (msg, icon = 'success') => {
   Swal.fire({ toast: true, position: 'bottom-end', icon, title: msg, showConfirmButton: false, timer: 3000 });
 };
 
+const styleHeader = (worksheet, bgColor = 'FF2563EB') => {
+  const headerRow = worksheet.getRow(1);
+  headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  headerRow.fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: bgColor }
+  };
+  headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+};
+
+const applyBorders = (worksheet) => {
+  worksheet.eachRow((row) => {
+    row.eachCell((cell) => {
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+  });
+};
+
 export async function exportExcel(configOrType, clients, payments) {
   try {
     const workbook = new ExcelJS.Workbook();
