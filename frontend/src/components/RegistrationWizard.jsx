@@ -80,9 +80,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
 
   const [formData, setFormData] = useState({
     nombre: '', documento: '', facturacion: false, telefono: '', email: '',
-    tipoEntrega: 'fija', direccion: '', barrio: '',
+    tipoEntrega: 'fija', direccion: '', detalles: '', barrio: '',
     days_address_1: 'Lunes,Martes,Miércoles,Jueves,Viernes',
-    direccion2: '', barrio2: '', days_address_2: '',
+    direccion2: '', detalles2: '', barrio2: '', days_address_2: '',
     plan: initialPlan,
     alergias: '', restricciones: '', tieneCocas: false,
     comprobanteFile: null, comprobanteName: '', fecha_inicio: '',
@@ -129,7 +129,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   const [showMap2, setShowMap2] = useState(false);
   const [mapPos2, setMapPos2] = useState(null);
 
-  const checkCoverageByCoords = (lat, lng, num) => {
+  const checkCoverageByCoords = async (lat, lng, num) => {
     const setStatus = num === 1 ? setCoverage1 : setCoverage2;
     setStatus({ status: 'loading', zone: null });
     const pt = turf.point([lng, lat]);
@@ -142,9 +142,35 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       }
     });
 
+    let reverseAddress = '';
+    let reverseBarrio = '';
+
+    // Intentar reverse geocoding para autocompletar el campo de dirección
+    try {
+      const apiKey = import.meta.env.VITE_MAPBOX_API_KEY;
+      if (apiKey) {
+        const res = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json`, {
+          params: { access_token: apiKey, limit: 1 }
+        });
+        if (res.data && res.data.features && res.data.features.length > 0) {
+          reverseAddress = res.data.features[0].place_name.split(',')[0];
+          
+          // Try to extract neighborhood if available
+          const hoodFeature = res.data.features[0].context?.find(c => c.id.includes('neighborhood') || c.id.includes('locality'));
+          if (hoodFeature) {
+            reverseBarrio = hoodFeature.text;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("Reverse geocoding failed", err);
+    }
+
     if (zoneName) {
       const barrioVal = num === 1 ? formData.barrio : formData.barrio2;
-      if (barrioVal && !isBarrioCompatibleWithZone(barrioVal, zoneName)) {
+      const finalBarrio = barrioVal || reverseBarrio;
+      
+      if (finalBarrio && !isBarrioCompatibleWithZone(finalBarrio, zoneName)) {
         setStatus({ status: 'mismatch', zone: zoneName });
       } else {
         setStatus({ status: 'ok', zone: zoneName });
@@ -152,7 +178,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           ...prev, 
           [`zona_${num}`]: zoneName, 
           [`lat_${num}`]: lat, 
-          [`lng_${num}`]: lng 
+          [`lng_${num}`]: lng,
+          ...(reverseAddress && !prev[`direccion${num === 1 ? '' : '2'}`] ? { [`direccion${num === 1 ? '' : '2'}`]: reverseAddress } : {}),
+          ...(reverseBarrio && !prev[`barrio${num === 1 ? '' : '2'}`] ? { [`barrio${num === 1 ? '' : '2'}`]: reverseBarrio } : {})
         }));
       }
     } else {
@@ -709,7 +737,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         plan: formData.plan.charAt(0).toUpperCase() + formData.plan.slice(1),
         needs_cocas: !formData.tieneCocas,
         delivery_type: formData.tipoEntrega === 'fija' ? 'Fija' : 'Hibrida',
-        address_1: formData.direccion,
+        address_1: formData.detalles ? `${formData.direccion} (${formData.detalles})` : formData.direccion,
         barrio_1: formData.barrio,
         days_address_1: formData.days_address_1,
         zona_1: formData.zona_1 || '',
@@ -722,12 +750,12 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       };
 
       if (formData.tipoEntrega === 'hibrida') {
-        payload.address_2 = formData.direccion2;
+        payload.address_2 = formData.detalles2 ? `${formData.direccion2} (${formData.detalles2})` : formData.direccion2;
         payload.barrio_2 = formData.barrio2;
         payload.days_address_2 = formData.days_address_2;
-        payload.zona_2 = formData.zona_2 || '';
-        payload.lat_2 = formData.lat_2 || '';
-        payload.lng_2 = formData.lng_2 || '';
+        payload.zona_2 = formData.zona_2 || '',
+        payload.lat_2 = formData.lat_2 || '',
+        payload.lng_2 = formData.lng_2 || ''
       }
 
       // Añadir campos al FormData, asegurando que no se manden 'undefined'
@@ -769,9 +797,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           // Reset Form
           setFormData({
             nombre: '', documento: '', facturacion: false, telefono: '', email: '',
-            tipoEntrega: 'fija', direccion: '', barrio: '',
+            tipoEntrega: 'fija', direccion: '', detalles: '', barrio: '',
             days_address_1: 'Lunes,Martes,Miércoles,Jueves,Viernes',
-            direccion2: '', barrio2: '', days_address_2: '',
+            direccion2: '', detalles2: '', barrio2: '', days_address_2: '',
             plan: initialPlan, alergias: '', restricciones: '',
             tieneCocas: false, terms: false, comprobanteFile: null, comprobanteName: ''
           });
@@ -1177,6 +1205,17 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         )}
                       </div>
                     </div>
+
+                    <div className="mt-3">
+                      <input 
+                        type="text"
+                        className="bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full focus:ring-2 focus:ring-orange-500"
+                        value={formData.detalles}
+                        onChange={e => setFormData({...formData, detalles: e.target.value})}
+                        placeholder="Detalles (Apto, Torre, Oficina, etc.) - Opcional"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1 ml-1">Escribe aquí especificaciones si usaste el mapa para ubicarte.</p>
+                    </div>
                     
                     {/* Badge de Cobertura */}
                     <div className="mt-2 flex flex-col gap-2">
@@ -1309,6 +1348,17 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         </div>
                       </div>
                       
+                      <div className="mt-3">
+                        <input 
+                          type="text"
+                          className="bg-white border-none rounded-xl px-4 py-3 text-sm font-medium text-slate-900 transition-all w-full focus:ring-2 focus:ring-orange-500"
+                          value={formData.detalles2}
+                          onChange={e => setFormData({...formData, detalles2: e.target.value})}
+                          placeholder="Detalles (Apto, Torre, Oficina, etc.) - Opcional"
+                        />
+                        <p className="text-[10px] text-gray-400 mt-1 ml-1">Escribe aquí especificaciones si usaste el mapa para ubicarte.</p>
+                      </div>
+
                       {/* Badge de Cobertura 2 */}
                       <div className="mt-2 min-h-[24px] flex flex-col gap-2">
                         <div className="flex items-center gap-2 flex-wrap">
