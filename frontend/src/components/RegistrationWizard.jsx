@@ -37,7 +37,7 @@ const plans = {
   mensual: { name: 'Mensual', price: 285000 }
 };
 
-export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'quincenal', onUpdate, plans: dynamicPlans }) {
+export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', onUpdate, plans: dynamicPlans }) {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -82,7 +82,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
     tipoEntrega: 'fija', direccion: '', barrio: '',
     days_address_1: 'Lunes,Martes,Miércoles,Jueves,Viernes',
     direccion2: '', barrio2: '', days_address_2: '',
-    plan: initialPlan || 'quincenal',
+    plan: initialPlan,
     alergias: '', restricciones: '', tieneCocas: false,
     comprobanteFile: null, comprobanteName: '', fecha_inicio: '',
     paymentMethod: 'bancolombia', terms: false
@@ -90,19 +90,19 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
 
   const isInitialLoad = useRef(true);
 
-  // Persistencia: Guardar progreso en localStorage (invitados)
+  // Persistencia: Guardar progreso en sessionStorage (invitados)
   useEffect(() => {
     if (isInitialLoad.current) return; // No guardar durante la carga inicial
     
     const dataToSave = { ...formData };
     delete dataToSave.comprobanteFile;
     delete dataToSave.comprobanteName;
-    localStorage.setItem('wizard_progress', JSON.stringify(dataToSave));
+    sessionStorage.setItem('wizard_progress', JSON.stringify(dataToSave));
   }, [formData]);
 
   // Cargar progreso al montar
   useEffect(() => {
-    const saved = localStorage.getItem('wizard_progress');
+    const saved = sessionStorage.getItem('wizard_progress');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -179,7 +179,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       // Reiniciar estado si se abre de nuevo
       setStep(1);
       setFieldErrors({});
-      setFormData(prev => ({ ...prev, plan: initialPlan || 'quincenal' }));
+      setFormData(prev => ({ ...prev, plan: initialPlan }));
 
       // Cargar disponibilidad fresca cada vez que se abre
       const fetchAvailability = async () => {
@@ -237,6 +237,15 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       }
     }
   }, [isOpen, initialPlan]);
+
+  // Autocorrección: Limpiar el plan si está en caché pero ya no existe en la BD
+  useEffect(() => {
+    if (formData.plan && Object.keys(activePlans).length > 0) {
+      if (!activePlans[formData.plan]) {
+        setFormData(prev => ({ ...prev, plan: '' }));
+      }
+    }
+  }, [formData.plan, activePlans]);
 
   // Cargar zonas de cobertura desde el servidor en tiempo real
   useEffect(() => {
@@ -435,7 +444,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
           errors[issue.path[0]] = issue.message;
         });
       }
-      if (!formData.plan) {
+      if (!formData.plan || !activePlans[formData.plan]) {
         errors.plan = 'Por favor selecciona un plan para continuar';
       }
       // Validate documento is only digits
@@ -511,7 +520,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       return formData.nombre.trim().length >= 3 &&
              formData.documento.trim().length >= 5 &&
              !!formData.fecha_inicio &&
-             !!formData.plan;
+             !!formData.plan && !!activePlans[formData.plan];
     }
     if (step === 2) {
       const cleanedPhone = formData.telefono.replace(/\D/g, '');
@@ -655,11 +664,14 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
       planPrice = currentPlan.price - discount;
     }
 
+    const formattedEndDate = endDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '');
+
     return {
       planPrice,
       discount,
       effectiveDays: baseDays - holidaysFound,
-      holidaysFound
+      holidaysFound,
+      endDateStr: formattedEndDate
     };
   };
 
@@ -902,14 +914,20 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                         return (
                           <button 
                             key={id}
+                            type="button"
                             onClick={() => setFormData({...formData, plan: id})}
                             className={`p-4 rounded-2xl border-2 transition-all text-left relative overflow-hidden ${
-                              formData.plan === id ? 'border-orange-500 bg-orange-50 shadow-sm' : 'border-gray-100 hover:border-orange-200'
+                              formData.plan === id ? 'border-orange-500 ring-2 ring-orange-500 bg-orange-50 shadow-md' : 'border-gray-200 bg-white hover:border-orange-300'
                             }`}
                           >
-                            <div className="text-[10px] font-black uppercase text-gray-400 mb-1">{p.name}</div>
+                            <div className={`text-[10px] font-black uppercase mb-1 ${formData.plan === id ? 'text-orange-700' : 'text-gray-400'}`}>{p.name}</div>
                             <div className="text-lg font-black text-orange-600">${(priceDetails.planPrice/1000).toFixed(0)}K</div>
-                            {priceDetails.discount > 0 && (
+                            {formData.plan === id && (
+                              <div className="absolute top-2 right-2 text-orange-500 animate-in zoom-in">
+                                <CheckCircle2 size={18} />
+                              </div>
+                            )}
+                            {priceDetails.discount > 0 && formData.plan !== id && (
                                <div className="absolute top-2 right-2 bg-orange-100 text-orange-600 text-[8px] font-black uppercase px-2 py-0.5 rounded-full">
                                  - Festivo
                                </div>
@@ -951,10 +969,12 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
                             
                             const formattedDate = current.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '');
                             
+                            const endStr = formData.plan ? ` y terminará el ${getPlanPriceDetails(formData.plan).endDateStr}` : '';
+                            
                             if (wasShifted) {
-                              return `Por ser festivo, tu servicio iniciará el ${formattedDate}.`;
+                              return `Por ser festivo, tu servicio iniciará el ${formattedDate}${endStr}.`;
                             } else {
-                              return `Tu servicio iniciará el ${formattedDate}.`;
+                              return `Tu servicio iniciará el ${formattedDate}${endStr}.`;
                             }
                           })()}
                         </p>
@@ -1538,12 +1558,12 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = 'qui
             </button>
           )}
           <button 
-            disabled={loading}
+            disabled={loading || !stepValid}
             onClick={handleNext}
             className={`flex-[2] py-4 rounded-2xl font-black transition-all flex items-center justify-center gap-2 shadow-lg ${
               stepValid 
                 ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/30 active:scale-95' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-70'
             }`}
           >
             {loading ? (

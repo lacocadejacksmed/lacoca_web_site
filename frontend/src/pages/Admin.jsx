@@ -215,8 +215,8 @@ export default function Admin() {
       title: 'Nuevo Plan',
       html:
         '<input id="swal-p1" class="swal2-input" placeholder="Nombre (ej: Semanal)">' +
-        '<input id="swal-p2" type="number" class="swal2-input" placeholder="Precio Base">' +
-        '<input id="swal-p3" type="number" class="swal2-input" placeholder="Días de Duración">',
+        '<input id="swal-p2" type="number" min="0" class="swal2-input" placeholder="Precio Base">' +
+        '<input id="swal-p3" type="number" min="0" class="swal2-input" placeholder="Días de Duración">',
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'Guardar',
@@ -255,8 +255,8 @@ export default function Admin() {
       title: `Editar Plan ${plan.nombre}`,
       html:
         `<input id="swal-p1" class="swal2-input" placeholder="Nombre" value="${plan.nombre}">` +
-        `<input id="swal-p2" type="number" class="swal2-input" placeholder="Precio Base" value="${plan.precio_base}">` +
-        `<input id="swal-p3" type="number" class="swal2-input" placeholder="Días de Duración" value="${plan.dias_duracion}">`,
+        `<input id="swal-p2" type="number" min="0" class="swal2-input" placeholder="Precio Base" value="${plan.precio_base}">` +
+        `<input id="swal-p3" type="number" min="0" class="swal2-input" placeholder="Días de Duración" value="${plan.dias_duracion}">`,
       focusConfirm: false,
       showCancelButton: true,
       confirmButtonText: 'Guardar',
@@ -1129,6 +1129,7 @@ export default function Admin() {
                   <div className="flex gap-2">
                     <input 
                       type="date"
+                      min={new Date().toISOString().split('T')[0]}
                       className="bg-gray-50 border-none rounded-xl px-4 py-2 text-sm font-medium"
                       value={newFeriado.fecha}
                       onChange={e => setNewFeriado({...newFeriado, fecha: e.target.value})}
@@ -1801,7 +1802,7 @@ export default function Admin() {
         isOpen={isCreatorModalOpen}
         onClose={() => setIsCreatorModalOpen(false)} 
         onUpdate={fetchData}
-        initialPlan="quincenal"
+        initialPlan=""
         plans={plans}
       />
       <ExportModal
@@ -1846,7 +1847,7 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
     }
     setEditErrors({});
     try {
-      const response = await api.put(`/api/admin/suscripciones/${comprobante.subscriptionId}`, {
+      const response = await api.put(`/admin/suscripciones/${comprobante.subscriptionId}`, {
         nombre: editedData.clienteNombre,
         email: editedData.clienteEmail,
         celular: editedData.clienteCelular,

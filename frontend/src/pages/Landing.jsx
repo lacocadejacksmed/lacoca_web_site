@@ -32,7 +32,7 @@ export default function Landing() {
   const [isPaymentInfoOpen, setIsPaymentInfoOpen] = useState(false);
   const [isNavbarMenuOpen, setIsNavbarMenuOpen] = useState(false);
   const [isMenuExpanded, setIsMenuExpanded] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState('quincenal');
+  const [selectedPlan, setSelectedPlan] = useState('');
   const [weeklyMenu, setWeeklyMenu] = useState({ fechas: 'Del 11 al 15 de Mayo', imagen_url: '/weekly_menu_preview_1778475988702.png' });
   const [planes, setPlanes] = useState([]);
 

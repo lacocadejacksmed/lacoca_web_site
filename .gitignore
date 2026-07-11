@@ -85,3 +85,11 @@ test-*.cjs
 /uploads/
 *.sqlite
 *.db
+
+# Archivos de contexto y pruebas (No necesarios para el commit)
+/*.txt
+/*.pdf
+/Ficha.md
+/scripts/
+/database/
+/stress_test.js

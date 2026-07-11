@@ -12,7 +12,8 @@ const nombreField = z
   .min(1, 'El nombre es obligatorio')
   .min(3, 'El nombre debe tener al menos 3 caracteres')
   .max(80, 'El nombre es demasiado largo')
-  .regex(nameRegex, 'El nombre solo puede contener letras y espacios');
+  .regex(nameRegex, 'El nombre solo puede contener letras y espacios')
+  .refine(val => !['null', 'undefined', 'nan'].includes(val.toLowerCase().trim()), 'Nombre no permitido (palabra reservada)');
 
 /** Campo email */
 const emailField = z

@@ -30,7 +30,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
   const location = useLocation();
   const [isWizardOpen, setIsWizardOpen] = useState(defaultWizardOpen);
 
-  const [selectedPlan, setSelectedPlan] = useState('quincenal');
+  const [selectedPlan, setSelectedPlan] = useState('');
   const [isMenuExpanded, setIsMenuExpanded] = useState(false);
   const [weeklyMenu, setWeeklyMenu] = useState({ 
     fechas: 'Del 11 al 15 de Mayo', 

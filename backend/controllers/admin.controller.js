@@ -315,6 +315,14 @@ const updateComprobanteStatus = async (req, res) => {
       if (sub) {
         // Desactivar cualquier suscripción activa previa para este cliente
         if (cli) {
+          const oldSub = await Suscripcion.findOne({
+            where: { 
+              cliente_cedula: cli.cedula, 
+              estado: "Activo",
+              id: { [Op.ne]: sub.id }
+            }
+          });
+
           await Suscripcion.update(
             { estado: "Cancelado" },
             { 
@@ -325,10 +333,21 @@ const updateComprobanteStatus = async (req, res) => {
               } 
             }
           );
+
+          // Heredar e inyectar la fecha_inicio si la nueva suscripción no la tiene
+          if (!sub.fecha_inicio && oldSub && oldSub.fecha_inicio) {
+             sub.fecha_inicio = oldSub.fecha_inicio;
+          }
         }
 
-        sub.estado = "Activo";
-        await sub.save();
+        // Actualizar explícitamente para evitar que se sobrescriba o se pierda (quede en NULL)
+        await Suscripcion.update(
+          { 
+            estado: "Activo", 
+            fecha_inicio: sub.fecha_inicio // Forzamos inyectar la fecha
+          },
+          { where: { id: sub.id } }
+        );
       }
       if (cli) {
         cli.esta_activo = true;

@@ -21,7 +21,7 @@ export default function ClientCreatorModal({ onClose, onUpdate, plans }) {
   const [availability, setAvailability] = useState([]);
   const [recognizedClient, setRecognizedClient] = useState(null);
 
-  const initialPlanId = plans && Object.keys(plans).length > 0 ? Object.keys(plans)[0] : 'quincenal';
+  const initialPlanId = '';
 
   const {
     register,

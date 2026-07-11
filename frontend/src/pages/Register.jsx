@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, User, UserPlus, Users, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -82,7 +82,7 @@ export default function Register() {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse) => {
+  const handleGoogleSuccess = useCallback(async (credentialResponse) => {
     setLoading(true);
     try {
       const res = await api.post('/auth/google', { credential: credentialResponse.credential });
@@ -107,7 +107,15 @@ export default function Register() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  const handleGoogleError = useCallback(() => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'El registro con Google falló'
+    });
+  }, []);
 
   // Render a field status icon
   const FieldStatus = ({ name }) => {
@@ -187,9 +195,10 @@ export default function Register() {
                 <Users className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.cedula ? 'text-red-400' : 'text-slate-300'}`} size={16} />
                 <input 
                   type="text"
+                  maxLength="12"
                   {...register('cedula', {
                     onChange: (e) => {
-                      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                      e.target.value = e.target.value.replace(/\D/g, '');
                     }
                   })}
                   className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
@@ -208,9 +217,10 @@ export default function Register() {
                 <div className={`absolute left-4 top-1/2 -translate-y-1/2 font-bold text-xs transition-colors ${errors.celular ? 'text-red-400' : 'text-slate-300'}`}>📞</div>
                 <input 
                   type="text"
+                  maxLength="10"
                   {...register('celular', {
                     onChange: (e) => {
-                      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      e.target.value = e.target.value.replace(/\D/g, '');
                     }
                   })}
                   placeholder="3001234567"
@@ -283,13 +293,7 @@ export default function Register() {
           <div className="flex justify-center">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
-              onError={() => {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Error',
-                  text: 'El registro con Google falló'
-                });
-              }}
+              onError={handleGoogleError}
               useOneTap
               shape="pill"
               theme="outline"

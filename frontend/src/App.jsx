@@ -7,17 +7,53 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ClientDashboard from './pages/ClientDashboard';
 
+import { useState, useEffect } from 'react';
+import api from './services/api';
+
 // Componente para proteger rutas con roles
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const token = localStorage.getItem('token');
-  const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+  const [isAuthorized, setIsAuthorized] = useState(null);
 
-  if (!token) {
-    return <Navigate to="/login" replace />;
+  useEffect(() => {
+    if (!token) {
+      setIsAuthorized(false);
+      return;
+    }
+    
+    // Si la ruta no es solo para admin, con tener token dejamos pasar 
+    // (el backend igual protegerá sus propios endpoints)
+    if (!adminOnly) {
+      setIsAuthorized(true);
+      return;
+    }
+
+    // Validación estricta con el backend para evitar manipulación del localStorage
+    api.get('/auth/me')
+      .then(res => {
+        if (res.data?.success && res.data.usuario?.rol === 'admin') {
+          // Actualizamos el localStorage en caso de que lo hayan corrompido, pero sea admin real
+          localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
+          setIsAuthorized(true);
+        } else {
+          setIsAuthorized(false);
+        }
+      })
+      .catch(() => {
+        setIsAuthorized(false);
+      });
+  }, [token, adminOnly]);
+
+  if (isAuthorized === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
   }
 
-  if (adminOnly && usuario.rol !== 'admin') {
-    return <Navigate to="/dashboard" replace />;
+  if (!isAuthorized) {
+    return <Navigate to={token ? "/dashboard" : "/login"} replace />;
   }
 
   return children;

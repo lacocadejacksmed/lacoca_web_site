@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, LogIn, ArrowLeft } from 'lucide-react';
@@ -50,7 +50,7 @@ export default function Login() {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse) => {
+  const handleGoogleSuccess = useCallback(async (credentialResponse) => {
     setLoading(true);
     try {
       const res = await api.post('/auth/google', { credential: credentialResponse.credential });
@@ -75,7 +75,15 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
+
+  const handleGoogleError = useCallback(() => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'El inicio de sesión con Google falló'
+    });
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#FFF6EA] flex items-center justify-center p-6">
@@ -159,13 +167,7 @@ export default function Login() {
           <div className="flex justify-center">
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
-              onError={() => {
-                Swal.fire({
-                  icon: 'error',
-                  title: 'Error',
-                  text: 'El inicio de sesión con Google falló'
-                });
-              }}
+              onError={handleGoogleError}
               useOneTap
               shape="pill"
               theme="outline"

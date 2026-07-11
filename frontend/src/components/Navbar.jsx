@@ -60,11 +60,11 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
           <div className={`hidden lg:flex items-center gap-8 backdrop-blur-sm px-8 py-3 rounded-full border transition-all ${isScrolled ? 'bg-white/10 border-white/20' : 'bg-[#2B2118]/5 border-[#2B2118]/10'}`}>
             {menuLinks.map((link) => (
               link.href ? (
-                <a key={link.name} href={link.href} className={`font-black text-[11px] uppercase tracking-widest transition-colors no-underline ${isScrolled ? 'text-white hover:text-[#FFF6EA]' : 'text-[#2B2118]/70 hover:text-[#F2641A]'}`}>
+                <a key={link.name} href={link.href} className={`font-black text-[13px] uppercase tracking-widest transition-colors no-underline ${isScrolled ? 'text-white hover:text-[#FFF6EA]' : 'text-[#2B2118]/70 hover:text-[#F2641A]'}`}>
                   {link.name}
                 </a>
               ) : (
-                <button key={link.name} onClick={link.onClick} className={`font-black text-[11px] uppercase tracking-widest transition-colors bg-transparent border-none cursor-pointer ${isScrolled ? 'text-white hover:text-[#FFF6EA]' : 'text-[#2B2118]/70 hover:text-[#F2641A]'}`}>
+                <button key={link.name} onClick={link.onClick} className={`font-black text-[13px] uppercase tracking-widest transition-colors bg-transparent border-none cursor-pointer ${isScrolled ? 'text-white hover:text-[#FFF6EA]' : 'text-[#2B2118]/70 hover:text-[#F2641A]'}`}>
                   {link.name}
                 </button>
               )
@@ -98,7 +98,7 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
               ) : (
                 <a
                   href="/login"
-                  className="bg-[#F2641A] hover:bg-[#F2641A]/90 text-white px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] no-underline shadow-lg shadow-[#F2641A]/20 active:scale-95 transition-all flex items-center gap-2"
+                  className="bg-[#F2641A] hover:bg-[#F2641A]/90 text-white px-6 py-3 rounded-full text-[13px] font-black uppercase tracking-[0.15em] no-underline shadow-lg shadow-[#F2641A]/20 active:scale-95 transition-all flex items-center gap-2"
                 >
                   <User size={14} strokeWidth={3} />
                   Ingresar
@@ -109,7 +109,7 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
             {/* CTA Reservar - Hidden on very small mobile, visible from M up */}
             <button
               onClick={onOpenWizard}
-              className={`hidden sm:flex text-[10px] font-black uppercase tracking-widest py-3 px-6 rounded-full transition-all shadow-xl active:scale-95 border-none cursor-pointer ${isScrolled ? 'bg-white text-[#F2641A] hover:bg-[#FFF6EA]' : 'bg-[#F2641A] text-white hover:bg-[#F2641A]/90 shadow-[#F2641A]/20'}`}
+              className={`hidden sm:flex text-[13px] font-black uppercase tracking-widest py-3.5 px-8 rounded-full transition-all shadow-xl active:scale-95 border-none cursor-pointer ${isScrolled ? 'bg-white text-[#F2641A] hover:bg-[#FFF6EA]' : 'bg-[#F2641A] text-white hover:bg-[#F2641A]/90 shadow-[#F2641A]/20'}`}
             >
               Reservar
             </button>
