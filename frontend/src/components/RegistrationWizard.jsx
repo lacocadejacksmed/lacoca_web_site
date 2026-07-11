@@ -69,7 +69,8 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         const id = (p.nombre || p.name || '').toLowerCase();
         formatted[id] = {
           name: p.nombre || p.name,
-          price: Number(p.precio || p.price || p.precio_base || 0)
+          price: Number(p.precio || p.price || p.precio_base || 0),
+          days: Number(p.dias_duracion || p.dias || p.days || 0)
         };
       });
       return formatted;
@@ -238,11 +239,16 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     }
   }, [isOpen, initialPlan]);
 
-  // Autocorrección: Limpiar el plan si está en caché pero ya no existe en la BD
+  // Autocorrección: Emparejar el plan corto con el ID largo de la BD, o limpiarlo si no existe
   useEffect(() => {
     if (formData.plan && Object.keys(activePlans).length > 0) {
       if (!activePlans[formData.plan]) {
-        setFormData(prev => ({ ...prev, plan: '' }));
+        const matchedKey = Object.keys(activePlans).find(key => key.includes(formData.plan));
+        if (matchedKey) {
+          setFormData(prev => ({ ...prev, plan: matchedKey }));
+        } else {
+          setFormData(prev => ({ ...prev, plan: '' }));
+        }
       }
     }
   }, [formData.plan, activePlans]);
@@ -534,7 +540,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       return !!base;
     }
     if (step === 4) {
-      return !!formData.comprobanteFile && !!formData.terms;
+      return !!formData.plan && !!activePlans[formData.plan] && !!formData.comprobanteFile && !!formData.terms;
     }
     return true;
   };
