@@ -62,6 +62,7 @@ router.get("/admin/exportar/diario.pdf", [protect, admin], adminController.expor
 router.get("/admin/feriados", [protect, admin], adminController.getFeriados);
 router.post("/admin/feriados", [protect, admin], adminController.addFeriado);
 router.delete("/admin/feriados/:id", [protect, admin], adminController.deleteFeriado);
+router.post("/admin/feriados/toggle", [protect, admin], adminController.toggleFeriado);
 
 // Cobertura (Zonas Geográficas)
 router.get("/admin/cobertura", [protect, admin], adminController.getCoverage);

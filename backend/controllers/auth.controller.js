@@ -195,8 +195,7 @@ exports.getMySubscriptions = async (req, res) => {
         });
 
         // Obtener feriados para el cálculo exacto de días
-        const feriadosDB = await Feriado.findAll();
-        const feriadosArray = feriadosDB.map(f => f.fecha);
+        const feriadosDocs = await Feriado.findAll({ attributes: ['fecha', 'activo'] });
 
         const responseSubs = [];
 

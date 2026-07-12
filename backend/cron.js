@@ -13,8 +13,7 @@ const checkSubscriptionsExpiration = async () => {
             include: [{ model: Plan }]
         });
 
-        const feriadosDocs = await Feriado.findAll({ attributes: ['fecha'] });
-        const feriadosArray = feriadosDocs.map(f => f.fecha);
+        const feriadosDocs = await Feriado.findAll({ attributes: ['fecha', 'activo'] });
 
         let vencidasCount = 0;
 
@@ -24,7 +23,7 @@ const checkSubscriptionsExpiration = async () => {
                     sub.fecha_inicio,
                     sub.Plan.nombre,
                     sub.Plan.dias_duracion,
-                    feriadosArray,
+                    feriadosDocs,
                     sub.estado
                 );
 

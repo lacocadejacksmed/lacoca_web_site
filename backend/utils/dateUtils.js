@@ -1,6 +1,6 @@
 const { getHolidaysInRange } = require('./colombianHolidays');
 
-const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feriadosArray, estado) => {
+const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feriadosDocs = [], estado) => {
     if (!fechaInicioStr) return { fechaVencimiento: null, diasRestantes: 0 };
     
     // Determinar semanas del plan
@@ -20,9 +20,16 @@ const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feria
     // Utilizamos mediodía para evitar problemas de zona horaria
     const start = new Date(year, month - 1, day, 12, 0, 0);
     
+    const dbActive = feriadosDocs.filter(f => f.activo !== false).map(f => typeof f === 'string' ? f : f.fecha);
+    const dbIgnored = new Set(feriadosDocs.filter(f => f.activo === false).map(f => typeof f === 'string' ? null : f.fecha));
+
     const currentYear = start.getFullYear();
-    const autoHolidays = getHolidaysInRange(currentYear, currentYear + 1).map(h => h.date);
-    const combinedHolidays = [...new Set([...autoHolidays, ...(feriadosArray || [])])];
+    let autoHolidays = getHolidaysInRange(currentYear, currentYear + 1).map(h => h.date);
+    
+    // Filtramos los ignorados
+    autoHolidays = autoHolidays.filter(date => !dbIgnored.has(date));
+
+    const combinedHolidays = [...new Set([...autoHolidays, ...dbActive])];
     
     const feriadosSet = new Set(combinedHolidays);
 

@@ -14,6 +14,10 @@ const Feriado = sequelize.define('Feriado', {
     descripcion: {
         type: DataTypes.STRING,
         allowNull: true
+    },
+    activo: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true
     }
 }, {
     timestamps: false,

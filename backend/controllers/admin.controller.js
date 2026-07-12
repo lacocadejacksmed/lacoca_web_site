@@ -91,15 +91,14 @@ const getDashboardStats = async (req, res) => {
     const active = activeClients.length;
     let expiring = 0;
 
-    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha'] });
-    const feriadosArray = feriadosDocs.map(f => f.fecha);
+    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha', 'activo'] });
 
     activeClients.forEach(sub => {
       const { diasRestantes } = calcularVencimiento(
         sub.fecha_inicio,
         sub.Plan ? sub.Plan.nombre : '',
         sub.Plan ? sub.Plan.dias_duracion : 0,
-        feriadosArray,
+        feriadosDocs,
         sub.estado
       );
       if (diasRestantes <= 5 && diasRestantes > 0) {
@@ -551,8 +550,7 @@ const getClientes = async (req, res) => {
     });
 
     // Calcular vencimientos de forma centralizada
-    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha'] });
-    const feriadosArray = feriadosDocs.map(f => f.fecha);
+    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha', 'activo'] });
 
     const clientesConVencimiento = clientes.map(cliente => {
       const c = cliente.toJSON();
@@ -562,7 +560,7 @@ const getClientes = async (req, res) => {
             sub.fecha_inicio,
             sub.Plan ? sub.Plan.nombre : '',
             sub.Plan ? sub.Plan.dias_duracion : 0,
-            feriadosArray,
+            feriadosDocs,
             sub.estado
           );
           return { ...sub, fecha_vencimiento: fechaVencimiento, dias_restantes: diasRestantes };
@@ -586,8 +584,7 @@ const getSubscriptions = async (req, res) => {
       order: [["fecha_creacion", "DESC"]],
     });
 
-    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha'] });
-    const feriadosArray = feriadosDocs.map(f => f.fecha);
+    const feriadosDocs = await Feriado.findAll({ attributes: ['fecha', 'activo'] });
 
     const subsConVencimiento = subs.map(subModel => {
       const sub = subModel.toJSON();
@@ -595,7 +592,7 @@ const getSubscriptions = async (req, res) => {
         sub.fecha_inicio,
         sub.Plan ? sub.Plan.nombre : '',
         sub.Plan ? sub.Plan.dias_duracion : 0,
-        feriadosArray,
+        feriadosDocs,
         sub.estado
       );
       return { ...sub, fecha_vencimiento: fechaVencimiento, dias_restantes: diasRestantes };
@@ -823,6 +820,28 @@ const deleteFeriado = async (req, res) => {
   }
 };
 
+const toggleFeriado = async (req, res) => {
+  try {
+    const { fecha, descripcion } = req.body;
+    if (!fecha) return res.status(400).json({ success: false, message: 'Falta la fecha' });
+    
+    let feriado = await Feriado.findOne({ where: { fecha } });
+    if (feriado) {
+      feriado.activo = !feriado.activo;
+      await feriado.save();
+    } else {
+      feriado = await Feriado.create({ 
+        fecha, 
+        descripcion: descripcion || 'Ignorado por Administrador', 
+        activo: false 
+      });
+    }
+    res.json({ success: true, feriado });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const getRepartidores = async (req, res) => {
   try {
     const repartidores = await Usuario.findAll({
@@ -982,6 +1001,7 @@ module.exports = {
   getFeriados,
   addFeriado,
   deleteFeriado,
+  toggleFeriado,
   getRepartidores,
   assignRepartidor,
   getCoverage,

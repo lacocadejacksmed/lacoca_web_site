@@ -1204,22 +1204,47 @@ export default function Admin() {
                             <span className="text-sm font-bold text-slate-500">{f.descripcion}</span>
                           </td>
                           <td className="px-8 py-4">
-                            {!f.isAuto ? (
-                              <button 
-                                onClick={async () => {
-                                  await api.delete(`/admin/feriados/${f.id}`);
-                                  fetchData();
-                                }}
-                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                                title="Eliminar festivo manual"
-                              >
-                                <X size={16} strokeWidth={3} />
-                              </button>
-                            ) : (
-                              <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-full border border-gray-200">
-                                Sistema
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2">
+                              {!f.isAuto && f.activo !== false && (
+                                <button 
+                                  onClick={async () => {
+                                    await api.delete(`/admin/feriados/${f.id}`);
+                                    fetchData();
+                                  }}
+                                  className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                  title="Eliminar festivo manual"
+                                >
+                                  <X size={16} strokeWidth={3} />
+                                </button>
+                              )}
+                              
+                              {(f.isAuto || f.activo === false) && (
+                                <button
+                                  onClick={async () => {
+                                    await api.post('/admin/feriados/toggle', { fecha: f.fecha, descripcion: f.descripcion });
+                                    fetchData();
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                    f.activo !== false
+                                      ? 'bg-red-50 text-red-600 hover:bg-red-100'
+                                      : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                  }`}
+                                >
+                                  {f.activo !== false ? 'Deshabilitar' : 'Rehabilitar'}
+                                </button>
+                              )}
+                              
+                              {f.isAuto && f.activo !== false && (
+                                <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-full border border-gray-200">
+                                  Sistema
+                                </span>
+                              )}
+                              {f.activo === false && (
+                                <span className="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-1 rounded-full border border-red-200">
+                                  Ignorado
+                                </span>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       ))}

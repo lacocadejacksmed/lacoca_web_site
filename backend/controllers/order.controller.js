@@ -386,12 +386,11 @@ const checkClient = async (req, res) => {
 
     if (subActiva) {
         const Feriado = require('../models/Feriado');
+        const feriadosDocs = await Feriado.findAll({ attributes: ['fecha', 'activo'] });
         const { calcularVencimiento } = require('../utils/dateUtils');
-        const feriadosDB = await Feriado.findAll();
-        const feriadosArray = feriadosDB.map(f => f.fecha);
         const planNombre = subActiva.Plan ? subActiva.Plan.nombre : null;
         const planDias = subActiva.Plan ? subActiva.Plan.dias_duracion : 5;
-        const calc = calcularVencimiento(subActiva.fecha_inicio, planNombre, planDias, feriadosArray, subActiva.estado);
+        const calc = calcularVencimiento(subActiva.fecha_inicio, planNombre, planDias, feriadosDocs, subActiva.estado);
 
         const isExpiringSoon = calc.diasRestantes <= 5;
         const today = new Date().getDay();
