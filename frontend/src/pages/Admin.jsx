@@ -58,6 +58,7 @@ ChartJS.register(
 );
 import api, { API_URL } from '../services/api';
 import { exportExcel } from '../services/exportService';
+import { getHolidaysInRange } from '../utils/colombianHolidays';
 import { jsPDF } from "jspdf";
 import Swal from 'sweetalert2';
 import { validateComprobanteEdit, validateConfig, validateConfigValue, validatePlan, validateMenu, validateFeriado } from '../schemas/validationSchemas';
@@ -455,7 +456,20 @@ export default function Admin() {
 
       const resFeriados = await api.get('/admin/feriados');
       if (resFeriados.data.success) {
-        setFeriados(resFeriados.data.feriados);
+        const currentYear = new Date().getFullYear();
+        const autoHolidays = getHolidaysInRange(currentYear, currentYear + 1).map(h => ({
+          id: `auto-${h.date}`,
+          fecha: h.date,
+          descripcion: `${h.name} (Automático Ley Emiliani)`,
+          isAuto: true
+        }));
+        
+        const dbHolidays = resFeriados.data.feriados || [];
+        const dbDates = dbHolidays.map(d => d.fecha);
+        const filteredAuto = autoHolidays.filter(a => !dbDates.includes(a.fecha));
+        
+        const combined = [...filteredAuto, ...dbHolidays].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+        setFeriados(combined);
       }
 
       const resMenu = await api.get('/menu');
@@ -1190,15 +1204,22 @@ export default function Admin() {
                             <span className="text-sm font-bold text-slate-500">{f.descripcion}</span>
                           </td>
                           <td className="px-8 py-4">
-                            <button 
-                              onClick={async () => {
-                                await api.delete(`/admin/feriados/${f.id}`);
-                                fetchData();
-                              }}
-                              className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                            >
-                              <X size={16} strokeWidth={3} />
-                            </button>
+                            {!f.isAuto ? (
+                              <button 
+                                onClick={async () => {
+                                  await api.delete(`/admin/feriados/${f.id}`);
+                                  fetchData();
+                                }}
+                                className="p-2 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                title="Eliminar festivo manual"
+                              >
+                                <X size={16} strokeWidth={3} />
+                              </button>
+                            ) : (
+                              <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-1 rounded-full border border-gray-200">
+                                Sistema
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
