@@ -84,14 +84,16 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
           { header: 'Modalidad Entrega', key: 'tipoEntrega', width: 20 },
           { header: 'Dir. Principal', key: 'dir1', width: 35 },
           { header: 'Barrio Principal', key: 'barrio1', width: 20 },
+          { header: 'Días Principal', key: 'dias1', width: 25 },
           { header: 'Dir. Secundaria', key: 'dir2', width: 35 },
           { header: 'Barrio Secundario', key: 'barrio2', width: 20 },
+          { header: 'Días Secundaria', key: 'dias2', width: 25 },
           { header: 'Alergias', key: 'alergias', width: 25 },
           { header: 'Restricciones', key: 'restricciones', width: 25 }
         ];
 
         activeClients.forEach(c => {
-          let dir1 = '', barrio1 = '', dir2 = '', barrio2 = '', tipoEntrega = 'Fija';
+          let dir1 = '', barrio1 = '', dias1 = '', dir2 = '', barrio2 = '', dias2 = '', tipoEntrega = 'Fija';
           
           if (c.raw && (c.raw.Suscripcions || c.raw.Suscripciones)) {
             const subs = c.raw.Suscripcions || c.raw.Suscripciones;
@@ -100,21 +102,24 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
               tipoEntrega = activeSub.modalidad_entrega || 'Fija';
               const direcciones = activeSub.direcciones || [];
               const d1 = direcciones.find(d => d.es_principal) || direcciones[0];
-              const d2 = direcciones.find(d => !d.es_principal);
+              const d2 = direcciones.find(d => !d.es_principal && d.id !== d1?.id) || (direcciones.length > 1 ? direcciones[1] : null);
               
               if (d1) {
                 dir1 = d1.direccion;
                 barrio1 = d1.barrio;
+                dias1 = d1.dias_entrega || 'Todos los días';
               }
               if (d2 && tipoEntrega.toLowerCase() === 'hibrida') {
                 dir2 = d2.direccion;
                 barrio2 = d2.barrio;
+                dias2 = d2.dias_entrega || '';
               }
             }
           } else {
             // Fallback to client main fields
             dir1 = c.direccion;
             barrio1 = c.barrio;
+            dias1 = 'Todos los días';
           }
 
           wsLogistica.addRow({
@@ -124,8 +129,10 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
             tipoEntrega: tipoEntrega,
             dir1: dir1,
             barrio1: barrio1,
+            dias1: dias1,
             dir2: dir2,
             barrio2: barrio2,
+            dias2: dias2,
             alergias: c.alergias || 'Ninguna',
             restricciones: c.restricciones || 'Ninguna'
           });
@@ -212,8 +219,12 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
       plan: { header: 'Plan', key: 'plan', width: 15 },
       diasRestantes: { header: 'Días Rest.', key: 'dias', width: 10 },
       fechaVencimiento: { header: 'Vencimiento', key: 'vencimiento', width: 15 },
-      direccion: { header: 'Dirección', key: 'direccion', width: 30 },
-      barrio: { header: 'Barrio', key: 'barrio', width: 20 },
+      direccion: { header: 'Dir. Principal', key: 'direccion', width: 30 },
+      barrio: { header: 'Barrio Principal', key: 'barrio', width: 20 },
+      dias_dir1: { header: 'Días Principal', key: 'dias_dir1', width: 25 },
+      direccion2: { header: 'Dir. Secundaria', key: 'direccion2', width: 30 },
+      barrio2: { header: 'Barrio Secundario', key: 'barrio2', width: 20 },
+      dias_dir2: { header: 'Días Secundaria', key: 'dias_dir2', width: 25 },
       facturacion: { header: 'Fact. Electrónica', key: 'facturacion', width: 15 },
       alergias: { header: 'Alergias', key: 'alergias', width: 25 },
       restricciones: { header: 'Restricciones', key: 'restricciones', width: 25 },
@@ -249,8 +260,30 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
           case 'correo': rowData.correo = item.correo; break;
           case 'diasRestantes': rowData.dias = item.diasRestantes > 0 ? item.diasRestantes : 'Vencido'; break;
           case 'fechaVencimiento': rowData.vencimiento = formatDate(item.fechaVencimiento); break;
-          case 'direccion': rowData.direccion = item.direccion; break;
-          case 'barrio': rowData.barrio = item.barrio; break;
+          case 'direccion': 
+          case 'barrio': 
+          case 'dias_dir1':
+          case 'direccion2':
+          case 'barrio2':
+          case 'dias_dir2': {
+            let d1 = null, d2 = null, tipo = 'Fija';
+            if (item.raw && item.raw.Suscripcions) {
+              const activeSub = item.raw.Suscripcions.sort((a,b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))[0];
+              if (activeSub) {
+                tipo = activeSub.modalidad_entrega || 'Fija';
+                const direcciones = activeSub.direcciones || [];
+                d1 = direcciones.find(d => d.es_principal) || direcciones[0];
+                d2 = direcciones.find(d => !d.es_principal && d.id !== d1?.id) || (direcciones.length > 1 ? direcciones[1] : null);
+              }
+            }
+            if (colId === 'direccion') rowData.direccion = d1 ? d1.direccion : item.direccion;
+            if (colId === 'barrio') rowData.barrio = d1 ? d1.barrio : item.barrio;
+            if (colId === 'dias_dir1') rowData.dias_dir1 = d1 ? (d1.dias_entrega || 'Todos los días') : 'Todos los días';
+            if (colId === 'direccion2') rowData.direccion2 = (d2 && tipo.toLowerCase() === 'hibrida') ? d2.direccion : '';
+            if (colId === 'barrio2') rowData.barrio2 = (d2 && tipo.toLowerCase() === 'hibrida') ? d2.barrio : '';
+            if (colId === 'dias_dir2') rowData.dias_dir2 = (d2 && tipo.toLowerCase() === 'hibrida') ? d2.dias_entrega : '';
+            break;
+          }
           case 'facturacion': rowData.facturacion = item.facturacionElectronica || item.facturacion; break;
           case 'alergias': rowData.alergias = item.alergias || 'Ninguna'; break;
           case 'restricciones': rowData.restricciones = item.restricciones || 'Ninguna'; break;
