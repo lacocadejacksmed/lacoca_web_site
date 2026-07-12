@@ -33,7 +33,8 @@ import {
   PieChart as PieChartIcon,
   Settings,
   Eye,
-  Pencil
+  Pencil,
+  Menu
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -70,6 +71,7 @@ import CoverageMap from '../components/CoverageMap';
 
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [clients, setClients] = useState([]);
   const [payments, setPayments] = useState([]);
   const [statsPeriod, setStatsPeriod] = useState('mes');
@@ -605,9 +607,17 @@ export default function Admin() {
   const COLORS = ['#f97316', '#3b82f6', '#10b981', '#f43f5e', '#8b5cf6'];
 
   return (
-    <div className="flex min-h-screen bg-gray-50 text-slate-900">
+    <div className="flex min-h-screen bg-gray-50 text-slate-900 overflow-x-hidden relative">
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-slate-900 text-white fixed h-full z-50 overflow-y-auto">
+      <aside className={`w-64 bg-slate-900 text-white fixed h-full z-50 overflow-y-auto transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
         <div className="p-8">
           <div className="flex items-center gap-4 mb-10">
             <img src="/logoLaCoca.svg" className="w-12 h-12 rounded-xl object-contain" />
@@ -689,41 +699,49 @@ export default function Admin() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 ml-64 p-10">
-        <header className="flex justify-between items-center mb-10">
-          <div>
-            <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-              {activeTab === 'dashboard' ? 'Resumen de Negocio' : 
-               activeTab === 'cocina' ? 'Planilla de Cocina (En Vivo)' :
-               activeTab === 'pagos' ? 'Validación de Pagos' : 
-               activeTab === 'clientes' ? 'Gestión de Clientes' : 
-               activeTab === 'repartidores' ? 'Gestión de Repartidores' : 
-               activeTab === 'feriados' ? 'Calendario de Festivos' : 
-               activeTab === 'configuraciones' ? 'Configuraciones del Sistema' : 
-               'Configuración de Menú'}
-            </h2>
-            <p className="text-gray-500 font-medium">Panel centralizado de operaciones</p>
+      <main className="flex-1 w-full lg:ml-64 p-4 lg:p-10 transition-all duration-300">
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 lg:gap-0 mb-6 lg:mb-10">
+          <div className="flex items-center gap-4 w-full lg:w-auto">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-2 bg-white rounded-xl shadow-sm border border-gray-100 text-slate-600 lg:hidden hover:bg-gray-50"
+            >
+              <Menu size={24} />
+            </button>
+            <div>
+              <h2 className="text-xl lg:text-3xl font-black text-slate-900 tracking-tight">
+                {activeTab === 'dashboard' ? 'Resumen de Negocio' : 
+                 activeTab === 'cocina' ? 'Planilla de Cocina (En Vivo)' :
+                 activeTab === 'pagos' ? 'Validación de Pagos' : 
+                 activeTab === 'clientes' ? 'Gestión de Clientes' : 
+                 activeTab === 'repartidores' ? 'Gestión de Repartidores' : 
+                 activeTab === 'feriados' ? 'Calendario de Festivos' : 
+                 activeTab === 'configuraciones' ? 'Configuraciones del Sistema' : 
+                 'Configuración de Menú'}
+              </h2>
+              <p className="text-xs lg:text-sm text-gray-500 font-medium">Panel centralizado de operaciones</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right mr-4">
-               <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Actualizado</div>
-               <div className="text-xs font-bold text-slate-900">{new Date().toLocaleTimeString()}</div>
+          <div className="flex items-center gap-2 lg:gap-4 self-end lg:self-auto">
+            <div className="text-right mr-2 lg:mr-4">
+               <div className="text-[9px] lg:text-[10px] font-black text-slate-400 uppercase tracking-widest">Actualizado</div>
+               <div className="text-[10px] lg:text-xs font-bold text-slate-900">{new Date().toLocaleTimeString()}</div>
             </div>
             <button 
               onClick={fetchData}
-              className={`p-3 bg-white rounded-xl shadow-sm border border-gray-100 text-slate-400 hover:text-orange-500 transition-all ${loading ? 'animate-spin' : ''}`}
+              className={`p-2 lg:p-3 bg-white rounded-xl shadow-sm border border-gray-100 text-slate-400 hover:text-orange-500 transition-all ${loading ? 'animate-spin' : ''}`}
               title="Sincronizar datos"
             >
-               <Clock size={20} />
+               <Clock size={16} className="lg:w-5 lg:h-5" />
             </button>
 
             <button 
               onClick={handleLogout}
-              className="p-3 bg-red-50 rounded-xl shadow-sm border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center gap-2"
+              className="p-2 lg:p-3 bg-red-50 rounded-xl shadow-sm border border-red-100 text-red-500 hover:bg-red-500 hover:text-white transition-all flex items-center gap-2"
               title="Cerrar sesión"
             >
-               <LogOut size={20} />
-               <span className="text-xs font-black uppercase tracking-tight hidden lg:block">Salir</span>
+               <LogOut size={16} className="lg:w-5 lg:h-5" />
+               <span className="text-xs font-black uppercase tracking-tight hidden sm:block">Salir</span>
             </button>
           </div>
         </header>
@@ -771,7 +789,7 @@ export default function Admin() {
               </div>
 
               {/* STATS RAPIDOS */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                  <StatCard title="Ingresos Aprobados" value={`$${stats.income.toLocaleString()}`} icon={DollarSign} color="bg-green-500" desc="Ventas netas" />
                  <StatCard title="Clientes Activos" value={stats.active} icon={Users} color="bg-blue-500" desc="Suscripciones vigentes" />
                  <StatCard title="Pagos Pendientes" value={stats.pending} icon={CreditCard} color="bg-amber-500" desc="Por verificar" urgent={stats.pending > 0} />
@@ -779,7 +797,7 @@ export default function Admin() {
               </div>
 
               {/* ZONA DE ALERTAS Y ACTIVIDAD */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                  
                  {/* Alertas Urgentes */}
                  <div className="md:col-span-1 space-y-4">
@@ -891,7 +909,7 @@ export default function Admin() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
                   <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Top Barrios (Heatmap)</h3>
                   <div className="h-64">
@@ -948,7 +966,7 @@ export default function Admin() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
                   <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Modalidad de Entrega</h3>
                   <div className="h-48">
@@ -1061,7 +1079,7 @@ export default function Admin() {
 
                 return (
                   <div className="space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                       <div className={`p-8 rounded-[32px] text-white shadow-xl ${esFeriado ? 'bg-red-500' : 'bg-slate-900'}`}>
                         <div className="flex justify-between items-start mb-4">
                           <div className="p-3 bg-white/10 rounded-2xl">
@@ -1086,7 +1104,7 @@ export default function Admin() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                       <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
                         <h4 className="text-lg font-black text-slate-900 flex items-center gap-2 mb-6">
                           <Utensils size={20} className="text-amber-500" /> Restricciones (Dietas)
@@ -1137,8 +1155,8 @@ export default function Admin() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-10">
-                <div className="flex justify-between items-center mb-8">
+              <div className="p-4 lg:p-10">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-8">
                   <div>
                     <h3 className="text-xl font-black text-slate-900">Gestión de Festivos</h3>
                     <p className="text-sm text-gray-500 font-medium">Define los días que no hay servicio para el descuento automático</p>
@@ -1268,7 +1286,7 @@ export default function Admin() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-10 border-b border-gray-100 flex justify-between items-center bg-slate-50/50">
+              <div className="p-4 lg:p-10 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-slate-50/50">
                 <div>
                   <h3 className="text-xl font-black text-slate-900">Variables de Sistema</h3>
                   <p className="text-sm text-gray-500 font-medium">Gestiona parámetros globales y límites</p>
@@ -1331,7 +1349,7 @@ export default function Admin() {
               </div>
 
               {/* TABLA DE PLANES */}
-              <div className="p-10 border-y border-gray-100 flex justify-between items-center bg-slate-50/50 mt-8">
+              <div className="p-4 lg:p-10 border-y border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-slate-50/50 mt-8">
                 <div>
                   <h3 className="text-xl font-black text-slate-900">Configuración de Planes</h3>
                   <p className="text-sm text-gray-500 font-medium">Gestiona los planes de suscripción disponibles</p>
@@ -1418,8 +1436,8 @@ export default function Admin() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-10">
-                <div className="mb-10">
+              <div className="p-4 lg:p-10">
+                <div className="mb-6 lg:mb-10">
                   <h3 className="text-xl font-black text-slate-900">Mapa de Cobertura Geográfica</h3>
                   <p className="text-sm text-gray-500 font-medium">Visualización de los polígonos de entrega en Medellín (Poblado, Laureles, Envigado, Belén y Centro)</p>
                 </div>
@@ -1447,13 +1465,13 @@ export default function Admin() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-10">
-                <div className="mb-10">
+              <div className="p-4 lg:p-10">
+                <div className="mb-6 lg:mb-10">
                   <h3 className="text-xl font-black text-slate-900">Menú de la Semana</h3>
                   <p className="text-sm text-gray-500 font-medium">Actualiza la imagen y las fechas que verán los clientes en la landing page</p>
                 </div>
 
-                <form onSubmit={handleMenuUpdate} className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <form onSubmit={handleMenuUpdate} className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12">
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1">Fechas del Menú</label>
@@ -1594,7 +1612,7 @@ export default function Admin() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-8 border-b border-gray-50 flex items-center gap-4">
+              <div className="p-4 md:p-8 border-b border-gray-50 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
                  <div className="relative flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input 
@@ -1604,7 +1622,7 @@ export default function Admin() {
                       onChange={e => setPaymentSearch(e.target.value)}
                     />
                  </div>
-                 <div className="flex gap-2">
+                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                    <select 
                       className="bg-gray-50 border-none rounded-2xl px-6 py-3 text-sm font-bold"
                       value={paymentStatusFilter}
@@ -1677,8 +1695,8 @@ export default function Admin() {
               exit={{ opacity: 0, scale: 0.95 }}
               className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-10">
-                <div className="flex justify-between items-center mb-8">
+              <div className="p-4 lg:p-10">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-8">
                    <div>
                       <h3 className="text-xl font-black text-slate-900">Equipo de Reparto</h3>
                       <p className="text-sm text-gray-500 font-medium">Asigna repartidores a zonas específicas para optimizar entregas</p>
@@ -1729,7 +1747,7 @@ export default function Admin() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-8 border-b border-gray-50 flex items-center gap-4">
+              <div className="p-4 md:p-8 border-b border-gray-50 flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
                  <div className="relative flex-1">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input 
@@ -1739,7 +1757,7 @@ export default function Admin() {
                       onChange={e => setClientSearch(e.target.value)}
                     />
                  </div>
-                 <div className="flex gap-2">
+                 <div className="flex flex-wrap gap-2 w-full lg:w-auto">
                    <select 
                       className="bg-gray-50 border-none rounded-2xl px-6 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all"
                       value={clientStatus}
@@ -1769,7 +1787,7 @@ export default function Admin() {
                  </div>
                  <button 
                    onClick={() => setIsCreatorModalOpen(true)}
-                   className="bg-slate-900 text-white rounded-2xl px-6 py-3 text-sm font-black flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
+                   className="bg-slate-900 w-full lg:w-auto justify-center text-white rounded-2xl px-6 py-3 text-sm font-black flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"
                  >
                    <UserPlus size={18} /> Registrar Cliente Manual
                  </button>
@@ -1995,7 +2013,7 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
           </div>
 
           {/* Right Side: Detailed Info & Edit Form */}
-          <div className="md:w-1/2 p-8 bg-white overflow-y-auto custom-scrollbar">
+          <div className="md:w-1/2 p-4 md:p-8 bg-white overflow-y-auto custom-scrollbar">
             <div className="mb-8">
               <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Verificando Reserva de:</div>
               {isEditing ? (
@@ -2019,7 +2037,7 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
 
             <div className="space-y-8">
               {/* Contact Info */}
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <div className="space-y-1">
                   <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Email</label>
                   {isEditing ? (
@@ -2131,7 +2149,7 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
               </div>
 
               {/* Preferences & Restrictions */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100">
                   <h5 className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">Juego de Cocas</h5>
                   {isEditing ? (
@@ -2240,7 +2258,7 @@ function ComprobanteModal({ comprobante, onClose, onValidate, onUpdate, repartid
                   </button>
                 ) : (
                   <>
-                    <div className="grid grid-cols-2 gap-3 w-full">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                       <button 
                         onClick={() => {
                           const msg = "Hola, lamentamos informarte que tu comprobante parece ser falso o alterado. Esta acción puede llevar al bloqueo permanente. ⚠️";
