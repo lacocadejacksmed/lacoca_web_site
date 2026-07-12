@@ -1,69 +1,115 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileDown, Check, Columns, Users } from 'lucide-react';
+import { X, FileDown, Check, Columns, Users, Database } from 'lucide-react';
 
-const ALL_COLUMNS = [
-  { id: 'nombre', label: 'Nombre' },
-  { id: 'cedula', label: 'Cédula' },
-  { id: 'telefono', label: 'Teléfono' },
-  { id: 'correo', label: 'Correo Electrónico' },
-  { id: 'status', label: 'Estado' },
-  { id: 'plan', label: 'Plan' },
-  { id: 'diasRestantes', label: 'Días Restantes' },
-  { id: 'fechaVencimiento', label: 'Fecha de Vencimiento' },
-  { id: 'direccion', label: 'Dirección' },
-  { id: 'barrio', label: 'Barrio' },
-  { id: 'facturacion', label: 'Facturación Electrónica' },
-  { id: 'alergias', label: 'Alergias' },
-  { id: 'restricciones', label: 'Restricciones' }
-];
-
-const PRESETS = {
-  todos: {
-    group: 'todos',
-    columns: ['nombre', 'cedula', 'telefono', 'correo', 'status', 'plan', 'diasRestantes', 'fechaVencimiento', 'direccion', 'barrio', 'facturacion', 'alergias', 'restricciones']
+const ENTITIES = {
+  clientes: {
+    label: 'Clientes',
+    icon: Users,
+    groups: [
+      { id: 'todos', label: 'Todos' },
+      { id: 'activos', label: 'Sólo Activos' },
+      { id: 'vencer', label: 'Por Vencer' },
+      { id: 'inactivos', label: 'Inactivos / Vencidos' }
+    ],
+    columns: [
+      { id: 'nombre', label: 'Nombre' },
+      { id: 'cedula', label: 'Cédula' },
+      { id: 'telefono', label: 'Teléfono' },
+      { id: 'correo', label: 'Correo' },
+      { id: 'status', label: 'Estado' },
+      { id: 'plan', label: 'Plan' },
+      { id: 'diasRestantes', label: 'Días Restantes' },
+      { id: 'fechaVencimiento', label: 'Vencimiento' },
+      { id: 'direccion', label: 'Dirección' },
+      { id: 'barrio', label: 'Barrio' },
+      { id: 'facturacion', label: 'Facturación' },
+      { id: 'alergias', label: 'Alergias' },
+      { id: 'restricciones', label: 'Restricciones' }
+    ]
   },
-  activos: {
-    group: 'activos',
-    columns: ['nombre', 'cedula', 'telefono', 'correo', 'status', 'plan', 'diasRestantes', 'fechaVencimiento', 'direccion', 'barrio', 'facturacion', 'alergias', 'restricciones']
+  pagos: {
+    label: 'Pagos / Comprobantes',
+    icon: Database,
+    groups: [
+      { id: 'todos', label: 'Todos' },
+      { id: 'aprobado', label: 'Aprobados' },
+      { id: 'pendiente', label: 'Pendientes' },
+      { id: 'rechazado', label: 'Rechazados' }
+    ],
+    columns: [
+      { id: 'clienteNombre', label: 'Cliente' },
+      { id: 'clienteCedula', label: 'Cédula' },
+      { id: 'clienteEmail', label: 'Correo' },
+      { id: 'clienteCelular', label: 'Teléfono' },
+      { id: 'plan', label: 'Plan Pagado' },
+      { id: 'monto', label: 'Monto' },
+      { id: 'fecha', label: 'Fecha' },
+      { id: 'status', label: 'Estado' },
+      { id: 'motivo_rechazo', label: 'Motivo Rechazo' },
+      { id: 'tipoEntrega', label: 'Tipo Entrega' }
+    ]
   },
-  cocina: {
-    group: 'activos',
-    columns: ['nombre', 'plan', 'alergias', 'restricciones']
+  planes: {
+    label: 'Planes',
+    icon: Database,
+    groups: [
+      { id: 'todos', label: 'Todos' },
+      { id: 'activos', label: 'Activos' },
+      { id: 'inactivos', label: 'Inactivos' }
+    ],
+    columns: [
+      { id: 'nombre', label: 'Nombre' },
+      { id: 'precio_base', label: 'Precio Base' },
+      { id: 'dias_duracion', label: 'Días' },
+      { id: 'esta_activo', label: 'Estado' }
+    ]
   }
 };
 
-const ExportModal = ({ isOpen, onClose, onExport, initialType }) => {
+const ExportModal = ({ isOpen, onClose, onExport, initialType = 'clientes' }) => {
+  const [selectedEntity, setSelectedEntity] = useState(initialType === 'todos' || initialType === 'activos' ? 'clientes' : initialType);
   const [selectedGroup, setSelectedGroup] = useState('todos');
   const [selectedColumns, setSelectedColumns] = useState({});
 
   useEffect(() => {
     if (isOpen) {
-      const preset = PRESETS[initialType] || PRESETS.todos;
-      setSelectedGroup(preset.group);
+      let entityKey = 'clientes';
+      let groupKey = 'todos';
       
+      if (initialType === 'activos') {
+        groupKey = 'activos';
+      } else if (ENTITIES[initialType]) {
+        entityKey = initialType;
+      }
+      
+      setSelectedEntity(entityKey);
+      setSelectedGroup(groupKey);
+      
+      // Select all columns by default for the chosen entity
       const cols = {};
-      ALL_COLUMNS.forEach(c => {
-        cols[c.id] = preset.columns.includes(c.id);
-      });
+      ENTITIES[entityKey].columns.forEach(c => cols[c.id] = true);
       setSelectedColumns(cols);
     }
   }, [isOpen, initialType]);
 
-  const toggleColumn = (id) => {
-    setSelectedColumns(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+  const handleEntityChange = (entityKey) => {
+    setSelectedEntity(entityKey);
+    setSelectedGroup('todos');
+    const cols = {};
+    ENTITIES[entityKey].columns.forEach(c => cols[c.id] = true);
+    setSelectedColumns(cols);
   };
 
   const handleExport = () => {
     const activeColumns = Object.keys(selectedColumns).filter(k => selectedColumns[k]);
-    onExport(selectedGroup, activeColumns);
+    onExport(selectedEntity, selectedGroup, activeColumns);
     onClose();
   };
 
   if (!isOpen) return null;
+
+  const currentEntity = ENTITIES[selectedEntity];
 
   return (
     <AnimatePresence>
@@ -85,8 +131,8 @@ const ExportModal = ({ isOpen, onClose, onExport, initialType }) => {
           {/* Header */}
           <div className="bg-slate-900 text-white p-6 md:p-8 flex items-center justify-between shrink-0">
             <div>
-              <h2 className="text-2xl font-black tracking-tight">Exportación Personalizada</h2>
-              <p className="text-slate-400 font-medium mt-1">Configura los datos que deseas incluir en el Excel.</p>
+              <h2 className="text-2xl font-black tracking-tight">Exportación Inteligente</h2>
+              <p className="text-slate-400 font-medium mt-1">Exporta cualquier tabla de la base de datos a Excel.</p>
             </div>
             <button 
               onClick={onClose}
@@ -96,27 +142,47 @@ const ExportModal = ({ isOpen, onClose, onExport, initialType }) => {
             </button>
           </div>
 
-          <div className="p-6 md:p-8 overflow-y-auto">
-            {/* Filtro de Grupo */}
-            <div className="mb-8">
+          <div className="p-6 md:p-8 overflow-y-auto space-y-8">
+            
+            {/* 1. Selector de Entidad */}
+            <div>
               <div className="flex items-center gap-2 mb-4">
-                <Users size={18} className="text-orange-500" />
-                <h3 className="font-black text-slate-800 tracking-tight">1. ¿Qué clientes quieres exportar?</h3>
+                <Database size={18} className="text-orange-500" />
+                <h3 className="font-black text-slate-800 tracking-tight">1. ¿Qué información deseas exportar?</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {Object.entries(ENTITIES).map(([key, config]) => (
+                  <button
+                    key={key}
+                    onClick={() => handleEntityChange(key)}
+                    className={`p-3 rounded-xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                      selectedEntity === key 
+                        ? 'border-orange-500 bg-orange-50 text-orange-700' 
+                        : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-orange-200'
+                    }`}
+                  >
+                    <config.icon size={16} />
+                    {config.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 2. Filtro de Grupo */}
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Users size={18} className="text-blue-500" />
+                <h3 className="font-black text-slate-800 tracking-tight">2. Filtrar por Estado</h3>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {[
-                  { id: 'todos', label: 'Todos' },
-                  { id: 'activos', label: 'Sólo Activos' },
-                  { id: 'vencer', label: 'Por Vencer' },
-                  { id: 'inactivos', label: 'Inactivos / Vencidos' }
-                ].map(group => (
+                {currentEntity.groups.map(group => (
                   <button
                     key={group.id}
                     onClick={() => setSelectedGroup(group.id)}
                     className={`p-3 rounded-xl border-2 text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                       selectedGroup === group.id 
-                        ? 'border-orange-500 bg-orange-50 text-orange-700' 
-                        : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-orange-200'
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-blue-200'
                     }`}
                   >
                     {selectedGroup === group.id && <Check size={16} />}
@@ -126,39 +192,39 @@ const ExportModal = ({ isOpen, onClose, onExport, initialType }) => {
               </div>
             </div>
 
-            {/* Selector de Columnas */}
+            {/* 3. Selector de Columnas */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Columns size={18} className="text-blue-500" />
-                  <h3 className="font-black text-slate-800 tracking-tight">2. ¿Qué columnas deseas incluir?</h3>
+                  <Columns size={18} className="text-green-500" />
+                  <h3 className="font-black text-slate-800 tracking-tight">3. ¿Qué columnas deseas incluir?</h3>
                 </div>
                 <button 
                   onClick={() => {
                     const allTrue = {};
-                    ALL_COLUMNS.forEach(c => allTrue[c.id] = true);
+                    currentEntity.columns.forEach(c => allTrue[c.id] = true);
                     setSelectedColumns(allTrue);
                   }}
-                  className="text-xs font-bold text-blue-600 hover:text-blue-800"
+                  className="text-xs font-bold text-green-600 hover:text-green-800"
                 >
                   Seleccionar Todas
                 </button>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {ALL_COLUMNS.map(col => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {currentEntity.columns.map(col => (
                   <label 
                     key={col.id} 
                     className={`flex items-center p-3 rounded-xl cursor-pointer border-2 transition-all ${
-                      selectedColumns[col.id] ? 'border-blue-500 bg-blue-50' : 'border-slate-100 bg-slate-50 hover:border-blue-200'
+                      selectedColumns[col.id] ? 'border-green-500 bg-green-50' : 'border-slate-100 bg-slate-50 hover:border-green-200'
                     }`}
                   >
-                    <div className={`w-5 h-5 rounded flex items-center justify-center mr-3 transition-colors ${
-                      selectedColumns[col.id] ? 'bg-blue-600' : 'bg-slate-200'
+                    <div className={`shrink-0 w-5 h-5 rounded flex items-center justify-center mr-3 transition-colors ${
+                      selectedColumns[col.id] ? 'bg-green-600' : 'bg-slate-200'
                     }`}>
                       {selectedColumns[col.id] && <Check size={14} className="text-white" />}
                     </div>
-                    <span className={`text-sm font-bold ${selectedColumns[col.id] ? 'text-blue-900' : 'text-slate-600'}`}>
+                    <span className={`text-xs font-bold truncate ${selectedColumns[col.id] ? 'text-green-900' : 'text-slate-600'}`}>
                       {col.label}
                     </span>
                   </label>

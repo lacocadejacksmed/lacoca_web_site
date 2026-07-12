@@ -35,7 +35,7 @@ const applyBorders = (worksheet) => {
   });
 };
 
-export async function exportExcel(configOrType, clients, payments) {
+export async function exportExcel(configOrType, clients = [], payments = [], plans = []) {
   try {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'La Coca De Jacks';
@@ -43,15 +43,19 @@ export async function exportExcel(configOrType, clients, payments) {
 
     const today = new Date().toISOString().split('T')[0];
     
-    // Si es un string ('produccion'), usamos la lógica estática
+    // Si es un string ('produccion' o 'cocina_logistica'), usamos la lógica estática
     if (typeof configOrType === 'string') {
+      
       if (configOrType === 'produccion') {
         const activeClients = clients.filter(c => c.status === 'activo');
         const wsResumen = workbook.addWorksheet('Resumen Producción');
         wsResumen.columns = [{ header: 'Plan', key: 'plan', width: 25 }, { header: 'Cantidad', key: 'cantidad', width: 25 }];
 
         const resumen = { semanal: 0, quincenal: 0, mensual: 0 };
-        activeClients.forEach(c => { if(resumen[c.plan] !== undefined) resumen[c.plan]++; });
+        activeClients.forEach(c => { 
+          const p = c.plan.toLowerCase();
+          if(resumen[p] !== undefined) resumen[p]++; 
+        });
 
         wsResumen.addRow({ plan: 'SEMANAL', cantidad: resumen.semanal });
         wsResumen.addRow({ plan: 'QUINCENAL', cantidad: resumen.quincenal });
@@ -61,41 +65,145 @@ export async function exportExcel(configOrType, clients, payments) {
         styleHeader(wsResumen, 'FF9333EA');
         applyBorders(wsResumen);
 
-        showToast(`Generando reporte de producción...`);
+        showToast(`Generando resumen de producción...`);
         const buffer = await workbook.xlsx.writeBuffer();
         const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, `Reporte_Produccion_${today}.xlsx`);
+        saveAs(blob, `Resumen_Produccion_${today}.xlsx`);
+        showToast(`Reporte generado con éxito.`);
+        return;
+      }
+
+      if (configOrType === 'cocina_logistica') {
+        const activeClients = clients.filter(c => c.status === 'activo');
+        const wsLogistica = workbook.addWorksheet('Logística y Cocina');
+        
+        wsLogistica.columns = [
+          { header: 'Cliente', key: 'nombre', width: 25 },
+          { header: 'Teléfono', key: 'telefono', width: 15 },
+          { header: 'Plan', key: 'plan', width: 15 },
+          { header: 'Modalidad Entrega', key: 'tipoEntrega', width: 20 },
+          { header: 'Dir. Principal', key: 'dir1', width: 35 },
+          { header: 'Barrio Principal', key: 'barrio1', width: 20 },
+          { header: 'Dir. Secundaria', key: 'dir2', width: 35 },
+          { header: 'Barrio Secundario', key: 'barrio2', width: 20 },
+          { header: 'Alergias', key: 'alergias', width: 25 },
+          { header: 'Restricciones', key: 'restricciones', width: 25 }
+        ];
+
+        activeClients.forEach(c => {
+          let dir1 = '', barrio1 = '', dir2 = '', barrio2 = '', tipoEntrega = 'Fija';
+          
+          if (c.raw && (c.raw.Suscripcions || c.raw.Suscripciones)) {
+            const subs = c.raw.Suscripcions || c.raw.Suscripciones;
+            const activeSub = subs.sort((a,b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))[0];
+            if (activeSub) {
+              tipoEntrega = activeSub.modalidad_entrega || 'Fija';
+              const direcciones = activeSub.direcciones || [];
+              const d1 = direcciones.find(d => d.es_principal) || direcciones[0];
+              const d2 = direcciones.find(d => !d.es_principal);
+              
+              if (d1) {
+                dir1 = d1.direccion;
+                barrio1 = d1.barrio;
+              }
+              if (d2 && tipoEntrega.toLowerCase() === 'hibrida') {
+                dir2 = d2.direccion;
+                barrio2 = d2.barrio;
+              }
+            }
+          } else {
+            // Fallback to client main fields
+            dir1 = c.direccion;
+            barrio1 = c.barrio;
+          }
+
+          wsLogistica.addRow({
+            nombre: c.nombre,
+            telefono: c.telefono,
+            plan: (c.plan || '').toUpperCase(),
+            tipoEntrega: tipoEntrega,
+            dir1: dir1,
+            barrio1: barrio1,
+            dir2: dir2,
+            barrio2: barrio2,
+            alergias: c.alergias || 'Ninguna',
+            restricciones: c.restricciones || 'Ninguna'
+          });
+        });
+
+        styleHeader(wsLogistica, 'FFEA580C'); // Naranja
+        applyBorders(wsLogistica);
+
+        showToast(`Generando reporte logístico...`);
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Reporte_Cocina_Logistica_${today}.xlsx`);
         showToast(`Reporte generado con éxito.`);
         return;
       }
     }
 
-    // Lógica dinámica para el Modal
+    // Lógica dinámica del Modal
     const config = configOrType;
-    let fileName = `Reporte_Clientes_${today}.xlsx`;
-    let data = clients;
-    let sheetName = 'Clientes';
+    let fileName = `Reporte_${config.entity}_${today}.xlsx`;
+    let data = [];
+    let sheetName = config.entity;
     let headerColor = 'FF2563EB'; // Azul por defecto
 
-    // Filtrar por grupo
-    if (config.group === 'activos') {
-      data = clients.filter(c => c.status === 'activo');
-      sheetName = 'Activos';
-      headerColor = 'FF16A34A'; // Verde
-    } else if (config.group === 'vencer') {
-      data = clients.filter(c => c.status === 'activo' && c.diasRestantes <= 5);
-      sheetName = 'Por Vencer';
-      headerColor = 'FFEA580C'; // Naranja
-    } else if (config.group === 'inactivos') {
-      data = clients.filter(c => c.status === 'inactivo' || c.status === 'vencido');
-      sheetName = 'Inactivos';
-      headerColor = 'FFDC2626'; // Rojo
+    if (config.entity === 'clientes') {
+      if (config.group === 'todos') {
+        data = clients;
+        sheetName = 'Todos los Clientes';
+      } else if (config.group === 'activos') {
+        data = clients.filter(c => c.status === 'activo');
+        sheetName = 'Clientes Activos';
+        headerColor = 'FF16A34A'; // Verde
+      } else if (config.group === 'vencer') {
+        data = clients.filter(c => c.status === 'activo' && c.diasRestantes <= 5);
+        sheetName = 'Por Vencer';
+        headerColor = 'FFEA580C'; // Naranja
+      } else if (config.group === 'inactivos') {
+        data = clients.filter(c => c.status === 'inactivo' || c.status === 'vencido');
+        sheetName = 'Inactivos';
+        headerColor = 'FFDC2626'; // Rojo
+      }
+    } else if (config.entity === 'pagos') {
+      if (config.group === 'todos') {
+        data = payments;
+        sheetName = 'Todos los Pagos';
+      } else if (config.group === 'aprobado') {
+        data = payments.filter(p => p.status === 'aprobado');
+        sheetName = 'Pagos Aprobados';
+        headerColor = 'FF16A34A';
+      } else if (config.group === 'pendiente') {
+        data = payments.filter(p => p.status === 'pendiente');
+        sheetName = 'Pagos Pendientes';
+        headerColor = 'FFEAB308'; // Amarillo
+      } else if (config.group === 'rechazado') {
+        data = payments.filter(p => p.status === 'rechazado');
+        sheetName = 'Pagos Rechazados';
+        headerColor = 'FFDC2626';
+      }
+    } else if (config.entity === 'planes') {
+      if (config.group === 'todos') {
+        data = plans;
+        sheetName = 'Todos los Planes';
+      } else if (config.group === 'activos') {
+        data = plans.filter(p => p.esta_activo);
+        sheetName = 'Planes Activos';
+        headerColor = 'FF16A34A';
+      } else if (config.group === 'inactivos') {
+        data = plans.filter(p => !p.esta_activo);
+        sheetName = 'Planes Inactivos';
+        headerColor = 'FFDC2626';
+      }
     }
 
-    const worksheet = workbook.addWorksheet(sheetName);
+    const worksheet = workbook.addWorksheet(sheetName.substring(0, 31)); // Max 31 chars para nombre de hoja Excel
 
-    // Mapeo de todas las columnas posibles
+    // Mapeo unificado de todas las columnas posibles
     const COLUMNS_DEF = {
+      // Clientes
       nombre: { header: 'Nombre', key: 'nombre', width: 25 },
       cedula: { header: 'Cédula', key: 'cedula', width: 15 },
       telefono: { header: 'Teléfono', key: 'telefono', width: 15 },
@@ -108,30 +216,60 @@ export async function exportExcel(configOrType, clients, payments) {
       barrio: { header: 'Barrio', key: 'barrio', width: 20 },
       facturacion: { header: 'Fact. Electrónica', key: 'facturacion', width: 15 },
       alergias: { header: 'Alergias', key: 'alergias', width: 25 },
-      restricciones: { header: 'Restricciones', key: 'restricciones', width: 25 }
+      restricciones: { header: 'Restricciones', key: 'restricciones', width: 25 },
+      // Pagos
+      clienteNombre: { header: 'Nombre Cliente', key: 'clienteNombre', width: 25 },
+      clienteCedula: { header: 'Cédula', key: 'clienteCedula', width: 15 },
+      clienteEmail: { header: 'Correo', key: 'clienteEmail', width: 25 },
+      clienteCelular: { header: 'Teléfono', key: 'clienteCelular', width: 15 },
+      monto: { header: 'Monto', key: 'monto', width: 15 },
+      fecha: { header: 'Fecha', key: 'fecha', width: 15 },
+      motivo_rechazo: { header: 'Motivo Rechazo', key: 'motivo_rechazo', width: 30 },
+      tipoEntrega: { header: 'Tipo Entrega', key: 'tipoEntrega', width: 15 },
+      // Planes
+      precio_base: { header: 'Precio Base', key: 'precio_base', width: 15 },
+      dias_duracion: { header: 'Días Duración', key: 'dias_duracion', width: 15 },
+      esta_activo: { header: 'Activo', key: 'esta_activo', width: 10 }
     };
 
     // Agregar solo las columnas seleccionadas en el config
     worksheet.columns = config.columns.map(colId => COLUMNS_DEF[colId]).filter(Boolean);
 
     // Llenar datos
-    data.forEach(c => {
+    data.forEach(item => {
       const rowData = {};
       config.columns.forEach(colId => {
+        // Logica para leer correctamente de cualquier objeto (Cliente, Pago, Plan)
         switch (colId) {
-          case 'nombre': rowData.nombre = c.nombre; break;
-          case 'cedula': rowData.cedula = c.cedula; break;
-          case 'telefono': rowData.telefono = c.telefono; break;
-          case 'correo': rowData.correo = c.correo; break;
-          case 'status': rowData.status = (c.status || '').toUpperCase(); break;
-          case 'plan': rowData.plan = (c.plan || '').toUpperCase(); break;
-          case 'diasRestantes': rowData.dias = c.diasRestantes > 0 ? c.diasRestantes : 'Vencido'; break;
-          case 'fechaVencimiento': rowData.vencimiento = formatDate(c.fechaVencimiento); break;
-          case 'direccion': rowData.direccion = c.direccion; break;
-          case 'barrio': rowData.barrio = c.barrio; break;
-          case 'facturacion': rowData.facturacion = c.facturacionElectronica; break;
-          case 'alergias': rowData.alergias = c.alergias || 'Ninguna'; break;
-          case 'restricciones': rowData.restricciones = c.restricciones || 'Ninguna'; break;
+          // Clientes & Planes
+          case 'nombre': rowData.nombre = item.nombre; break;
+          // Clientes
+          case 'cedula': rowData.cedula = item.cedula; break;
+          case 'telefono': rowData.telefono = item.telefono; break;
+          case 'correo': rowData.correo = item.correo; break;
+          case 'diasRestantes': rowData.dias = item.diasRestantes > 0 ? item.diasRestantes : 'Vencido'; break;
+          case 'fechaVencimiento': rowData.vencimiento = formatDate(item.fechaVencimiento); break;
+          case 'direccion': rowData.direccion = item.direccion; break;
+          case 'barrio': rowData.barrio = item.barrio; break;
+          case 'facturacion': rowData.facturacion = item.facturacionElectronica || item.facturacion; break;
+          case 'alergias': rowData.alergias = item.alergias || 'Ninguna'; break;
+          case 'restricciones': rowData.restricciones = item.restricciones || 'Ninguna'; break;
+          // Pagos
+          case 'clienteNombre': rowData.clienteNombre = item.clienteNombre; break;
+          case 'clienteCedula': rowData.clienteCedula = item.clienteCedula; break;
+          case 'clienteEmail': rowData.clienteEmail = item.clienteEmail; break;
+          case 'clienteCelular': rowData.clienteCelular = item.clienteCelular; break;
+          case 'monto': rowData.monto = item.monto; break;
+          case 'fecha': rowData.fecha = formatDate(item.fecha) || item.fecha; break;
+          case 'motivo_rechazo': rowData.motivo_rechazo = item.motivo_rechazo || 'N/A'; break;
+          case 'tipoEntrega': rowData.tipoEntrega = item.tipoEntrega; break;
+          // Planes
+          case 'precio_base': rowData.precio_base = item.precio_base; break;
+          case 'dias_duracion': rowData.dias_duracion = item.dias_duracion; break;
+          case 'esta_activo': rowData.esta_activo = item.esta_activo ? 'Si' : 'No'; break;
+          // Compartidos (Clientes / Pagos / Planes)
+          case 'status': rowData.status = (item.status || '').toUpperCase(); break;
+          case 'plan': rowData.plan = (item.plan || '').toUpperCase(); break;
         }
       });
       worksheet.addRow(rowData);
@@ -151,4 +289,3 @@ export async function exportExcel(configOrType, clients, payments) {
     showToast('Error al generar Excel', 'error');
   }
 }
-

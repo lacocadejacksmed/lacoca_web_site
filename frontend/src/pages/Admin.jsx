@@ -646,15 +646,15 @@ export default function Admin() {
             ))}
           </nav>
 
-          <div className="mt-12 pt-8 border-t border-slate-800">
+            <div className="mt-12 pt-8 border-t border-slate-800">
             <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest px-4 mb-4 block">Reportes Rápidos</span>
             <div className="space-y-1">
-              {['todos', 'activos', 'cocina', 'produccion'].map(type => (
+              {['todos', 'activos', 'cocina_logistica', 'produccion'].map(type => (
                 <button 
                   key={type}
                   onClick={() => {
-                    if (type === 'produccion') {
-                      exportExcel('produccion', clients, payments);
+                    if (type === 'produccion' || type === 'cocina_logistica') {
+                      exportExcel(type, clients, payments, adminPlanes);
                     } else {
                       setExportModalType(type);
                       setIsExportModalOpen(true);
@@ -663,7 +663,10 @@ export default function Admin() {
                   className="w-full text-left px-4 py-2 text-xs text-slate-400 hover:text-white transition-colors font-bold uppercase tracking-tight flex items-center gap-2"
                 >
                   <FileDown size={14} />
-                  {type.replace('todos', 'Clientes').replace('activos', 'Sólo Activos').replace('cocina', 'Planilla Cocina').replace('produccion', 'Producción')}
+                  {type === 'todos' ? 'Clientes' : 
+                   type === 'activos' ? 'Sólo Activos' : 
+                   type === 'cocina_logistica' ? 'Logística y Cocina' : 
+                   'Resumen Producción'}
                 </button>
               ))}
             </div>
@@ -1809,8 +1812,8 @@ export default function Admin() {
         isOpen={isExportModalOpen}
         onClose={() => setIsExportModalOpen(false)}
         initialType={exportModalType}
-        onExport={(group, columns) => {
-          exportExcel({ group, columns }, clients, payments);
+        onExport={(entity, group, columns) => {
+          exportExcel({ entity, group, columns }, clients, payments, adminPlanes);
         }}
       />
       {/* Comprobante Modal (Full Data & Edit) */}
