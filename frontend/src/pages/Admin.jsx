@@ -1604,16 +1604,26 @@ export default function Admin() {
                       onChange={e => setPaymentSearch(e.target.value)}
                     />
                  </div>
-                 <select 
-                    className="bg-gray-50 border-none rounded-2xl px-6 py-3 text-sm font-bold"
-                    value={paymentStatusFilter}
-                    onChange={e => setPaymentStatusFilter(e.target.value)}
-                 >
-                    <option value="pendiente">Pendientes</option>
-                    <option value="aprobado">Aprobados</option>
-                    <option value="rechazado">Rechazados</option>
-                    <option value="">Todos</option>
-                 </select>
+                 <div className="flex gap-2">
+                   <select 
+                      className="bg-gray-50 border-none rounded-2xl px-6 py-3 text-sm font-bold"
+                      value={paymentStatusFilter}
+                      onChange={e => setPaymentStatusFilter(e.target.value)}
+                   >
+                      <option value="pendiente">Pendientes</option>
+                      <option value="aprobado">Aprobados</option>
+                      <option value="rechazado">Rechazados</option>
+                      <option value="">Todos</option>
+                   </select>
+                   <button 
+                     onClick={() => exportExcel({ entity: 'pagos', group: paymentStatusFilter || 'todos', columns: ['clienteNombre', 'clienteCedula', 'clienteCelular', 'plan', 'status', 'fecha'] }, clients, payments, adminPlanes)}
+                     className="bg-green-50 text-green-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-green-100 transition-all"
+                     title="Exportar vista actual a Excel"
+                   >
+                     <FileDown size={18} />
+                     Exportar
+                   </button>
+                 </div>
               </div>
               <div className="p-8 space-y-4">
                 {filteredPayments.length === 0 ? (
@@ -1729,16 +1739,34 @@ export default function Admin() {
                       onChange={e => setClientSearch(e.target.value)}
                     />
                  </div>
-                 <select 
-                    className="bg-gray-50 border-none rounded-2xl px-6 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all"
-                    value={clientStatus}
-                    onChange={e => setClientStatus(e.target.value)}
-                 >
-                    <option value="">Todos los Estados</option>
-                    <option value="activo">Activos</option>
-                    <option value="pendiente">Pendientes</option>
-                    <option value="vencido">Vencidos</option>
-                 </select>
+                 <div className="flex gap-2">
+                   <select 
+                      className="bg-gray-50 border-none rounded-2xl px-6 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500 transition-all"
+                      value={clientStatus}
+                      onChange={e => setClientStatus(e.target.value)}
+                   >
+                      <option value="todos">Todos los Estados</option>
+                      <option value="activo">Activos</option>
+                      <option value="pendiente">Pendientes</option>
+                      <option value="vencido">Vencidos / Inactivos</option>
+                   </select>
+                   <button 
+                     onClick={() => exportExcel('cocina_logistica', clients, payments, adminPlanes)}
+                     className="bg-orange-50 text-orange-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-orange-100 transition-all"
+                     title="Exporta clientes activos con direcciones para logística"
+                   >
+                     <FileDown size={18} />
+                     Logística
+                   </button>
+                   <button 
+                     onClick={() => exportExcel('produccion', clients, payments, adminPlanes)}
+                     className="bg-purple-50 text-purple-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-purple-100 transition-all"
+                     title="Exporta resumen de cantidades por plan"
+                   >
+                     <FileDown size={18} />
+                     Producción
+                   </button>
+                 </div>
                  <button 
                    onClick={() => setIsCreatorModalOpen(true)}
                    className="bg-slate-900 text-white rounded-2xl px-6 py-3 text-sm font-black flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-200"

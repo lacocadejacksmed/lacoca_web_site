@@ -12,27 +12,9 @@ import { isBarrioCompatibleWithZone, validateAddressNumbers } from '../hooks/use
 import * as turf from '@turf/turf';
 import { wizardStep1Schema, wizardStep2Schema, wizardStep3Schema, wizardStep4Schema, validateComprobanteFile } from '../schemas/validationSchemas';
 import axios from 'axios';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
 
-// Fix Leaflet's default icon issue in React
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
 
-function LocationMarker({ position, setPosition, checkCoverageByCoords, num }) {
-  const map = useMapEvents({
-    click(e) {
-      setPosition(e.latlng);
-      checkCoverageByCoords(e.latlng.lat, e.latlng.lng, num);
-    },
-  });
-  return position === null ? null : <Marker position={position}></Marker>;
-}
+
 
 const plans = {
   semanal: { name: 'Semanal (1 Semana)', price: 75000, days: 5 },
@@ -132,69 +114,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   const [fieldErrors, setFieldErrors] = useState({});
   const [coverage1, setCoverage1] = useState({ status: 'pending', zone: null });
   const [coverage2, setCoverage2] = useState({ status: 'pending', zone: null });
-  const [showMap1, setShowMap1] = useState(false);
-  const [mapPos1, setMapPos1] = useState(null);
-  const [showMap2, setShowMap2] = useState(false);
-  const [mapPos2, setMapPos2] = useState(null);
 
-  const checkCoverageByCoords = async (lat, lng, num) => {
-    const setStatus = num === 1 ? setCoverage1 : setCoverage2;
-    setStatus({ status: 'loading', zone: null });
-    const pt = turf.point([lng, lat]);
-    let zoneName = null;
-
-    coberturaData.features.forEach(f => {
-      if (turf.booleanPointInPolygon(pt, f)) {
-        const nameKey = Object.keys(f.properties).find(k => k.trim().toLowerCase() === 'nombre' || k.trim().toLowerCase() === 'name');
-        if (nameKey) zoneName = f.properties[nameKey];
-      }
-    });
-
-    let reverseAddress = '';
-    let reverseBarrio = '';
-
-    // Intentar reverse geocoding para autocompletar el campo de dirección
-    try {
-      const apiKey = import.meta.env.VITE_MAPBOX_API_KEY;
-      if (apiKey) {
-        const res = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json`, {
-          params: { access_token: apiKey, limit: 1 }
-        });
-        if (res.data && res.data.features && res.data.features.length > 0) {
-          reverseAddress = res.data.features[0].place_name.split(',')[0];
-          
-          // Try to extract neighborhood if available
-          const hoodFeature = res.data.features[0].context?.find(c => c.id.includes('neighborhood') || c.id.includes('locality'));
-          if (hoodFeature) {
-            reverseBarrio = hoodFeature.text;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn("Reverse geocoding failed", err);
-    }
-
-    if (zoneName) {
-      const barrioVal = num === 1 ? formData.barrio : formData.barrio2;
-      const finalBarrio = barrioVal || reverseBarrio;
-      
-      if (finalBarrio && !isBarrioCompatibleWithZone(finalBarrio, zoneName)) {
-        setStatus({ status: 'mismatch', zone: zoneName });
-      } else {
-        setStatus({ status: 'ok', zone: zoneName });
-        setFormData(prev => ({ 
-          ...prev, 
-          [`zona_${num}`]: zoneName, 
-          [`lat_${num}`]: lat, 
-          [`lng_${num}`]: lng,
-          ...(reverseAddress && !prev[`direccion${num === 1 ? '' : '2'}`] ? { [`direccion${num === 1 ? '' : '2'}`]: reverseAddress } : {}),
-          ...(reverseBarrio && !prev[`barrio${num === 1 ? '' : '2'}`] ? { [`barrio${num === 1 ? '' : '2'}`]: reverseBarrio } : {})
-        }));
-      }
-    } else {
-      setStatus({ status: 'no_coverage', zone: null });
-    }
-  };
 
   const totalSteps = 4;
   const daysOfWeek = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
@@ -534,18 +454,18 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       // SOLO BLOQUEAR si la API explícitamente dice que está FUERA de cobertura o si hay discrepancia.
       // Si dice 'not_found' o 'api_error', permitimos pasar porque OSM no entiende muchas direcciones colombianas.
       if (coverage1.status === 'no_coverage') {
-        errors.direccion = 'La dirección 1 se encuentra fuera de nuestra zona de cobertura actual.';
+        errors.direccion = 'La dirección 1 se encuentra fuera de nuestra zona de cobertura actual. Comunícate a nuestro WhatsApp para asistencia.';
       }
       if (coverage1.status === 'mismatch') {
-        errors.direccion = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${coverage1.zone}). Por favor verifica la dirección, el barrio o ubícalo en el mapa.`;
+        errors.direccion = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${coverage1.zone}). Por favor verifica la dirección o comunícate a nuestro WhatsApp.`;
       }
 
       if (formData.tipoEntrega === 'hibrida') {
         if (coverage2.status === 'no_coverage') {
-          errors.direccion2 = 'La dirección 2 se encuentra fuera de nuestra zona de cobertura actual.';
+          errors.direccion2 = 'La dirección 2 se encuentra fuera de nuestra zona de cobertura actual. Comunícate a nuestro WhatsApp para asistencia.';
         }
         if (coverage2.status === 'mismatch') {
-          errors.direccion2 = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${coverage2.zone}). Por favor verifica la dirección, el barrio o ubícalo en el mapa.`;
+          errors.direccion2 = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${coverage2.zone}). Por favor verifica la dirección o comunícate a nuestro WhatsApp.`;
         }
       }
     }
@@ -1249,42 +1169,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                             <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage1.zone})
                           </div>
                         )}
-                        
-                        {/* Botón siempre disponible */}
-                        {['ok', 'not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage1.status) && !showMap1 && (
-                          <button 
-                            onClick={() => setShowMap1(true)}
-                            className="text-[10px] bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors"
-                          >
-                            <MapPin size={12} className="text-orange-500" /> {['ok', 'mismatch'].includes(coverage1.status) ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
-                          </button>
-                        )}
-                      </div>
-
-                      {['not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage1.status) && !showMap1 && (
-                        <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col gap-2 shadow-sm">
-                          <div className="flex items-start gap-2">
-                            <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> 
-                            <span>
-                              {coverage1.status === 'mismatch' 
-                                ? 'Si el barrio geolocalizado en el mapa es incorrecto, haz clic en "Ajustar Pin en Mapa" para fijarlo manualmente.'
-                                : 'No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.'}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      
-                      {showMap1 && (
-                        <div className="mt-2 rounded-xl overflow-hidden border-2 border-orange-500 shadow-lg relative h-[250px] z-0">
-                          <div className="absolute top-2 left-2 right-2 bg-white/90 backdrop-blur-md z-[400] text-center text-[10px] font-black text-slate-800 py-2 px-3 rounded-lg shadow-sm border border-slate-200">
-                            Haz clic en el mapa para colocar el Pin en tu dirección exacta
-                          </div>
-                          <MapContainer center={[6.2442, -75.5812]} zoom={12} style={{ height: '100%', width: '100%' }}>
-                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                            <LocationMarker position={mapPos1} setPosition={setMapPos1} checkCoverageByCoords={checkCoverageByCoords} num={1} />
-                          </MapContainer>
-                        </div>
-                      )}
                     </div>
                     {formData.tipoEntrega === 'hibrida' && (
                       <div className="flex flex-wrap gap-2 pt-2">
@@ -1392,42 +1276,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                             </div>
                           )}
 
-                          {/* Botón siempre disponible */}
-                          {['ok', 'not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage2.status) && !showMap2 && (
-                            <button 
-                              type="button"
-                              onClick={() => setShowMap2(true)}
-                              className="text-[10px] bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 font-bold px-3 py-1.5 rounded-full flex items-center gap-1 shadow-sm transition-colors"
-                            >
-                              <MapPin size={12} className="text-orange-500" /> {['ok', 'mismatch'].includes(coverage2.status) ? 'Ajustar Pin en Mapa' : 'Ubicar en el Mapa'}
-                            </button>
-                          )}
-                        </div>
-
-                        {['not_found', 'api_error', 'no_coverage', 'mismatch'].includes(coverage2.status) && !showMap2 && (
-                          <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-3 rounded-xl border border-amber-200 flex flex-col gap-2 shadow-sm">
-                            <div className="flex items-start gap-2">
-                              <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /> 
-                              <span>
-                                {coverage2.status === 'mismatch'
-                                  ? 'Si el barrio geolocalizado en el mapa es incorrecto, haz clic en "Ajustar Pin en Mapa" para fijarlo manualmente.'
-                                  : 'No encontramos la calle exacta. Usa el botón "Ubicar en el Mapa" arriba para pinchar tu ubicación y confirmar si llegamos.'}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                        
-                        {showMap2 && (
-                          <div className="mt-2 rounded-xl overflow-hidden border-2 border-orange-500 shadow-lg relative h-[250px] z-0">
-                            <div className="absolute top-2 left-2 right-2 bg-white/90 backdrop-blur-md z-[400] text-center text-[10px] font-black text-slate-800 py-2 px-3 rounded-lg shadow-sm border border-slate-200">
-                              Haz clic en el mapa para colocar el Pin en tu dirección exacta
-                            </div>
-                            <MapContainer center={[6.2442, -75.5812]} zoom={12} style={{ height: '100%', width: '100%' }}>
-                              <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                              <LocationMarker position={mapPos2} setPosition={setMapPos2} checkCoverageByCoords={checkCoverageByCoords} num={2} />
-                            </MapContainer>
-                          </div>
-                        )}
                       </div>
                       <div className="flex flex-wrap gap-2 pt-2 opacity-60">
                         {formData.days_address_2.split(',').map(d => d && (
