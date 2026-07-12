@@ -418,19 +418,22 @@ export default function Landing2({ defaultWizardOpen = false }) {
 
       {/* Floating CTA Mobile */}
       <AnimatePresence>
-         <motion.div 
-            initial={{ opacity: 0, y: 100, x: '-50%' }}
-            animate={{ opacity: 1, y: 0, x: '-50%' }}
-            className="fixed bottom-10 left-1/2 z-[200] md:hidden"
-         >
-            <button 
-              onClick={() => openWizard()}
-              className="bg-[#F2641A] text-white px-10 py-5 rounded-full font-black shadow-2xl flex items-center gap-3 active:scale-95 border-none"
-            >
-               <MessageCircle size={24} fill="currentColor" />
-               Reservar Cupo
-            </button>
-         </motion.div>
+         {!isWizardOpen && (
+           <motion.div 
+              initial={{ opacity: 0, y: 100, x: '-50%' }}
+              animate={{ opacity: 1, y: 0, x: '-50%' }}
+              exit={{ opacity: 0, y: 100, x: '-50%' }}
+              className="fixed bottom-10 left-1/2 z-[200] md:hidden"
+           >
+              <button 
+                onClick={() => openWizard()}
+                className="bg-[#F2641A] text-white px-10 py-5 rounded-full font-black shadow-2xl flex items-center gap-3 active:scale-95 border-none"
+              >
+                 <MessageCircle size={24} fill="currentColor" />
+                 Reservar Cupo
+              </button>
+           </motion.div>
+         )}
       </AnimatePresence>
 
       {/* Menu Zoom Modal */}
