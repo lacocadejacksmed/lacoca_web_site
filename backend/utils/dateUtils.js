@@ -1,3 +1,5 @@
+const { getHolidaysInRange } = require('./colombianHolidays');
+
 const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feriadosArray, estado) => {
     if (!fechaInicioStr) return { fechaVencimiento: null, diasRestantes: 0 };
     
@@ -17,7 +19,12 @@ const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feria
     const [year, month, day] = fechaInicioStr.split('-').map(Number);
     // Utilizamos mediodía para evitar problemas de zona horaria
     const start = new Date(year, month - 1, day, 12, 0, 0);
-    const feriadosSet = new Set(feriadosArray);
+    
+    const currentYear = start.getFullYear();
+    const autoHolidays = getHolidaysInRange(currentYear, currentYear + 1).map(h => h.date);
+    const combinedHolidays = [...new Set([...autoHolidays, ...(feriadosArray || [])])];
+    
+    const feriadosSet = new Set(combinedHolidays);
 
     // Calcular la fecha de vencimiento (Viernes de la semana N)
     const dayOfWeek = start.getDay();
