@@ -84,22 +84,26 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
           { header: 'Modalidad Entrega', key: 'tipoEntrega', width: 20 },
           { header: 'Dir. Principal', key: 'dir1', width: 35 },
           { header: 'Barrio Principal', key: 'barrio1', width: 20 },
+          { header: 'Zona Principal', key: 'zona1', width: 15 },
           { header: 'Días Principal', key: 'dias1', width: 25 },
           { header: 'Dir. Secundaria', key: 'dir2', width: 35 },
           { header: 'Barrio Secundario', key: 'barrio2', width: 20 },
+          { header: 'Zona Secundaria', key: 'zona2', width: 15 },
           { header: 'Días Secundaria', key: 'dias2', width: 25 },
+          { header: 'Requiere Cocas', key: 'cocas', width: 15 },
           { header: 'Alergias', key: 'alergias', width: 25 },
           { header: 'Restricciones', key: 'restricciones', width: 25 }
         ];
 
         activeClients.forEach(c => {
-          let dir1 = '', barrio1 = '', dias1 = '', dir2 = '', barrio2 = '', dias2 = '', tipoEntrega = 'Fija';
+          let dir1 = '', barrio1 = '', dias1 = '', zona1 = '', dir2 = '', barrio2 = '', dias2 = '', zona2 = '', tipoEntrega = 'Fija', cocas = 'No';
           
           if (c.raw && (c.raw.Suscripcions || c.raw.Suscripciones)) {
             const subs = c.raw.Suscripcions || c.raw.Suscripciones;
             const activeSub = subs.sort((a,b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))[0];
             if (activeSub) {
               tipoEntrega = activeSub.modalidad_entrega || 'Fija';
+              cocas = activeSub.necesita_cocas ? 'Sí' : 'No';
               const direcciones = activeSub.direcciones || [];
               const d1 = direcciones.find(d => d.es_principal) || direcciones[0];
               const d2 = direcciones.find(d => !d.es_principal && d.id !== d1?.id) || (direcciones.length > 1 ? direcciones[1] : null);
@@ -107,11 +111,13 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
               if (d1) {
                 dir1 = d1.direccion;
                 barrio1 = d1.barrio;
+                zona1 = d1.zona || '';
                 dias1 = d1.dias_entrega || 'Todos los días';
               }
               if (d2 && tipoEntrega.toLowerCase() === 'hibrida') {
                 dir2 = d2.direccion;
                 barrio2 = d2.barrio;
+                zona2 = d2.zona || '';
                 dias2 = d2.dias_entrega || '';
               }
             }
@@ -129,10 +135,13 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
             tipoEntrega: tipoEntrega,
             dir1: dir1,
             barrio1: barrio1,
+            zona1: zona1,
             dias1: dias1,
             dir2: dir2,
             barrio2: barrio2,
+            zona2: zona2,
             dias2: dias2,
+            cocas: cocas,
             alergias: c.alergias || 'Ninguna',
             restricciones: c.restricciones || 'Ninguna'
           });
@@ -218,13 +227,17 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
       status: { header: 'Estado', key: 'status', width: 12 },
       plan: { header: 'Plan', key: 'plan', width: 15 },
       diasRestantes: { header: 'Días Rest.', key: 'dias', width: 10 },
+      fecha_inicio: { header: 'Fecha Inicio', key: 'fecha_inicio', width: 15 },
       fechaVencimiento: { header: 'Vencimiento', key: 'vencimiento', width: 15 },
       direccion: { header: 'Dir. Principal', key: 'direccion', width: 30 },
       barrio: { header: 'Barrio Principal', key: 'barrio', width: 20 },
+      zona_dir1: { header: 'Zona Principal', key: 'zona_dir1', width: 15 },
       dias_dir1: { header: 'Días Principal', key: 'dias_dir1', width: 25 },
       direccion2: { header: 'Dir. Secundaria', key: 'direccion2', width: 30 },
       barrio2: { header: 'Barrio Secundario', key: 'barrio2', width: 20 },
+      zona_dir2: { header: 'Zona Secundaria', key: 'zona_dir2', width: 15 },
       dias_dir2: { header: 'Días Secundaria', key: 'dias_dir2', width: 25 },
+      necesita_cocas: { header: 'Requiere Cocas', key: 'necesita_cocas', width: 15 },
       facturacion: { header: 'Fact. Electrónica', key: 'facturacion', width: 15 },
       alergias: { header: 'Alergias', key: 'alergias', width: 25 },
       restricciones: { header: 'Restricciones', key: 'restricciones', width: 25 },
@@ -260,27 +273,42 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
           case 'correo': rowData.correo = item.correo; break;
           case 'diasRestantes': rowData.dias = item.diasRestantes > 0 ? item.diasRestantes : 'Vencido'; break;
           case 'fechaVencimiento': rowData.vencimiento = formatDate(item.fechaVencimiento); break;
+          case 'fecha_inicio':
+          case 'tipoEntrega':
+          case 'necesita_cocas':
           case 'direccion': 
           case 'barrio': 
+          case 'zona_dir1':
           case 'dias_dir1':
           case 'direccion2':
           case 'barrio2':
+          case 'zona_dir2':
           case 'dias_dir2': {
-            let d1 = null, d2 = null, tipo = 'Fija';
+            let d1 = null, d2 = null, tipo = 'Fija', subStatus = '', fechaIni = '', reqCocas = false;
             if (item.raw && item.raw.Suscripcions) {
               const activeSub = item.raw.Suscripcions.sort((a,b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))[0];
               if (activeSub) {
                 tipo = activeSub.modalidad_entrega || 'Fija';
+                fechaIni = activeSub.fecha_inicio || '';
+                reqCocas = activeSub.necesita_cocas || false;
                 const direcciones = activeSub.direcciones || [];
                 d1 = direcciones.find(d => d.es_principal) || direcciones[0];
                 d2 = direcciones.find(d => !d.es_principal && d.id !== d1?.id) || (direcciones.length > 1 ? direcciones[1] : null);
               }
+            } else if (item.tipoEntrega) {
+              // Fallback para Pagos
+              tipo = item.tipoEntrega;
             }
+            if (colId === 'fecha_inicio') rowData.fecha_inicio = formatDate(fechaIni);
+            if (colId === 'tipoEntrega') rowData.tipoEntrega = tipo;
+            if (colId === 'necesita_cocas') rowData.necesita_cocas = reqCocas ? 'Sí' : 'No';
             if (colId === 'direccion') rowData.direccion = d1 ? d1.direccion : item.direccion;
             if (colId === 'barrio') rowData.barrio = d1 ? d1.barrio : item.barrio;
+            if (colId === 'zona_dir1') rowData.zona_dir1 = d1 ? d1.zona : '';
             if (colId === 'dias_dir1') rowData.dias_dir1 = d1 ? (d1.dias_entrega || 'Todos los días') : 'Todos los días';
             if (colId === 'direccion2') rowData.direccion2 = (d2 && tipo.toLowerCase() === 'hibrida') ? d2.direccion : '';
             if (colId === 'barrio2') rowData.barrio2 = (d2 && tipo.toLowerCase() === 'hibrida') ? d2.barrio : '';
+            if (colId === 'zona_dir2') rowData.zona_dir2 = (d2 && tipo.toLowerCase() === 'hibrida') ? d2.zona : '';
             if (colId === 'dias_dir2') rowData.dias_dir2 = (d2 && tipo.toLowerCase() === 'hibrida') ? d2.dias_entrega : '';
             break;
           }
@@ -295,7 +323,6 @@ export async function exportExcel(configOrType, clients = [], payments = [], pla
           case 'monto': rowData.monto = item.monto; break;
           case 'fecha': rowData.fecha = formatDate(item.fecha) || item.fecha; break;
           case 'motivo_rechazo': rowData.motivo_rechazo = item.motivo_rechazo || 'N/A'; break;
-          case 'tipoEntrega': rowData.tipoEntrega = item.tipoEntrega; break;
           // Planes
           case 'precio_base': rowData.precio_base = item.precio_base; break;
           case 'dias_duracion': rowData.dias_duracion = item.dias_duracion; break;
