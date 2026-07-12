@@ -1,81 +1,75 @@
 const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feriadosArray, estado) => {
     if (!fechaInicioStr) return { fechaVencimiento: null, diasRestantes: 0 };
     
-    // Determinar días del plan y la ventana de calendario
-    let planDias = 0;
-    let baseCalendarDays = 4;
+    // Determinar semanas del plan
+    let weeks = 1;
+    let baseDias = 5;
     const p = (planNombre || '').toLowerCase();
     
-    if (p === 'semanal') { planDias = 5; baseCalendarDays = 4; }
-    else if (p === 'quincenal') { planDias = 10; baseCalendarDays = 11; }
-    else if (p === 'mensual') { planDias = 20; baseCalendarDays = 25; }
+    if (p === 'semanal') { weeks = 1; baseDias = 5; }
+    else if (p === 'quincenal') { weeks = 2; baseDias = 10; }
+    else if (p === 'mensual') { weeks = 4; baseDias = 20; }
     else { 
-      planDias = planDiasDuracion || 5; 
-      baseCalendarDays = planDias > 0 ? planDias - 1 : 4; 
+      baseDias = planDiasDuracion || 5; 
+      weeks = Math.ceil(baseDias / 5) || 1;
     }
 
     const [year, month, day] = fechaInicioStr.split('-').map(Number);
-    const start = new Date(year, month - 1, day);
+    // Utilizamos mediodía para evitar problemas de zona horaria
+    const start = new Date(year, month - 1, day, 12, 0, 0);
     const feriadosSet = new Set(feriadosArray);
 
-    // Deducir del planDias los festivos que caen en su ventana normal
+    // Calcular la fecha de vencimiento (Viernes de la semana N)
+    const dayOfWeek = start.getDay();
+    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const mondayOfThisWeek = new Date(start);
+    mondayOfThisWeek.setDate(start.getDate() - daysSinceMonday);
+
+    const endDate = new Date(mondayOfThisWeek);
+    endDate.setDate(mondayOfThisWeek.getDate() + ((weeks - 1) * 7) + 4);
+
+    // Deducir del planDias los festivos que caen en este rango de calendario
     let holidaysInWindow = 0;
-    const windowEnd = new Date(start);
-    windowEnd.setDate(windowEnd.getDate() + baseCalendarDays);
+    const tempHolidayCursor = new Date(start);
+    tempHolidayCursor.setHours(12,0,0,0);
     
-    let tempHolidayCursor = new Date(start);
-    while (tempHolidayCursor <= windowEnd) {
-        const dayOfWeek = tempHolidayCursor.getDay();
-        const y = tempHolidayCursor.getFullYear();
-        const m = String(tempHolidayCursor.getMonth() + 1).padStart(2, '0');
-        const d = String(tempHolidayCursor.getDate()).padStart(2, '0');
-        const localDateStr = `${y}-${m}-${d}`;
-        if (dayOfWeek !== 0 && dayOfWeek !== 6 && feriadosSet.has(localDateStr)) {
+    const endCursor = new Date(endDate);
+    endCursor.setHours(12,0,0,0);
+    
+    const fmt = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const d_str = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d_str}`;
+    };
+
+    while (tempHolidayCursor <= endCursor) {
+        const dow = tempHolidayCursor.getDay();
+        const localDateStr = fmt(tempHolidayCursor);
+        if (dow !== 0 && dow !== 6 && feriadosSet.has(localDateStr)) {
             holidaysInWindow++;
         }
         tempHolidayCursor.setDate(tempHolidayCursor.getDate() + 1);
     }
 
-    planDias = planDias - holidaysInWindow;
-    if (planDias < 1) planDias = 1; // Seguridad
-
-    let current = new Date(start);
-    let validDaysAdded = 0;
-    let fechaVencimiento = new Date(start);
-
-    // Encontrar la fecha de vencimiento teórica
-    while (validDaysAdded < planDias) {
-        const dayOfWeek = current.getDay();
-        const y = current.getFullYear();
-        const m = String(current.getMonth() + 1).padStart(2, '0');
-        const d = String(current.getDate()).padStart(2, '0');
-        const localDateStr = `${y}-${m}-${d}`;
-
-        if (dayOfWeek !== 0 && dayOfWeek !== 6 && !feriadosSet.has(localDateStr)) {
-            validDaysAdded++;
-            fechaVencimiento = new Date(current); // La última fecha válida es la de vencimiento
-        }
-        current.setDate(current.getDate() + 1);
-    }
+    let planDias = baseDias - holidaysInWindow;
+    if (planDias < 1) planDias = 1; // Seguridad mínima
 
     // Calcular días consumidos desde start hasta HOY
     const today = new Date();
-    today.setHours(0,0,0,0);
+    today.setHours(12,0,0,0);
 
     let consumidos = 0;
     
     if (estado === 'Activo') {
         let temp = new Date(start);
-        temp.setHours(0,0,0,0);
+        temp.setHours(12,0,0,0);
 
-        while (temp < today) {
-            const dayOfWeek = temp.getDay();
-            const y = temp.getFullYear();
-            const m = String(temp.getMonth() + 1).padStart(2, '0');
-            const d = String(temp.getDate()).padStart(2, '0');
-            const localDateStr = `${y}-${m}-${d}`;
+        while (temp < today && temp <= endCursor) {
+            const dow = temp.getDay();
+            const localDateStr = fmt(temp);
 
-            if (dayOfWeek !== 0 && dayOfWeek !== 6 && !feriadosSet.has(localDateStr)) {
+            if (dow !== 0 && dow !== 6 && !feriadosSet.has(localDateStr)) {
                 consumidos++;
             }
             temp.setDate(temp.getDate() + 1);
@@ -87,14 +81,10 @@ const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feria
         consumidos = 0;
     }
 
-    const diasRestantes = planDias - consumidos;
-
-    const vencY = fechaVencimiento.getFullYear();
-    const vencM = String(fechaVencimiento.getMonth() + 1).padStart(2, '0');
-    const vencD = String(fechaVencimiento.getDate()).padStart(2, '0');
+    const diasRestantes = Math.max(0, planDias - consumidos);
 
     return {
-        fechaVencimiento: `${vencY}-${vencM}-${vencD}`,
+        fechaVencimiento: fmt(endDate),
         diasRestantes
     };
 };
