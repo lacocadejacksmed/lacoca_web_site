@@ -1169,6 +1169,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                             <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage1.zone})
                           </div>
                         )}
+                      </div>
                     </div>
                     {formData.tipoEntrega === 'hibrida' && (
                       <div className="flex flex-wrap gap-2 pt-2">
@@ -1275,7 +1276,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                               <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage2.zone})
                             </div>
                           )}
-
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2 pt-2 opacity-60">
                         {formData.days_address_2.split(',').map(d => d && (
