@@ -91,14 +91,18 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
     // Adjust plan if there are holidays in its specific date window
     if (availableDate) {
       const monday = new Date(availableDate + 'T12:00:00');
-      const endDate = new Date(monday);
+      let weeks = 1;
+      if (resultPlan.id === 'semanal') weeks = 1;
+      else if (resultPlan.id === 'quincenal') weeks = 2;
+      else if (resultPlan.id === 'mensual') weeks = 4;
       
-      let baseCalendarDays = 4;
-      if (resultPlan.id === 'semanal') baseCalendarDays = 4;
-      else if (resultPlan.id === 'quincenal') baseCalendarDays = 11;
-      else if (resultPlan.id === 'mensual') baseCalendarDays = 25;
-      
-      endDate.setDate(monday.getDate() + baseCalendarDays);
+      const dayOfWeek = monday.getDay();
+      const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const mondayOfThisWeek = new Date(monday);
+      mondayOfThisWeek.setDate(monday.getDate() - daysSinceMonday);
+
+      const endDate = new Date(mondayOfThisWeek);
+      endDate.setDate(mondayOfThisWeek.getDate() + ((weeks - 1) * 7) + 4);
       
       const fmt = (d) => {
         const y = d.getFullYear();
@@ -110,7 +114,7 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
       let count = 0;
       const current = new Date(monday);
       while (current <= endDate) {
-        if (holidayDates.includes(fmt(current))) count++;
+        if (holidayDates.includes(fmt(current)) && current.getDay() !== 0 && current.getDay() !== 6) count++;
         current.setDate(current.getDate() + 1);
       }
 
@@ -119,10 +123,14 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
         resultPlan.days = resultPlan.days - count;
         resultPlan.price = resultPlan.price - (dailyRate * count);
         resultPlan.features = [...resultPlan.features];
-        resultPlan.features[1] = `${resultPlan.days} días de almuerzos (Descuento por festivo)`;
         resultPlan.save = (resultPlan.save || 0) + (dailyRate * count); 
         resultPlan.isHolidayDiscount = true;
       }
+      
+      // Update plan name to reflect weeks
+      if (weeks === 1) resultPlan.name = `${resultPlan.name} (1 Semana)`;
+      else if (weeks === 2) resultPlan.name = `${resultPlan.name} (2 Semanas)`;
+      else if (weeks === 4) resultPlan.name = `${resultPlan.name} (4 Semanas)`;
     }
     
     return resultPlan;

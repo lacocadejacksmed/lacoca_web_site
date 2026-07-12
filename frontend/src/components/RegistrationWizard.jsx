@@ -1,9 +1,12 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, ArrowLeft, ArrowRight, Check, User, Phone, CreditCard, Upload, Download, ExternalLink, Copy, AlertCircle, CheckCircle2, Smartphone, Globe, MapPin } from 'lucide-react';
+import { ChevronRight, ArrowLeft, ArrowRight, Check, Calendar as CalIcon, MapPin, ChefHat, Upload, Clock, CreditCard, Copy, X, User, Phone, Download, ExternalLink, AlertCircle, CheckCircle2, Smartphone, Globe } from 'lucide-react';
 import api from '../services/api';
 import Swal from 'sweetalert2';
+import { calculateEndDate } from '../utils/dateLogic';
+import { getHolidaysInRange } from '../utils/colombianHolidays';
 import BankRedirect from './BankRedirect';
 import { isBarrioCompatibleWithZone, validateAddressNumbers } from '../hooks/useCoverage';
 import * as turf from '@turf/turf';
@@ -32,9 +35,9 @@ function LocationMarker({ position, setPosition, checkCoverageByCoords, num }) {
 }
 
 const plans = {
-  semanal: { name: 'Semanal', price: 75000 },
-  quincenal: { name: 'Quincenal', price: 150000 },
-  mensual: { name: 'Mensual', price: 285000 }
+  semanal: { name: 'Semanal (1 Semana)', price: 75000, days: 5 },
+  quincenal: { name: 'Quincenal (2 Semanas)', price: 150000, days: 10 },
+  mensual: { name: 'Mensual (4 Semanas)', price: 285000, days: 20 }
 };
 
 export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', onUpdate, plans: dynamicPlans }) {
@@ -67,8 +70,13 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       const formatted = {};
       sourcePlans.forEach(p => {
         const id = (p.nombre || p.name || '').toLowerCase();
+        let name = p.nombre || p.name;
+        if (id === 'semanal') name += ' (1 Semana)';
+        else if (id === 'quincenal') name += ' (2 Semanas)';
+        else if (id === 'mensual') name += ' (4 Semanas)';
+        
         formatted[id] = {
-          name: p.nombre || p.name,
+          name,
           price: Number(p.precio || p.price || p.precio_base || 0),
           days: Number(p.dias_duracion || p.dias || p.days || 0)
         };
@@ -194,8 +202,17 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   useEffect(() => {
     const fetchHolidays = async () => {
       try {
-        const res = await api.get('/feriados');
-        if (res.data?.success) setHolidays(res.data.feriados.map(h => h.fecha));
+        const currentYear = new Date().getFullYear();
+        const autoHolidays = getHolidaysInRange(currentYear, currentYear + 1).map(h => h.date);
+        
+        let dbHolidays = [];
+        try {
+          const res = await api.get('/feriados');
+          if (res.data?.success) dbHolidays = res.data.feriados.map(h => h.fecha);
+        } catch(e) { console.error(e); }
+        
+        const combined = [...new Set([...autoHolidays, ...dbHolidays])];
+        setHolidays(combined);
       } catch (err) {
         console.error("Error al cargar festivos:", err);
       }
@@ -655,27 +672,33 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
 
   const getPlanPriceDetails = (planId) => {
     const currentPlan = activePlans[planId];
-    if (!currentPlan) return { planPrice: 0, discount: 0, effectiveDays: 5, holidaysFound: 0 };
+    if (!currentPlan) return { planPrice: 0, discount: 0, effectiveDays: 5, holidaysFound: 0, endDateStr: '' };
     
-    if (!formData.fecha_inicio) return { planPrice: currentPlan.price, discount: 0, effectiveDays: 5, holidaysFound: 0 };
+    if (!formData.fecha_inicio) return { planPrice: currentPlan.price, discount: 0, effectiveDays: 5, holidaysFound: 0, endDateStr: '' };
 
-    const monday = new Date(formData.fecha_inicio + 'T12:00:00');
-    const endDate = new Date(monday);
-    
     const planName = (planId || '').toLowerCase();
+    let weeks = 1;
     let baseDays = 5;
-    let baseCalendarDays = 4;
     
-    if (planName === 'semanal') { baseDays = 5; baseCalendarDays = 4; }
-    else if (planName === 'quincenal') { baseDays = 10; baseCalendarDays = 11; }
-    else if (planName === 'mensual') { baseDays = 20; baseCalendarDays = 25; }
+    if (planName === 'semanal') { weeks = 1; baseDays = 5; }
+    else if (planName === 'quincenal') { weeks = 2; baseDays = 10; }
+    else if (planName === 'mensual') { weeks = 4; baseDays = 20; }
     else if (currentPlan.days) {
       baseDays = currentPlan.days;
-      baseCalendarDays = baseDays > 0 ? baseDays - 1 : 4;
+      weeks = Math.ceil(baseDays / 5) || 1;
     }
 
-    endDate.setDate(monday.getDate() + baseCalendarDays);
+    const endDate = calculateEndDate(formData.fecha_inicio, weeks);
+    let formattedEndDate = '';
+    
+    if (endDate) {
+      formattedEndDate = endDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '');
+    }
 
+    let holidaysFound = 0;
+    const current = new Date(formData.fecha_inicio + 'T12:00:00');
+    const end = new Date(endDate);
+    
     const fmt = (d) => {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -683,29 +706,27 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       return `${y}-${m}-${dayStr}`;
     };
     
-    let holidaysFound = 0;
-    const current = new Date(monday);
-    while (current <= endDate) {
-      if (holidays.includes(fmt(current))) holidaysFound++;
+    while (current <= end) {
+      if (holidays.includes(fmt(current)) && current.getDay() !== 0 && current.getDay() !== 6) holidaysFound++;
       current.setDate(current.getDate() + 1);
     }
-    
+
     let planPrice = currentPlan.price;
     let discount = 0;
+    
     if (holidaysFound > 0) {
       const dailyRate = currentPlan.price / baseDays;
       discount = dailyRate * holidaysFound;
       planPrice = currentPlan.price - discount;
     }
 
-    const formattedEndDate = endDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '');
-
     return {
       planPrice,
       discount,
       effectiveDays: baseDays - holidaysFound,
       holidaysFound,
-      endDateStr: formattedEndDate
+      endDateStr: formattedEndDate,
+      weeks
     };
   };
 
@@ -961,11 +982,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                                 <CheckCircle2 size={18} />
                               </div>
                             )}
-                            {priceDetails.discount > 0 && formData.plan !== id && (
-                               <div className="absolute top-2 right-2 bg-orange-100 text-orange-600 text-[8px] font-black uppercase px-2 py-0.5 rounded-full">
-                                 - Festivo
-                               </div>
-                            )}
                           </button>
                         );
                       })}
@@ -980,12 +996,11 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-0.5">Inicio del Plan</p>
-                        <p className="text-sm font-bold text-slate-800">
+                        <p className="text-sm font-bold text-slate-800 leading-snug">
                           {(() => {
                             if (!availability.length || !formData.fecha_inicio) return 'Calculando fecha de inicio...';
                             
                             let current = new Date(formData.fecha_inicio + 'T12:00:00');
-                            let wasShifted = false;
                             
                             for (let i = 0; i < 5; i++) {
                               const y = current.getFullYear();
@@ -993,8 +1008,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                               const d = String(current.getDate()).padStart(2, '0');
                               const dateStr = `${y}-${m}-${d}`;
                               
-                              if (holidays.includes(dateStr)) {
-                                wasShifted = true;
+                              if (holidays.includes(dateStr) || current.getDay() === 0 || current.getDay() === 6) {
                                 current.setDate(current.getDate() + 1);
                               } else {
                                 break;
@@ -1002,13 +1016,12 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                             }
                             
                             const formattedDate = current.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '');
+                            const { endDateStr, weeks } = getPlanPriceDetails(formData.plan);
                             
-                            const endStr = formData.plan ? ` y terminará el ${getPlanPriceDetails(formData.plan).endDateStr}` : '';
-                            
-                            if (wasShifted) {
-                              return `Por ser festivo, tu servicio iniciará el ${formattedDate}${endStr}.`;
+                            if (formData.plan) {
+                              return `Tu plan de ${weeks} semana${weeks > 1 ? 's' : ''} iniciará el ${formattedDate} y terminará el ${endDateStr}.`;
                             } else {
-                              return `Tu servicio iniciará el ${formattedDate}${endStr}.`;
+                              return `Selecciona un plan para ver tu fecha de finalización.`;
                             }
                           })()}
                         </p>

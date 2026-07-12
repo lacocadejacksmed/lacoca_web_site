@@ -7,7 +7,8 @@ import Swal from 'sweetalert2';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { clientCreatorSchema } from '../schemas/clientCreatorSchema';
-
+import { calculateEndDate } from '../utils/dateLogic';
+import { getHolidaysInRange } from '../utils/colombianHolidays';
 import StepPersonalData from './ClientCreator/StepPersonalData';
 import StepContactInfo from './ClientCreator/StepContactInfo';
 import StepDelivery from './ClientCreator/StepDelivery';
@@ -71,8 +72,16 @@ export default function ClientCreatorModal({ onClose, onUpdate, plans }) {
   useEffect(() => {
     const fetchHolidays = async () => {
       try {
-        const res = await api.get('/feriados');
-        if (res.data?.success) setHolidays(res.data.feriados.map(h => h.fecha));
+        const currentYear = new Date().getFullYear();
+        const autoHolidays = getHolidaysInRange(currentYear, currentYear + 1).map(h => h.date);
+        let dbHolidays = [];
+        try {
+          const res = await api.get('/feriados');
+          if (res.data?.success) dbHolidays = res.data.feriados.map(h => h.fecha);
+        } catch(e) { console.error(e); }
+        
+        const combined = [...new Set([...autoHolidays, ...dbHolidays])];
+        setHolidays(combined);
       } catch (err) {
         console.error("Error al cargar festivos:", err);
       }
@@ -172,34 +181,39 @@ export default function ClientCreatorModal({ onClose, onUpdate, plans }) {
     const tieneCocas = watch('tieneCocas');
     const fechaInicio = watch('fecha_inicio');
 
-    if (!currentPlan) return { total: 0, discount: 0, effectiveDays: 5 };
+    if (!currentPlan) return { total: 0, discount: 0, effectiveDays: 5, holidaysFound: 0 };
 
     const cocasPrice = tieneCocas ? 0 : 70000;
     
-    if (!fechaInicio) return { total: currentPlan.price + cocasPrice, discount: 0, effectiveDays: 5, holidaysFound: 0 };
+    if (!fechaInicio) return { total: currentPlan.price + cocasPrice, discount: 0, effectiveDays: currentPlan.days || 5, holidaysFound: 0 };
 
-    const monday = new Date(fechaInicio + 'T12:00:00');
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
+    let weeks = 1;
+    const baseDays = currentPlan.days || 5;
+    weeks = Math.ceil(baseDays / 5) || 1;
 
-    const fmt = (d) => {
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const dayStr = String(d.getDate()).padStart(2, '0');
-      return `${y}-${m}-${dayStr}`;
-    };
-    
+    const endDate = calculateEndDate(fechaInicio, weeks);
+
     let holidaysFound = 0;
-    const current = new Date(monday);
-    while (current <= friday) {
-      if (holidays.includes(fmt(current))) holidaysFound++;
-      current.setDate(current.getDate() + 1);
+    if (endDate) {
+      const current = new Date(fechaInicio + 'T12:00:00');
+      const end = new Date(endDate);
+      const fmt = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const dayStr = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${dayStr}`;
+      };
+      while (current <= end) {
+        if (holidays.includes(fmt(current)) && current.getDay() !== 0 && current.getDay() !== 6) holidaysFound++;
+        current.setDate(current.getDate() + 1);
+      }
     }
-    
+
     let planPrice = currentPlan.price;
     let discount = 0;
-    if (currentPlan.name.toLowerCase() === 'semanal' && holidaysFound > 0) {
-      const dailyRate = currentPlan.price / 5;
+    
+    if (holidaysFound > 0) {
+      const dailyRate = currentPlan.price / baseDays;
       discount = dailyRate * holidaysFound;
       planPrice = currentPlan.price - discount;
     }
@@ -207,8 +221,10 @@ export default function ClientCreatorModal({ onClose, onUpdate, plans }) {
     return {
       total: planPrice + cocasPrice,
       discount,
-      effectiveDays: 5 - holidaysFound,
-      holidaysFound
+      effectiveDays: baseDays - holidaysFound,
+      holidaysFound,
+      endDateStr: endDate ? endDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).replace(',', '') : '',
+      weeks
     };
   };
 
