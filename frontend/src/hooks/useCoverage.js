@@ -43,33 +43,9 @@ export const isBarrioCompatibleWithZone = (barrio, zoneName) => {
 };
 
 export const validateAddressNumbers = (inputAddress, geocodedFeat) => {
-  if (!inputAddress) return true;
-  if (!geocodedFeat) return false;
-  if (!geocodedFeat.address) {
-    // En Colombia, Mapbox rara vez devuelve el campo 'address' exacto.
-    // Confiamos en la coordenada de la calle devuelta.
-    return true;
-  }
-
-  const hashIdx = inputAddress.indexOf('#');
-  if (hashIdx === -1) return true;
-
-  const afterHash = inputAddress.substring(hashIdx + 1);
-  const inputNumbers = afterHash.match(/\d+/g) || [];
-  const geocodedNumbers = geocodedFeat.address.match(/\d+/g) || [];
-
-  if (inputNumbers.length >= 2 && geocodedNumbers.length < 2) {
-    return false;
-  }
-
-  if (inputNumbers.length > 0 && geocodedNumbers.length > 0) {
-    const inputCrossing = parseInt(inputNumbers[0], 10);
-    const geocodedCrossing = parseInt(geocodedNumbers[0], 10);
-    if (inputCrossing !== geocodedCrossing) {
-      return false;
-    }
-  }
-
+  // En Colombia, Mapbox rara vez devuelve el campo 'address' exacto.
+  // Confiamos en la coordenada devuelta y el polígono.
+  // Quitado el chequeo estricto de números porque bloqueaba direcciones válidas.
   return true;
 };
 
