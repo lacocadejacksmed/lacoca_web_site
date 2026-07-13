@@ -9,29 +9,7 @@ const DireccionEntrega = require('../models/DireccionEntrega');
 const Feriado = require('../models/Feriado');
 const { Op } = require('sequelize');
 
-// Helper para calcular días hábiles (L-V) en la semana de inicio seleccionada
-const calculateBusinessDays = async (mondayDateStr) => {
-    const monday = new Date(mondayDateStr + 'T12:00:00');
-    const friday = new Date(monday);
-    friday.setDate(monday.getDate() + 4);
-
-    const fmt = (d) => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const dayStr = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${dayStr}`;
-    };
-
-    const holidays = await Feriado.count({
-        where: {
-            fecha: {
-                [Op.between]: [fmt(monday), fmt(friday)]
-            }
-        }
-    });
-
-    return 5 - holidays;
-};
+    // calculateBusinessDays is no longer needed since we use calcularVencimiento for holidays logic
 const MAIN_ZONES = [
   { key: 'poblado', keywords: ['poblado'] },
   { key: 'belen', keywords: ['belen', 'belén'] },
@@ -222,17 +200,24 @@ const createOrder = async (req, res) => {
             await cliente.save();
         }
 
-        // 4. Calcular Precio Total con ajuste por festivos
-        const businessDays = await calculateBusinessDays(targetStartDate);
-        const planDays = parseInt(planDb.dias_duracion, 10);
+        // 4. Calcular Precio Total con ajuste por festivos usando calcularVencimiento
+        const { calcularVencimiento } = require('../utils/dateUtils');
+        const feriadosDocs = await Feriado.findAll();
         
-        // El ajuste solo aplica si el plan es Semanal (5 días). 
-        // Si quieres que aplique a todos, podemos generalizarlo.
+        const vencimientoResult = calcularVencimiento(
+            targetStartDate,
+            planDb.nombre,
+            parseInt(planDb.dias_duracion, 10),
+            feriadosDocs,
+            'Pendiente'
+        );
+        
+        const planDays = parseInt(planDb.dias_duracion, 10) || 5;
         let precioAjustado = parseFloat(planDb.precio_base);
         
-        if (planDb.nombre === 'Semanal' && businessDays < 5) {
-            const valorDia = precioAjustado / 5;
-            precioAjustado = valorDia * businessDays;
+        if (vencimientoResult.holidaysInWindow > 0) {
+            const valorDia = precioAjustado / planDays;
+            precioAjustado = precioAjustado - (valorDia * vencimientoResult.holidaysInWindow);
         }
 
         const requiresCocas = needs_cocas === 'true' || needs_cocas === true;

@@ -99,7 +99,8 @@ const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feria
 
     return {
         fechaVencimiento: fmt(endDate),
-        diasRestantes
+        diasRestantes,
+        holidaysInWindow
     };
 };
 

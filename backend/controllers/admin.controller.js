@@ -405,9 +405,28 @@ const createClienteManual = async (req, res) => {
     const planDb = await Plan.findByPk(plan_id);
     if (!planDb) return res.status(400).json({ success: false, message: "Plan inválido" });
 
+    const { calcularVencimiento } = require('../utils/dateUtils');
+    const feriadosDocs = await Feriado.findAll();
+    
+    const vencimientoResult = calcularVencimiento(
+        fecha_inicio,
+        planDb.nombre,
+        parseInt(planDb.dias_duracion, 10),
+        feriadosDocs,
+        'Activo'
+    );
+    
+    const planDays = parseInt(planDb.dias_duracion, 10) || 5;
+    let precioAjustado = parseFloat(planDb.precio_base);
+    
+    if (vencimientoResult.holidaysInWindow > 0) {
+        const valorDia = precioAjustado / planDays;
+        precioAjustado = precioAjustado - (valorDia * vencimientoResult.holidaysInWindow);
+    }
+
     const configCocas = await Configuracion.findOne({ where: { clave: 'juego_cocas' } });
     const priceCocas = configCocas ? parseFloat(configCocas.valor) : 70000;
-    const precio_total = parseFloat(planDb.precio_base) + (necesita_cocas ? priceCocas : 0);
+    const precio_total = precioAjustado + (necesita_cocas ? priceCocas : 0);
 
     const sub = await Suscripcion.create({
       cliente_cedula: cedula,
