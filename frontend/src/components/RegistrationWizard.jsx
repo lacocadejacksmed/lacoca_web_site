@@ -275,7 +275,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   };
 
   const checkCoverage = async (address, barrio, setStatus, num) => {
-    if (!address || address.length < 5) return;
+    if (!address || address.length < 5) return { status: null, zone: null };
     setStatus({ status: 'loading', zone: null });
 
     // Mejorar la nomenclatura colombiana para Mapbox
@@ -315,7 +315,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     if (!apiKey) {
       console.error("Falta la API Key de Mapbox (VITE_MAPBOX_API_KEY)");
       setStatus({ status: 'api_error', zone: null });
-      return;
+      return { status: 'api_error', zone: null };
     }
 
     try {
@@ -332,7 +332,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         const firstFeat = res.data.features[0];
         if (!validateAddressNumbers(address, firstFeat)) {
           setStatus({ status: 'no_coverage', zone: null });
-          return;
+          return { status: 'no_coverage', zone: null };
         }
 
         const [lng, lat] = firstFeat.center;
@@ -349,6 +349,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         if (zoneName) {
           if (barrio && !isBarrioCompatibleWithZone(barrio, zoneName)) {
             setStatus({ status: 'mismatch', zone: zoneName });
+            return { status: 'mismatch', zone: zoneName };
           } else {
             setStatus({ status: 'ok', zone: zoneName });
             setFormData(prev => ({ 
@@ -357,23 +358,39 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
               [`lat_${num}`]: lat, 
               [`lng_${num}`]: lng 
             }));
+            return { status: 'ok', zone: zoneName };
           }
         } else {
           // Encontró la coordenada, pero cae fuera de los polígonos de entrega
           setStatus({ status: 'no_coverage', zone: null });
+          return { status: 'no_coverage', zone: null };
         }
       } else {
         // Mapbox no encontró ningún lugar con esa dirección
         setStatus({ status: 'not_found', zone: null });
+        return { status: 'not_found', zone: null };
       }
     } catch (err) {
       console.error("Geocoding fatal error:", err);
       setStatus({ status: 'api_error', zone: null });
+      return { status: 'api_error', zone: null };
     }
   };
 
-  const handleNext = () => {
-    if (validateStep()) {
+  const handleNext = async () => {
+    let cov1 = coverage1;
+    let cov2 = coverage2;
+
+    if (step === 3) {
+      if (formData.direccion && (!cov1.status || cov1.status === 'loading')) {
+         cov1 = await checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1) || cov1;
+      }
+      if (formData.tipoEntrega === 'hibrida' && formData.direccion2 && (!cov2.status || cov2.status === 'loading')) {
+         cov2 = await checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2) || cov2;
+      }
+    }
+
+    if (validateStep(cov1, cov2)) {
       setFieldErrors({});
       if (step < totalSteps) setStep(step + 1);
       else handleSubmit();
@@ -401,7 +418,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     }
   };
 
-  const validateStep = () => {
+  const validateStep = (cov1 = coverage1, cov2 = coverage2) => {
     const errors = {};
 
     if (step === 1) {
@@ -453,19 +470,19 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       // Coverage checks layered on top of schema validation
       // SOLO BLOQUEAR si la API explícitamente dice que está FUERA de cobertura o si hay discrepancia.
       // Si dice 'not_found' o 'api_error', permitimos pasar porque OSM no entiende muchas direcciones colombianas.
-      if (coverage1.status === 'no_coverage') {
+      if (cov1?.status === 'no_coverage') {
         errors.direccion = 'La dirección 1 se encuentra fuera de nuestra zona de cobertura actual. Comunícate a nuestro WhatsApp para asistencia.';
       }
-      if (coverage1.status === 'mismatch') {
-        errors.direccion = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${coverage1.zone}). Por favor verifica la dirección o comunícate a nuestro WhatsApp.`;
+      if (cov1?.status === 'mismatch') {
+        errors.direccion = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${cov1.zone}). Por favor verifica la dirección o comunícate a nuestro WhatsApp.`;
       }
 
       if (formData.tipoEntrega === 'hibrida') {
-        if (coverage2.status === 'no_coverage') {
+        if (cov2?.status === 'no_coverage') {
           errors.direccion2 = 'La dirección 2 se encuentra fuera de nuestra zona de cobertura actual. Comunícate a nuestro WhatsApp para asistencia.';
         }
-        if (coverage2.status === 'mismatch') {
-          errors.direccion2 = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${coverage2.zone}). Por favor verifica la dirección o comunícate a nuestro WhatsApp.`;
+        if (cov2?.status === 'mismatch') {
+          errors.direccion2 = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${cov2.zone}). Por favor verifica la dirección o comunícate a nuestro WhatsApp.`;
         }
       }
     }
