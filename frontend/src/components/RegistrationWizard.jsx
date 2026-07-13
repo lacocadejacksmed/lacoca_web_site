@@ -288,7 +288,11 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   };
 
   const checkCoverage = async (address, barrio, setStatus, num) => {
-    if (!address || address.length < 5) return { status: null, zone: null };
+    if (!address || address.length < 5) {
+      const target = num === 1 ? 'direccion' : 'direccion2';
+      setFieldErrors(prev => ({ ...prev, [target]: 'Ingresa una dirección más larga para validar.' }));
+      return { status: null, zone: null };
+    }
     setStatus({ status: 'loading', zone: null });
 
     // Mejorar la nomenclatura colombiana para Mapbox
@@ -1169,11 +1173,16 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                     </div>
                     <button 
                       onClick={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
-                      className="w-full mt-2 py-3 bg-[#F2641A]/10 text-[#F2641A] font-black rounded-xl hover:bg-[#F2641A]/20 transition-colors flex justify-center items-center gap-2"
+                      className="w-full mt-2 py-3 bg-[#F2641A]/10 text-[#F2641A] font-black rounded-xl hover:bg-[#F2641A]/20 active:scale-95 active:bg-[#F2641A]/30 transition-all duration-200 flex justify-center items-center gap-2"
                     >
                       {coverage1.status === 'loading' ? <div className="w-4 h-4 border-2 border-[#F2641A] border-t-transparent rounded-full animate-spin"></div> : <MapPin size={16} />}
-                      Validar Cobertura
+                      {coverage1.status === 'loading' ? 'Verificando...' : 'Validar Cobertura'}
                     </button>
+                    {coverage1.status === 'api_error' && (
+                      <p className="text-[10px] font-bold text-red-600 mt-2 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
+                        <AlertCircle size={12} /> Hubo un error al validar tu dirección. Intenta de nuevo o contacta soporte.
+                      </p>
+                    )}
                     {coverage1.status === 'ok' && (
                       <p className="text-[10px] font-bold text-green-600 mt-2 flex items-center gap-1 bg-green-50 p-2 rounded-lg">
                         <CheckCircle2 size={12} /> Zona confirmada: {coverage1.zone}
@@ -1296,11 +1305,16 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       </div>
                       <button 
                         onClick={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
-                        className="w-full mt-2 py-3 bg-[#F2641A]/10 text-[#F2641A] font-black rounded-xl hover:bg-[#F2641A]/20 transition-colors flex justify-center items-center gap-2"
+                        className="w-full mt-2 py-3 bg-[#F2641A]/10 text-[#F2641A] font-black rounded-xl hover:bg-[#F2641A]/20 active:scale-95 active:bg-[#F2641A]/30 transition-all duration-200 flex justify-center items-center gap-2"
                       >
                         {coverage2.status === 'loading' ? <div className="w-4 h-4 border-2 border-[#F2641A] border-t-transparent rounded-full animate-spin"></div> : <MapPin size={16} />}
-                        Validar Cobertura 2
+                        {coverage2.status === 'loading' ? 'Verificando...' : 'Validar Cobertura 2'}
                       </button>
+                      {coverage2.status === 'api_error' && (
+                        <p className="text-[10px] font-bold text-red-600 mt-2 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
+                          <AlertCircle size={12} /> Hubo un error al validar tu dirección. Intenta de nuevo o contacta soporte.
+                        </p>
+                      )}
                       {coverage2.status === 'ok' && (
                         <p className="text-[10px] font-bold text-green-600 mt-2 flex items-center gap-1 bg-green-50 p-2 rounded-lg">
                           <CheckCircle2 size={12} /> Zona confirmada: {coverage2.zone}
