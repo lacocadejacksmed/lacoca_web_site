@@ -1214,27 +1214,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       <p className="text-[10px] text-gray-400 mt-1 ml-1">Escribe aquí especificaciones si usaste el mapa para ubicarte.</p>
                     </div>
                     
-                    {/* Badge de Cobertura */}
-                    <div className="mt-2 flex flex-col gap-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {coverage1.status === 'loading' && <div className="text-[10px] font-bold text-blue-500 animate-pulse flex items-center gap-1"><Globe size={12} className="animate-spin" /> Verificando cobertura...</div>}
-                        {coverage1.status === 'ok' && (
-                          <div className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 inline-flex items-center gap-1.5 shadow-sm">
-                            <Check size={12} strokeWidth={4} /> COBERTURA CONFIRMADA: {coverage1.zone}
-                          </div>
-                        )}
-                        {coverage1.status === 'no_coverage' && (
-                          <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm">
-                            <AlertCircle size={12} /> ⚠️ FUERA DE COBERTURA
-                          </div>
-                        )}
-                        {coverage1.status === 'mismatch' && (
-                          <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm animate-pulse">
-                            <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage1.zone})
-                          </div>
-                        )}
-                      </div>
-                    </div>
+
                     {formData.tipoEntrega === 'hibrida' && (
                       <div className="flex flex-wrap gap-2 pt-2">
                         {daysOfWeek.map(d => (
@@ -1346,27 +1326,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         <p className="text-[10px] text-gray-400 mt-1 ml-1">Escribe aquí especificaciones si usaste el mapa para ubicarte.</p>
                       </div>
 
-                      {/* Badge de Cobertura 2 */}
-                      <div className="mt-2 min-h-[24px] flex flex-col gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {coverage2.status === 'loading' && <div className="text-[10px] font-bold text-blue-500 animate-pulse flex items-center gap-1"><Globe size={12} className="animate-spin" /> Verificando cobertura...</div>}
-                          {coverage2.status === 'ok' && (
-                            <div className="text-[10px] font-black text-green-600 bg-green-50 px-3 py-1.5 rounded-full border border-green-100 inline-flex items-center gap-1.5 shadow-sm">
-                              <Check size={12} strokeWidth={4} /> COBERTURA CONFIRMADA: {coverage2.zone}
-                            </div>
-                          )}
-                          {coverage2.status === 'no_coverage' && (
-                            <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm">
-                              <AlertCircle size={12} /> ⚠️ FUERA DE COBERTURA
-                            </div>
-                          )}
-                          {coverage2.status === 'mismatch' && (
-                            <div className="text-[10px] font-black text-red-600 bg-red-50 px-3 py-1.5 rounded-full border border-red-100 inline-flex items-center gap-1.5 shadow-sm animate-pulse">
-                              <AlertCircle size={12} /> ⚠️ DIRECCIÓN NO COINCIDE CON EL BARRIO (Geolocalizado en: {coverage2.zone})
-                            </div>
-                          )}
-                        </div>
-                      </div>
+
                       <div className="flex flex-wrap gap-2 pt-2 opacity-60">
                         {formData.days_address_2.split(',').map(d => d && (
                           <span key={d} className="px-3 py-1.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-700">
