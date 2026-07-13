@@ -481,21 +481,22 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       }
 
       // Coverage checks layered on top of schema validation
-      // SOLO BLOQUEAR si la API explícitamente dice que está FUERA de cobertura o si hay discrepancia.
-      // Si dice 'not_found' o 'api_error', permitimos pasar porque OSM no entiende muchas direcciones colombianas.
+      // BLOQUEAR estrictamente si no fue validada correctamente
       if (cov1?.status === 'no_coverage') {
-        errors.direccion = 'La dirección 1 se encuentra fuera de nuestra zona de cobertura actual. Comunícate a nuestro WhatsApp para asistencia.';
-      }
-      if (cov1?.status === 'mismatch') {
-        errors.direccion = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${cov1.zone}). Por favor verifica la dirección o comunícate a nuestro WhatsApp.`;
+        errors.direccion = 'La dirección 1 se encuentra fuera de nuestra zona de cobertura actual.';
+      } else if (cov1?.status === 'mismatch') {
+        errors.direccion = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${cov1.zone}). Por favor verifica la dirección.`;
+      } else if (cov1?.status !== 'ok') {
+        errors.direccion = 'Por favor presiona "Validar Cobertura" y asegúrate de que la dirección sea correcta.';
       }
 
       if (formData.tipoEntrega === 'hibrida') {
         if (cov2?.status === 'no_coverage') {
-          errors.direccion2 = 'La dirección 2 se encuentra fuera de nuestra zona de cobertura actual. Comunícate a nuestro WhatsApp para asistencia.';
-        }
-        if (cov2?.status === 'mismatch') {
-          errors.direccion2 = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${cov2.zone}). Por favor verifica la dirección o comunícate a nuestro WhatsApp.`;
+          errors.direccion2 = 'La dirección 2 se encuentra fuera de nuestra zona de cobertura actual.';
+        } else if (cov2?.status === 'mismatch') {
+          errors.direccion2 = `La dirección no coincide con el barrio ingresado (geolocalizada en: ${cov2.zone}). Por favor verifica la dirección.`;
+        } else if (cov2?.status !== 'ok') {
+          errors.direccion2 = 'Por favor presiona "Validar Cobertura" para la segunda dirección.';
         }
       }
     }
@@ -1138,7 +1139,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                             if(fieldErrors.direccion) setFieldErrors({...fieldErrors, direccion: null});
                             setCoverage1({ status: 'pending', zone: null });
                           }}
-                          onBlur={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
                           placeholder="Dirección"
                         />
                         {fieldErrors.direccion && (
@@ -1158,7 +1158,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                             if(fieldErrors.barrio) setFieldErrors({...fieldErrors, barrio: null});
                             setCoverage1({ status: 'pending', zone: null });
                           }}
-                          onBlur={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
                           placeholder="Barrio"
                         />
                         {fieldErrors.barrio && (
@@ -1168,6 +1167,28 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         )}
                       </div>
                     </div>
+                    <button 
+                      onClick={() => checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1)}
+                      className="w-full mt-2 py-3 bg-[#F2641A]/10 text-[#F2641A] font-black rounded-xl hover:bg-[#F2641A]/20 transition-colors flex justify-center items-center gap-2"
+                    >
+                      {coverage1.status === 'loading' ? <div className="w-4 h-4 border-2 border-[#F2641A] border-t-transparent rounded-full animate-spin"></div> : <MapPin size={16} />}
+                      Validar Cobertura
+                    </button>
+                    {coverage1.status === 'ok' && (
+                      <p className="text-[10px] font-bold text-green-600 mt-2 flex items-center gap-1 bg-green-50 p-2 rounded-lg">
+                        <CheckCircle2 size={12} /> Zona confirmada: {coverage1.zone}
+                      </p>
+                    )}
+                    {coverage1.status === 'not_found' && (
+                      <p className="text-[10px] font-bold text-orange-600 mt-2 flex items-center gap-1 bg-orange-50 p-2 rounded-lg">
+                        <AlertCircle size={12} /> No encontramos esta dirección en el mapa. Verifica que esté bien escrita.
+                      </p>
+                    )}
+                    {coverage1.status === 'no_coverage' && (
+                      <p className="text-[10px] font-bold text-red-600 mt-2 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
+                        <AlertCircle size={12} /> Fuera de nuestra zona de cobertura.
+                      </p>
+                    )}
 
                     <div className="mt-3">
                       <input 
@@ -1245,8 +1266,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                               if(fieldErrors.direccion2) setFieldErrors({...fieldErrors, direccion2: null});
                               setCoverage2({ status: 'pending', zone: null });
                             }}
-                            onBlur={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
-                            placeholder="Dirección"
+                            placeholder="Dirección 2"
                           />
                           {fieldErrors.direccion2 && (
                             <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
@@ -1265,8 +1285,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                               if(fieldErrors.barrio2) setFieldErrors({...fieldErrors, barrio2: null});
                               setCoverage2({ status: 'pending', zone: null });
                             }}
-                            onBlur={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
-                            placeholder="Barrio"
+                            placeholder="Barrio 2"
                           />
                           {fieldErrors.barrio2 && (
                             <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
@@ -1275,6 +1294,28 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                           )}
                         </div>
                       </div>
+                      <button 
+                        onClick={() => checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2)}
+                        className="w-full mt-2 py-3 bg-[#F2641A]/10 text-[#F2641A] font-black rounded-xl hover:bg-[#F2641A]/20 transition-colors flex justify-center items-center gap-2"
+                      >
+                        {coverage2.status === 'loading' ? <div className="w-4 h-4 border-2 border-[#F2641A] border-t-transparent rounded-full animate-spin"></div> : <MapPin size={16} />}
+                        Validar Cobertura 2
+                      </button>
+                      {coverage2.status === 'ok' && (
+                        <p className="text-[10px] font-bold text-green-600 mt-2 flex items-center gap-1 bg-green-50 p-2 rounded-lg">
+                          <CheckCircle2 size={12} /> Zona confirmada: {coverage2.zone}
+                        </p>
+                      )}
+                      {coverage2.status === 'not_found' && (
+                        <p className="text-[10px] font-bold text-orange-600 mt-2 flex items-center gap-1 bg-orange-50 p-2 rounded-lg">
+                          <AlertCircle size={12} /> No encontramos esta dirección en el mapa. Verifica que esté bien escrita.
+                        </p>
+                      )}
+                      {coverage2.status === 'no_coverage' && (
+                        <p className="text-[10px] font-bold text-red-600 mt-2 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
+                          <AlertCircle size={12} /> Fuera de nuestra zona de cobertura.
+                        </p>
+                      )}
                       
                       <div className="mt-3">
                         <input 
@@ -1494,7 +1535,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 md:p-8 pt-4 border-t border-gray-50 flex gap-4 bg-white shrink-0 items-center">
+        <div className="p-4 sm:p-6 md:p-8 pt-4 pb-10 sm:pb-8 border-t border-gray-50 flex gap-4 bg-white shrink-0 items-center">
           {step > 1 && (
             <button 
               disabled={loading}

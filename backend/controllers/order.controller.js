@@ -427,7 +427,21 @@ const checkClient = async (req, res) => {
         }
     }
 
-    // Extraer última dirección si existe
+    // Si llegamos hasta aquí sin bloqueos, verificamos si realmente tiene historial válido
+    // para saludarlo. Si solo tenía el pedido fantasma que acabamos de borrar, lo tratamos como nuevo.
+    const validSubs = await Suscripcion.count({ 
+      where: { 
+        cliente_cedula: cedula, 
+        estado: { [Op.ne]: 'Pendiente' } 
+      } 
+    });
+
+    if (validSubs === 0) {
+      // El cliente existe en DB pero no tiene un historial real (solo intentos fallidos o fantasmas)
+      return res.json({ success: false, found: false });
+    }
+
+    // Extraer última dirección si existe (para pre-llenado)
     const ultimaSub = cliente.Suscripcions?.[0];
     const ultimaDireccion = ultimaSub?.direcciones?.[0];
 
