@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api, { API_URL } from '../services/api';
 import Navbar from '../components/Navbar';
-import RegistrationWizard from '../components/RegistrationWizard';
+
+// Carga Perezosa del Wizard (Contiene Mapbox, Leaflet, Turf y otras dependencias muy pesadas)
+const RegistrationWizard = lazy(() => import('../components/RegistrationWizard'));
 
 import FAQ from '../components/FAQ';
 import Plans from '../components/Plans';
@@ -402,17 +404,29 @@ export default function Landing2({ defaultWizardOpen = false }) {
       </footer>
 
       {/* --- MODALS --- */}
-      <RegistrationWizard 
-        isOpen={isWizardOpen} 
-        onClose={() => {
-          setIsWizardOpen(false);
-          if (location.pathname === '/registro') {
-            navigate('/');
-          }
-        }} 
-        initialPlan={selectedPlan}
-        plans={planes}
-      />
+      {/* Wizard Modal cargado perezosamente solo cuando se abre */}
+      {isWizardOpen && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+             <div className="bg-white p-6 rounded-2xl flex flex-col items-center justify-center shadow-2xl">
+                <div className="w-10 h-10 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <p className="text-slate-800 font-bold text-sm">Cargando...</p>
+             </div>
+          </div>
+        }>
+          <RegistrationWizard 
+            isOpen={isWizardOpen} 
+            onClose={() => {
+              setIsWizardOpen(false);
+              if (location.pathname === '/registro') {
+                navigate('/');
+              }
+            }} 
+            initialPlan={selectedPlan}
+            plans={planes}
+          />
+        </Suspense>
+      )}
 
 
 
