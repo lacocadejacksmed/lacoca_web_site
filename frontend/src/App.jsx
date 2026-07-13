@@ -1,14 +1,18 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Landing2 from './pages/Landing2';
-import Admin from './pages/Admin';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import ClientDashboard from './pages/ClientDashboard';
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import api from './services/api';
+
+// La Landing siempre debe ser síncrona para no afectar el LCP (Largest Contentful Paint)
+import Landing2 from './pages/Landing2';
+
+// Carga Perezosa (Lazy Loading) para las demás vistas
+const Admin = lazy(() => import('./pages/Admin'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const ClientDashboard = lazy(() => import('./pages/ClientDashboard'));
+
 
 // Componente para proteger rutas con roles
 const ProtectedRoute = ({ children, adminOnly = false }) => {
@@ -59,35 +63,41 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   return children;
 };
 
+// Pantalla de carga para Suspense
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-slate-50">
+    <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+);
+
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Landing2 />} />
-        <Route path="/registro" element={<Landing2 defaultWizardOpen={true} />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route 
-          path="/dashboard" 
-          element={
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Landing2 />} />
+          <Route path="/registro" element={<Landing2 defaultWizardOpen={true} />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
+          
+          <Route path="/dashboard/*" element={
             <ProtectedRoute>
               <ClientDashboard />
             </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/admin" 
-          element={
+          } />
+
+          <Route path="/admin" element={
             <ProtectedRoute adminOnly={true}>
               <Admin />
             </ProtectedRoute>
-          } 
-        />
-        {/* Redirección por defecto */}
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+          } />
+          
+          {/* Redirección por defecto */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </Router>
   );
 }
