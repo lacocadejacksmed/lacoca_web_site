@@ -81,6 +81,19 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
 
   const isInitialLoad = useRef(true);
 
+  // Prevenir scroll de la landing (fondo) cuando el wizard está abierto
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   // Persistencia: Guardar progreso en sessionStorage (invitados)
   useEffect(() => {
     if (isInitialLoad.current) return; // No guardar durante la carga inicial
@@ -382,10 +395,10 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     let cov2 = coverage2;
 
     if (step === 3) {
-      if (formData.direccion && (!cov1.status || cov1.status === 'loading')) {
+      if (formData.direccion && (!cov1.status || cov1.status === 'loading' || cov1.status === 'pending')) {
          cov1 = await checkCoverage(formData.direccion, formData.barrio, setCoverage1, 1) || cov1;
       }
-      if (formData.tipoEntrega === 'hibrida' && formData.direccion2 && (!cov2.status || cov2.status === 'loading')) {
+      if (formData.tipoEntrega === 'hibrida' && formData.direccion2 && (!cov2.status || cov2.status === 'loading' || cov2.status === 'pending')) {
          cov2 = await checkCoverage(formData.direccion2, formData.barrio2, setCoverage2, 2) || cov2;
       }
     }
@@ -790,7 +803,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           <X size={24} />
         </button>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 pb-4 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 md:p-8 pb-4 custom-scrollbar">
           <h2 className="text-2xl font-black mb-1">Reserva tu Cupo</h2>
           <p className="text-gray-500 text-sm font-medium mb-6">Completa los pasos para asegurar tu lugar</p>
 
