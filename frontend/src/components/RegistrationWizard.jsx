@@ -389,8 +389,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       }
     } catch (err) {
       console.error("Geocoding fatal error:", err);
-      setStatus({ status: 'api_error', zone: null });
-      return { status: 'api_error', zone: null };
+      const msg = err.response?.data?.message || err.message || "Error desconocido";
+      setStatus({ status: 'api_error', zone: null, errorMsg: msg });
+      return { status: 'api_error', zone: null, errorMsg: msg };
     }
   };
 
@@ -1179,9 +1180,12 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       {coverage1.status === 'loading' ? 'Verificando...' : 'Validar Cobertura'}
                     </button>
                     {coverage1.status === 'api_error' && (
-                      <p className="text-[10px] font-bold text-red-600 mt-2 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
-                        <AlertCircle size={12} /> Hubo un error al validar tu dirección. Intenta de nuevo o contacta soporte.
-                      </p>
+                      <div className="mt-2 bg-red-50 p-2 rounded-lg flex flex-col gap-1">
+                        <p className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                          <AlertCircle size={12} /> Hubo un error al validar tu dirección.
+                        </p>
+                        <p className="text-[9px] text-red-500 font-mono break-all">{coverage1.errorMsg}</p>
+                      </div>
                     )}
                     {coverage1.status === 'ok' && (
                       <p className="text-[10px] font-bold text-green-600 mt-2 flex items-center gap-1 bg-green-50 p-2 rounded-lg">
