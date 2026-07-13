@@ -120,18 +120,29 @@ export function useCoverage() {
     // Limpiar dirección de caracteres conflictivos (# y -)
     const cleanAddress = address.replace(/[#]/g, ' ').replace(/[-]/g, ' ');
     const query = `${cleanAddress}, ${barrio}, Antioquia, Colombia`;
+    const apiKey = import.meta.env.VITE_MAPBOX_API_KEY;
+
+    if (!apiKey) {
+      console.error("Falta la API Key de Mapbox (VITE_MAPBOX_API_KEY)");
+      return { status: 'api_error', zone: null };
+    }
+
     try {
-      const res = await api.get('/geocode', { params: { q: query } });
+      const res = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(query)}.json`, {
+        params: {
+          access_token: apiKey,
+          country: 'co',
+          limit: 1,
+          bbox: '-75.75,6.05,-75.45,6.45'
+        }
+      });
 
-      if (res.data && res.data.length > 0) {
-        const firstFeat = res.data[0];
-        firstFeat.address = firstFeat.display_name;
-
+      if (res.data && res.data.features && res.data.features.length > 0) {
+        const firstFeat = res.data.features[0];
         if (!validateAddressNumbers(address, firstFeat)) {
           return { status: 'no_coverage', zone: null };
         }
-        const lng = firstFeat.lon || firstFeat.lng;
-        const lat = firstFeat.lat;
+        const [lng, lat] = firstFeat.center;
         const zoneName = verifyPointInPolygon(lat, lng);
 
         if (zoneName) {
