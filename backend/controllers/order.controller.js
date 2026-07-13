@@ -198,14 +198,21 @@ const createOrder = async (req, res) => {
                 where: { 
                     cliente_cedula: cedula, 
                     estado: 'Pendiente' 
-                } 
+                },
+                include: [{ model: Comprobante }]
             });
 
             if (subPendiente) {
-                return res.status(400).json({ 
-                    success: false, 
-                    message: 'Ya tienes una reserva pendiente de validación. Por favor espera a que validemos tu pago anterior para registrar uno nuevo.' 
-                });
+                if (!subPendiente.Comprobantes || subPendiente.Comprobantes.length === 0) {
+                    // Es un pedido fantasma (sin comprobante), lo borramos para que no estorbe
+                    await DireccionEntrega.destroy({ where: { suscripcion_id: subPendiente.id }});
+                    await subPendiente.destroy();
+                } else {
+                    return res.status(400).json({ 
+                        success: false, 
+                        message: 'Ya tienes una reserva pendiente de validación. Por favor espera a que validemos tu pago anterior para registrar uno nuevo.' 
+                    });
+                }
             }
 
             // Si está activo o vencido, le permitimos actualizar sus datos y crear una nueva suscripción (Renovación)
@@ -369,12 +376,22 @@ const checkClient = async (req, res) => {
     }
 
     // Verificación de pedido pendiente
-    const subPendiente = await Suscripcion.findOne({ where: { cliente_cedula: cedula, estado: 'Pendiente' } });
+    const subPendiente = await Suscripcion.findOne({ 
+        where: { cliente_cedula: cedula, estado: 'Pendiente' },
+        include: [{ model: Comprobante }]
+    });
+    
     if (subPendiente) {
-        return res.json({
-            success: true, found: true, blocked: true,
-            message: 'Ya tienes un pedido en proceso de validación. Por favor espera a que sea aprobado.'
-        });
+        if (!subPendiente.Comprobantes || subPendiente.Comprobantes.length === 0) {
+            // Es un pedido fantasma, lo borramos
+            await DireccionEntrega.destroy({ where: { suscripcion_id: subPendiente.id }});
+            await subPendiente.destroy();
+        } else {
+            return res.json({
+                success: true, found: true, blocked: true,
+                message: 'Ya tienes un pedido en proceso de validación. Por favor espera a que sea aprobado.'
+            });
+        }
     }
 
     // Verificación de reglas de renovación
