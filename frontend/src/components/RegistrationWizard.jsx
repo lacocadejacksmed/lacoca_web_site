@@ -136,12 +136,26 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     const fetchHolidays = async () => {
       try {
         const currentYear = new Date().getFullYear();
-        const autoHolidays = getHolidaysInRange(currentYear, currentYear + 1).map(h => h.date);
+        let autoHolidays = getHolidaysInRange(currentYear, currentYear + 1).map(h => h.date);
         
         let dbHolidays = [];
         try {
           const res = await api.get('/feriados');
-          if (res.data?.success) dbHolidays = res.data.feriados.map(h => h.fecha);
+          if (res.data?.success) {
+            // Filtrar los que no están activos y formatear la fecha correctamente (ej. "2026-07-13T00:00:00.000Z" -> "2026-07-13")
+            dbHolidays = res.data.feriados
+              .filter(h => h.activo !== false)
+              .map(h => h.fecha.split('T')[0]);
+              
+            const disabledHolidays = new Set(
+              res.data.feriados
+                .filter(h => h.activo === false)
+                .map(h => h.fecha.split('T')[0])
+            );
+            
+            // Si el admin deshabilitó un festivo automático, lo sacamos del arreglo
+            autoHolidays = autoHolidays.filter(h => !disabledHolidays.has(h));
+          }
         } catch(e) { console.error(e); }
         
         const combined = [...new Set([...autoHolidays, ...dbHolidays])];
