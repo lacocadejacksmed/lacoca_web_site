@@ -130,7 +130,7 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6 font-['Outfit']">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       <Link to="/" className="absolute top-8 left-8 flex items-center gap-2 px-5 py-3 bg-white rounded-full shadow-sm border border-slate-200 text-slate-600 hover:text-orange-600 hover:border-orange-200 hover:bg-orange-50 transition-all no-underline font-black text-xs uppercase tracking-widest z-50">
         <ArrowLeft size={16} strokeWidth={3} />
         Volver al inicio

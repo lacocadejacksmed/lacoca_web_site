@@ -45,7 +45,7 @@ export default function ClientDashboard() {
   const pastSubs = suscripciones.filter(sub => sub.estado === 'Vencido' || sub.estado === 'Cancelado');
 
   return (
-    <div className="min-h-screen bg-slate-50 font-['Outfit']">
+    <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <header className="bg-slate-900 text-white p-6 md:p-8 pb-32 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
