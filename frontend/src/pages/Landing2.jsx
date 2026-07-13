@@ -40,27 +40,63 @@ export default function Landing2({ defaultWizardOpen = false }) {
   });
   const [planes, setPlanes] = useState([]);
 
+  const [isAppReady, setIsAppReady] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+
   useEffect(() => {
-    const fetchMenuAndPlanes = async () => {
+    let progressInterval;
+    
+    // Simular progreso rápido hasta el 85% para dar feedback visual
+    progressInterval = setInterval(() => {
+      setLoadingProgress(prev => {
+        if (prev >= 85) {
+          clearInterval(progressInterval);
+          return 85;
+        }
+        return prev + Math.floor(Math.random() * 15) + 5;
+      });
+    }, 150);
+
+    const completeLoading = () => {
+      setLoadingProgress(100);
+      setTimeout(() => {
+        setIsAppReady(true);
+      }, 500); // Dar tiempo a la barra de llegar al 100%
+    };
+
+    const loadData = async () => {
       try {
-        const res = await api.get('/menu');
-        if (res.data.success && res.data.menu) {
-          setWeeklyMenu(res.data.menu);
+        const resMenu = await api.get('/menu');
+        if (resMenu.data.success && resMenu.data.menu) {
+          setWeeklyMenu(resMenu.data.menu);
         }
       } catch (err) {
         console.error("Error al cargar menú:", err);
       }
       
       try {
-        const res = await api.get('/planes');
-        if (res.data.success && res.data.planes) {
-          setPlanes(res.data.planes);
+        const resPlanes = await api.get('/planes');
+        if (resPlanes.data.success && resPlanes.data.planes) {
+          setPlanes(resPlanes.data.planes);
         }
       } catch (err) {
         console.error("Error al cargar planes:", err);
       }
+
+      // Esperar a que todos los assets estáticos de la página estén listos
+      if (document.readyState === 'complete') {
+        completeLoading();
+      } else {
+        window.addEventListener('load', completeLoading);
+      }
     };
-    fetchMenuAndPlanes();
+
+    loadData();
+
+    return () => {
+      clearInterval(progressInterval);
+      window.removeEventListener('load', completeLoading);
+    };
   }, []);
 
   const openWizard = (planId) => {
@@ -69,7 +105,41 @@ export default function Landing2({ defaultWizardOpen = false }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#FFF6EA] selection:bg-[#F2641A] selection:text-white overflow-x-hidden">
+    <>
+      <AnimatePresence>
+        {!isAppReady && (
+          <motion.div 
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.6, ease: "easeInOut" }}
+            className="fixed inset-0 z-[9999] bg-[#FFF6EA] flex flex-col items-center justify-center p-6"
+          >
+            <div className="w-full max-w-xs flex flex-col items-center gap-6">
+              <motion.h1 
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="text-4xl font-black text-[#2B2118] font-display flex flex-col items-center"
+              >
+                <span>La Coca</span>
+                <span className="text-[#F2641A]">de Jacks</span>
+              </motion.h1>
+              
+              <div className="w-full h-2 bg-[#F5D89A] rounded-full overflow-hidden">
+                <motion.div 
+                  className="h-full bg-[#F2641A] rounded-full"
+                  animate={{ width: `${loadingProgress}%` }}
+                  transition={{ duration: 0.2 }}
+                />
+              </div>
+              <p className="text-[#7A6B5C] font-bold text-[10px] uppercase tracking-[0.2em] animate-pulse">
+                Preparando el menú...
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className={`min-h-screen bg-[#FFF6EA] selection:bg-[#F2641A] selection:text-white overflow-x-hidden ${!isAppReady ? 'h-screen overflow-hidden' : ''}`}>
       <Navbar 
         onOpenWizard={() => openWizard()} 
       />
@@ -485,5 +555,6 @@ export default function Landing2({ defaultWizardOpen = false }) {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }
