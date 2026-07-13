@@ -236,7 +236,11 @@ const createOrder = async (req, res) => {
         }
 
         const requiresCocas = needs_cocas === 'true' || needs_cocas === true;
-        const cocasPrice = requiresCocas ? 70000 : 0;
+        // Fetch juego_cocas price from Config
+        const configCocas = await Configuracion.findOne({ where: { clave: 'juego_cocas' } });
+        const priceCocas = configCocas ? parseFloat(configCocas.valor) : 70000;
+        
+        const cocasPrice = requiresCocas ? priceCocas : 0;
         const precio_total = precioAjustado + cocasPrice;
 
         // 5. Crear Suscripción

@@ -405,7 +405,9 @@ const createClienteManual = async (req, res) => {
     const planDb = await Plan.findByPk(plan_id);
     if (!planDb) return res.status(400).json({ success: false, message: "Plan inválido" });
 
-    const precio_total = parseFloat(planDb.precio_base) + (necesita_cocas ? 70000 : 0);
+    const configCocas = await Configuracion.findOne({ where: { clave: 'juego_cocas' } });
+    const priceCocas = configCocas ? parseFloat(configCocas.valor) : 70000;
+    const precio_total = parseFloat(planDb.precio_base) + (necesita_cocas ? priceCocas : 0);
 
     const sub = await Suscripcion.create({
       cliente_cedula: cedula,
@@ -873,7 +875,9 @@ const assignRepartidor = async (req, res) => {
 const getPlanes = async (req, res) => {
   try {
     const planes = await Plan.findAll({ where: { esta_activo: true } });
-    res.json({ success: true, planes });
+    const configCocas = await Configuracion.findOne({ where: { clave: 'juego_cocas' } });
+    const juegoCocasPrice = configCocas ? parseFloat(configCocas.valor) : 70000;
+    res.json({ success: true, planes, juegoCocasPrice });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

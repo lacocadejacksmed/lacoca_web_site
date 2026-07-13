@@ -29,6 +29,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   const [coberturaData, setCoberturaData] = useState({ type: 'FeatureCollection', features: [] });
   const fileInputRef = useRef(null);
   const [fetchedPlans, setFetchedPlans] = useState([]);
+  const [juegoCocasPrice, setJuegoCocasPrice] = useState(70000);
 
   useEffect(() => {
     if (isOpen && (!dynamicPlans || dynamicPlans.length === 0)) {
@@ -37,6 +38,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           const res = await api.get('/planes');
           if (res.data?.success && res.data.planes) {
             setFetchedPlans(res.data.planes);
+            if (res.data.juegoCocasPrice) setJuegoCocasPrice(res.data.juegoCocasPrice);
           }
         } catch (err) {
           console.error("Error al cargar planes en wizard:", err);
@@ -666,7 +668,13 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     }
 
     let holidaysFound = 0;
-    const current = new Date(formData.fecha_inicio + 'T12:00:00');
+    const start = new Date(formData.fecha_inicio + 'T12:00:00');
+    
+    const dayOfWeek = start.getDay();
+    const daysSinceMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const current = new Date(start);
+    current.setDate(start.getDate() - daysSinceMonday);
+    
     const end = new Date(endDate);
     
     const fmt = (d) => {
@@ -702,7 +710,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
 
   const getAdjustedPriceInfo = () => {
     const details = getPlanPriceDetails(formData.plan);
-    const cocasPrice = formData.tieneCocas ? 0 : 70000;
+    const cocasPrice = formData.tieneCocas ? 0 : juegoCocasPrice;
     
     return {
       total: details.planPrice + cocasPrice,
@@ -810,7 +818,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   if (!isOpen) return null;
 
   const currentPlan = activePlans[formData.plan] || activePlans['quincenal'] || Object.values(activePlans)[0];
-  const totalPrice = (currentPlan?.price || 0) + (formData.tieneCocas ? 0 : 70000);
+  const totalPrice = (currentPlan?.price || 0) + (formData.tieneCocas ? 0 : juegoCocasPrice);
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm">

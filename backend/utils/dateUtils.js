@@ -44,7 +44,7 @@ const calcularVencimiento = (fechaInicioStr, planNombre, planDiasDuracion, feria
 
     // Deducir del planDias los festivos que caen en este rango de calendario
     let holidaysInWindow = 0;
-    const tempHolidayCursor = new Date(start);
+    const tempHolidayCursor = new Date(mondayOfThisWeek);
     tempHolidayCursor.setHours(12,0,0,0);
     
     const endCursor = new Date(endDate);
