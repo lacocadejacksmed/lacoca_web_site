@@ -120,8 +120,7 @@ export function useCoverage() {
     // Limpiar dirección de caracteres conflictivos (# y -)
     const cleanAddress = address.replace(/[#]/g, ' ').replace(/[-]/g, ' ');
     const query = `${cleanAddress}, ${barrio}, Antioquia, Colombia`;
-    // Se usa la llave pública directamente (obfuscada para evitar bloqueo de GitHub Security)
-    const apiKey = import.meta.env.VITE_MAPBOX_API_KEY || ['pk.ey', 'J1IjoiYWxl', 'amFuZHJvLTE1', 'IiwiYSI6ImNt', 'cGx1eGIwZzF0', 'b2Eyc3B4aW8w', 'czJhaXkifQ.oCVrr8', 'x-A7736cVQa3ss6A'].join('');
+    const apiKey = import.meta.env.VITE_MAPBOX_API_KEY;
 
     if (!apiKey) {
       console.error("Falta la API Key de Mapbox (VITE_MAPBOX_API_KEY)");
