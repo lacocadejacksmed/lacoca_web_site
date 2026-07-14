@@ -1,5 +1,6 @@
 const axios = require('axios');
 const path = require('path');
+const fs = require('fs');
 const Cliente = require('../models/Cliente');
 const Suscripcion = require('../models/Suscripcion');
 const Comprobante = require('../models/Comprobante');
@@ -11,18 +12,15 @@ const { Op } = require('sequelize');
 const { getHolidaysInRange } = require('../utils/colombianHolidays');
 
     // calculateBusinessDays is no longer needed since we use calcularVencimiento for holidays logic
-const MAIN_ZONES = [
-  { key: 'poblado', keywords: ['poblado'] },
-  { key: 'belen', keywords: ['belen', 'belén'] },
-  { key: 'laureles', keywords: ['laureles', 'estadio'] },
-  { key: 'centro', keywords: ['centro'] },
-  { key: 'envigado', keywords: ['envigado'] },
-  { key: 'sabaneta', keywords: ['sabaneta'] },
-  { key: 'itagui', keywords: ['itagui', 'itagüi', 'itagüí'] },
-  { key: 'bello', keywords: ['bello'] },
-  { key: 'guayabal', keywords: ['guayabal'] },
-  { key: 'norte', keywords: ['norte'] }
-];
+const getCoberturaData = () => {
+    try {
+        const filePath = path.join(__dirname, "../data/cobertura.json");
+        const data = fs.readFileSync(filePath, "utf8");
+        return JSON.parse(data);
+    } catch (e) {
+        return null;
+    }
+};
 
 const isBarrioCompatibleWithZone = (barrio, zoneName) => {
   if (!barrio || !zoneName) return true;
@@ -36,18 +34,27 @@ const isBarrioCompatibleWithZone = (barrio, zoneName) => {
   };
 
   const cleanBarrio = normalize(barrio);
-  const cleanZone = normalize(zoneName);
+  const cleanZoneName = normalize(zoneName);
 
-  const matchedZone = MAIN_ZONES.find(zone =>
-    zone.keywords.some(kw => cleanBarrio.includes(kw))
-  );
+  const cobertura = getCoberturaData();
+  if (!cobertura || !cobertura.features) return true;
 
-  if (matchedZone) {
-    const isMatch = matchedZone.keywords.some(kw => cleanZone.includes(kw)) || cleanZone.includes(matchedZone.key);
-    return isMatch;
+  const zoneFeature = cobertura.features.find(f => {
+      const name = normalize(f.properties.name || f.properties.nombre || "");
+      return name === cleanZoneName;
+  });
+
+  if (!zoneFeature) return true; 
+
+  const keywordsStr = zoneFeature.properties.keywords || "";
+  let keywords = keywordsStr.split(',').map(normalize).filter(k => k);
+  
+  if (cleanZoneName && !keywords.includes(cleanZoneName)) {
+      keywords.push(cleanZoneName);
   }
-
-  return true;
+  
+  const isMatch = keywords.some(kw => cleanBarrio.includes(kw));
+  return isMatch;
 };
 
 // Configuración de Multer para guardar imágenes usando Cloudinary

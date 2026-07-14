@@ -56,16 +56,29 @@ function MapController({ featureGroupRef, onDataLoaded, refreshTrigger }) {
     const handleCreated = (e) => {
       const layer = e.layer;
       Swal.fire({
-        title: 'Nombre de la Zona',
-        input: 'text',
+        title: 'Configurar Zona',
+        html:
+          '<input id="swal-input1" class="swal2-input" placeholder="Nombre de la Zona">' +
+          '<input id="swal-input2" class="swal2-input" placeholder="Barrios clave (ej: poblado, lleras)">',
+        focusConfirm: false,
         confirmButtonColor: '#f97316',
-        showCancelButton: true
-      }).then(({ value: name }) => {
-        const zoneName = name || `Nueva Zona`;
-        layer.options.zoneName = zoneName;
-        layer.bindPopup(`<strong>Zona:</strong> ${zoneName}`);
-        featureGroupRef.current.addLayer(layer);
-        onDataLoaded(true); // Update list
+        showCancelButton: true,
+        preConfirm: () => {
+          return [
+            document.getElementById('swal-input1').value,
+            document.getElementById('swal-input2').value
+          ]
+        }
+      }).then(({ value }) => {
+        if (value) {
+          const zoneName = value[0] || `Nueva Zona`;
+          const keywords = value[1] || "";
+          layer.options.zoneName = zoneName;
+          layer.options.keywords = keywords;
+          layer.bindPopup(`<strong>Zona:</strong> ${zoneName}<br><small>Barrios: ${keywords}</small>`);
+          featureGroupRef.current.addLayer(layer);
+          onDataLoaded(true); // Update list
+        }
       });
     };
 
@@ -109,7 +122,8 @@ export default function CoverageMap() {
           onEachFeature: (feature, layer) => {
             layer.options.zoneName = feature.properties.name;
             layer.options.color = feature.properties.color;
-            layer.bindPopup(`<strong>Zona:</strong> ${feature.properties.name}`);
+            layer.options.keywords = feature.properties.keywords || "";
+            layer.bindPopup(`<strong>Zona:</strong> ${feature.properties.name}<br><small>Barrios: ${feature.properties.keywords || ""}</small>`);
             layer.setStyle({
               color: feature.properties.color || COLORS[0],
               fillOpacity: 0.25,
@@ -117,16 +131,25 @@ export default function CoverageMap() {
             });
             layer.on('dblclick', async (e) => {
               L.DomEvent.stopPropagation(e);
-              const { value: newName } = await Swal.fire({
-                title: 'Renombrar Zona',
-                input: 'text',
-                inputValue: layer.options.zoneName,
+              const { value } = await Swal.fire({
+                title: 'Editar Zona',
+                html:
+                  `<input id="swal-edit1" class="swal2-input" placeholder="Nombre de la Zona" value="${layer.options.zoneName || ''}">` +
+                  `<input id="swal-edit2" class="swal2-input" placeholder="Barrios clave (separados por coma)" value="${layer.options.keywords || ''}">`,
+                focusConfirm: false,
                 confirmButtonColor: '#f97316',
-                showCancelButton: true
+                showCancelButton: true,
+                preConfirm: () => {
+                  return [
+                    document.getElementById('swal-edit1').value,
+                    document.getElementById('swal-edit2').value
+                  ]
+                }
               });
-              if (newName) {
-                layer.options.zoneName = newName;
-                layer.bindPopup(`<strong>Zona:</strong> ${newName}`).openPopup();
+              if (value) {
+                layer.options.zoneName = value[0] || layer.options.zoneName;
+                layer.options.keywords = value[1] || "";
+                layer.bindPopup(`<strong>Zona:</strong> ${layer.options.zoneName}<br><small>Barrios: ${layer.options.keywords}</small>`).openPopup();
                 fetchCoverage(true); // Update only sidebar
               }
             });
@@ -158,6 +181,7 @@ export default function CoverageMap() {
     const features = layers.map((layer, i) => {
       const geojson = layer.toGeoJSON();
       geojson.properties.name = layer.options.zoneName || "Zona sin nombre";
+      geojson.properties.keywords = layer.options.keywords || "";
       geojson.properties.color = layer.options.color || COLORS[i % COLORS.length];
       return geojson;
     });

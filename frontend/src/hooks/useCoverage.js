@@ -3,21 +3,8 @@ import * as turf from '@turf/turf';
 import axios from 'axios';
 import api from '../services/api';
 
-const MAIN_ZONES = [
-  { key: 'poblado', keywords: ['poblado'] },
-  { key: 'belen', keywords: ['belen', 'belén'] },
-  { key: 'laureles', keywords: ['laureles', 'estadio'] },
-  { key: 'centro', keywords: ['centro'] },
-  { key: 'envigado', keywords: ['envigado'] },
-  { key: 'sabaneta', keywords: ['sabaneta'] },
-  { key: 'itagui', keywords: ['itagui', 'itagüi', 'itagüí'] },
-  { key: 'bello', keywords: ['bello'] },
-  { key: 'guayabal', keywords: ['guayabal'] },
-  { key: 'norte', keywords: ['norte'] }
-];
-
-export const isBarrioCompatibleWithZone = (barrio, zoneName) => {
-  if (!barrio || !zoneName) return true;
+export const isBarrioCompatibleWithZone = (barrio, zoneFeature) => {
+  if (!barrio || !zoneFeature) return true;
   
   const normalize = (text) => {
     return text
@@ -28,18 +15,18 @@ export const isBarrioCompatibleWithZone = (barrio, zoneName) => {
   };
 
   const cleanBarrio = normalize(barrio);
-  const cleanZone = normalize(zoneName);
-
-  const matchedZone = MAIN_ZONES.find(zone =>
-    zone.keywords.some(kw => cleanBarrio.includes(kw))
-  );
-
-  if (matchedZone) {
-    const isMatch = matchedZone.keywords.some(kw => cleanZone.includes(kw)) || cleanZone.includes(matchedZone.key);
-    return isMatch;
+  const zoneName = normalize(zoneFeature.properties.name || zoneFeature.properties.nombre || "");
+  const keywordsStr = zoneFeature.properties.keywords || "";
+  
+  let keywords = keywordsStr.split(',').map(normalize).filter(k => k);
+  
+  // Agregar el nombre de la zona como keyword por defecto
+  if (zoneName && !keywords.includes(zoneName)) {
+      keywords.push(zoneName);
   }
-
-  return true;
+  
+  const isMatch = keywords.some(kw => cleanBarrio.includes(kw));
+  return isMatch;
 };
 
 export const validateAddressNumbers = (inputAddress, geocodedFeat) => {
@@ -90,22 +77,22 @@ export function useCoverage() {
 
   const verifyPointInPolygon = (lat, lng) => {
     const pt = turf.point([lng, lat]);
-    let zoneName = null;
+    let zoneFeature = null;
 
     coberturaData.features.forEach(f => {
       if (turf.booleanPointInPolygon(pt, f)) {
-        const nameKey = Object.keys(f.properties).find(k => k.trim().toLowerCase() === 'nombre' || k.trim().toLowerCase() === 'name');
-        if (nameKey) zoneName = f.properties[nameKey];
+        zoneFeature = f;
       }
     });
-    return zoneName;
+    return zoneFeature;
   };
 
   const checkCoverageByCoords = (lat, lng, barrio) => {
-    const zoneName = verifyPointInPolygon(lat, lng);
+    const zoneFeature = verifyPointInPolygon(lat, lng);
     
-    if (zoneName) {
-      if (barrio && !isBarrioCompatibleWithZone(barrio, zoneName)) {
+    if (zoneFeature) {
+      const zoneName = zoneFeature.properties.name || zoneFeature.properties.nombre;
+      if (barrio && !isBarrioCompatibleWithZone(barrio, zoneFeature)) {
         return { status: 'mismatch', zone: zoneName, lat, lng };
       }
       return { status: 'ok', zone: zoneName, lat, lng };
@@ -143,10 +130,11 @@ export function useCoverage() {
           return { status: 'no_coverage', zone: null };
         }
         const [lng, lat] = firstFeat.center;
-        const zoneName = verifyPointInPolygon(lat, lng);
+        const zoneFeature = verifyPointInPolygon(lat, lng);
 
-        if (zoneName) {
-          if (barrio && !isBarrioCompatibleWithZone(barrio, zoneName)) {
+        if (zoneFeature) {
+          const zoneName = zoneFeature.properties.name || zoneFeature.properties.nombre;
+          if (barrio && !isBarrioCompatibleWithZone(barrio, zoneFeature)) {
             return { status: 'mismatch', zone: zoneName, lat, lng };
           }
           return { status: 'ok', zone: zoneName, lat, lng };
