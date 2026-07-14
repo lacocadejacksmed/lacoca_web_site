@@ -161,7 +161,8 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
         { header: 'Barrio Secundario', key: 'barrio2', width: 20 },
         { header: 'Días Secundaria', key: 'dias2', width: 25 },
         { header: 'Alergias', key: 'alergias', width: 30 },
-        { header: 'Restricciones', key: 'restricciones', width: 30 }
+        { header: 'Restricciones', key: 'restricciones', width: 30 },
+        { header: 'Facturación Electrónica', key: 'facturacionElectronica', width: 25 }
       ];
 
       clients.forEach(c => {
@@ -185,7 +186,8 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
           barrio2: addr.barrio2,
           dias2: addr.dias2,
           alergias: c.alergias || 'Ninguna',
-          restricciones: c.restricciones || 'Ninguna'
+          restricciones: c.restricciones || 'Ninguna',
+          facturacionElectronica: c.facturacionElectronica || 'No'
         });
       });
       styleHeader(worksheet, 'FF2563EB'); // Azul
