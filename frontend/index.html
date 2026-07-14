@@ -11,10 +11,16 @@
   <!-- Google Fonts: carga no-bloqueante para no retrasar el primer paint -->
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Work+Sans:wght@300;400;500;600;700;800;900&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&family=Work+Sans:wght@300;400;500;600;700;800;900&display=swap"></noscript>
+  <style>
+    /* Deshabilita el feo cuadro gris de selección al tocar en móviles */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+  </style>
   <title>La Coca de Jacks — Almuerzos Ejecutivos en Medellín</title>
 </head>
 
-<body>
+<body ontouchstart="">
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
