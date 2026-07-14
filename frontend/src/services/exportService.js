@@ -71,6 +71,19 @@ const extractAddressInfo = (c) => {
   return { dir1, barrio1, zona1, dias1, dir2, barrio2, zona2, dias2, tipoEntrega, cocas, fechaIni };
 };
 
+const isClientCurrentlyRunning = (c) => {
+  if (c.status !== 'activo') return false;
+  const addr = extractAddressInfo(c);
+  if (!addr.fechaIni) return true;
+  
+  const [y, m, d] = addr.fechaIni.split('-');
+  const start = new Date(y, m - 1, d);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  return start <= today;
+};
+
 export async function exportExcel(type, clients = [], payments = [], plans = []) {
   try {
     const workbook = new ExcelJS.Workbook();
@@ -82,7 +95,7 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
     let worksheet;
 
     if (type === 'cocina') {
-      const activeClients = clients.filter(c => c.status === 'activo' && (c.alergias || c.restricciones));
+      const activeClients = clients.filter(c => isClientCurrentlyRunning(c) && (c.alergias || c.restricciones));
       worksheet = workbook.addWorksheet('Cocina - Restricciones');
       worksheet.columns = [
         { header: 'Cliente', key: 'nombre', width: 30 },
@@ -103,7 +116,7 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
       fileName = `Reporte_Cocina_${today}.xlsx`;
 
     } else if (type === 'logistica') {
-      const activeClients = clients.filter(c => c.status === 'activo');
+      const activeClients = clients.filter(c => isClientCurrentlyRunning(c));
       worksheet = workbook.addWorksheet('Logística y Despachos');
       worksheet.columns = [
         { header: 'Cliente', key: 'nombre', width: 30 },
@@ -206,7 +219,7 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
       fileName = `Reporte_Completo_Clientes_${today}.xlsx`;
 
     } else if (type === 'produccion') {
-      const activeClients = clients.filter(c => c.status === 'activo');
+      const activeClients = clients.filter(c => isClientCurrentlyRunning(c));
       worksheet = workbook.addWorksheet('Resumen Producción');
       worksheet.columns = [
         { header: 'Categoría', key: 'categoria', width: 45 }, 
