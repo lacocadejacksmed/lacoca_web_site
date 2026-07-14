@@ -18,7 +18,7 @@ const loginLimiter = rateLimit({
 // Autenticación
 router.post("/auth/register", authController.register);
 router.post("/auth/login", loginLimiter, authController.login);
-router.post("/auth/google", loginLimiter, authController.googleLogin);
+router.post("/auth/google", authController.googleLogin);
 router.post("/auth/forgot-password", authController.forgotPassword);
 router.post("/auth/reset-password", authController.resetPassword);
 router.get("/auth/me", protect, authController.getMe);
