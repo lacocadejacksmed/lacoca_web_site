@@ -195,20 +195,28 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
       const activeClients = clients.filter(c => c.status === 'activo');
       worksheet = workbook.addWorksheet('Resumen Producción');
       worksheet.columns = [
-        { header: 'Plan', key: 'plan', width: 25 }, 
-        { header: 'Cantidad', key: 'cantidad', width: 25 }
+        { header: 'Categoría', key: 'categoria', width: 45 }, 
+        { header: 'Cantidad', key: 'cantidad', width: 20 }
       ];
 
-      const resumen = { semanal: 0, quincenal: 0, mensual: 0 };
+      const resumen = { semanal: 0, quincenal: 0, mensual: 0, cocasVidrio: 0 };
+      
       activeClients.forEach(c => { 
         const p = (c.plan || '').toLowerCase();
         if(resumen[p] !== undefined) resumen[p]++; 
+        
+        const addr = extractAddressInfo(c);
+        if (addr.cocas === 'Sí') {
+          resumen.cocasVidrio++;
+        }
       });
 
-      worksheet.addRow({ plan: 'SEMANAL', cantidad: resumen.semanal });
-      worksheet.addRow({ plan: 'QUINCENAL', cantidad: resumen.quincenal });
-      worksheet.addRow({ plan: 'MENSUAL', cantidad: resumen.mensual });
-      worksheet.addRow({ plan: 'TOTAL HOY', cantidad: activeClients.length });
+      worksheet.addRow({ categoria: 'TOTAL COMIDAS A PREPARAR HOY (Clientes Activos)', cantidad: activeClients.length });
+      worksheet.addRow({ categoria: 'Cocas de Vidrio Necesarias (Para despachar)', cantidad: resumen.cocasVidrio });
+      worksheet.addRow({ categoria: '', cantidad: '' }); // Espacio en blanco
+      worksheet.addRow({ categoria: 'Detalle por Plan: SEMANAL', cantidad: resumen.semanal });
+      worksheet.addRow({ categoria: 'Detalle por Plan: QUINCENAL', cantidad: resumen.quincenal });
+      worksheet.addRow({ categoria: 'Detalle por Plan: MENSUAL', cantidad: resumen.mensual });
       
       styleHeader(worksheet, 'FF9333EA'); // Morado
       fileName = `Resumen_Produccion_${today}.xlsx`;
