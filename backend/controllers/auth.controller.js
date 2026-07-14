@@ -179,9 +179,20 @@ exports.updateProfile = async (req, res) => {
 
 exports.getMySubscriptions = async (req, res) => {
     try {
-        const usuario = await Usuario.findByPk(req.user.id);
-        if (!usuario || !usuario.cedula) {
+        let usuario = await Usuario.findByPk(req.user.id);
+        if (!usuario) {
             return res.json({ success: true, suscripciones: [] });
+        }
+
+        // AUTO-LINK: Si el usuario no tiene cédula (ej: login con Google), buscamos si tiene un Cliente asociado a su correo
+        if (!usuario.cedula) {
+            const clienteByEmail = await Cliente.findOne({ where: { correo: usuario.email } });
+            if (clienteByEmail) {
+                usuario.cedula = clienteByEmail.cedula;
+                await usuario.save();
+            } else {
+                return res.json({ success: true, suscripciones: [] });
+            }
         }
 
         let suscripciones = await Suscripcion.findAll({
@@ -208,7 +219,7 @@ exports.getMySubscriptions = async (req, res) => {
                 sub.fecha_inicio,
                 planNombre,
                 planDias,
-                feriadosArray,
+                feriadosDocs,
                 sub.estado
             );
 
