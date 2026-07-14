@@ -127,13 +127,9 @@ export default function ClientDashboard() {
                   <label className="text-xs font-bold text-slate-500 ml-1">Correo Electrónico</label>
                   <input type="email" value={editForm.email} onChange={e=>setEditForm({...editForm, email: e.target.value})} className="w-full mt-1 border-none bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-orange-500" required />
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="text-xs font-bold text-slate-500 ml-1">Celular (Opcional)</label>
                   <input type="text" value={editForm.celular} onChange={e=>setEditForm({...editForm, celular: e.target.value})} className="w-full mt-1 border-none bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-orange-500" placeholder="Ej. 3001234567" />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-slate-500 ml-1">Nueva Contraseña (Opcional)</label>
-                  <input type="password" value={editForm.password} onChange={e=>setEditForm({...editForm, password: e.target.value})} className="w-full mt-1 border-none bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-orange-500" placeholder="Dejar en blanco para no cambiar" />
                 </div>
               </div>
               <button type="submit" disabled={isUpdating} className="mt-4 bg-orange-600 text-white font-black py-3 rounded-xl hover:bg-orange-700 transition-colors">
