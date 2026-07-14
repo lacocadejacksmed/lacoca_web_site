@@ -54,7 +54,7 @@ export default function Login() {
     onSuccess: async (tokenResponse) => {
       setLoading(true);
       try {
-        const res = await api.post('/auth/google', { access_token: tokenResponse.access_token });
+        const res = await api.post('/auth/google', { access_token: tokenResponse.access_token, flowType: 'login' });
         if (res.data.success) {
           localStorage.setItem('token', res.data.token);
           localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
@@ -83,7 +83,8 @@ export default function Login() {
         title: 'Error',
         text: 'El inicio de sesión con Google falló'
       });
-    }
+    },
+    ux_mode: 'redirect'
   });
 
   return (

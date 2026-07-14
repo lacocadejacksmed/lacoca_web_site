@@ -325,7 +325,7 @@ exports.resetPassword = async (req, res) => {
 
 exports.googleLogin = async (req, res) => {
     try {
-        const { credential, access_token } = req.body;
+        const { credential, access_token, flowType } = req.body;
         if (!credential && !access_token) {
             return res.status(400).json({ success: false, message: 'Falta el token de Google' });
         }
@@ -351,6 +351,14 @@ exports.googleLogin = async (req, res) => {
 
         let usuario = await Usuario.findOne({ where: { email } });
         
+        if (flowType === 'login' && !usuario) {
+            return res.status(404).json({ success: false, message: 'No existe una cuenta con este correo. Por favor regístrate.' });
+        }
+        
+        if (flowType === 'register' && usuario) {
+            return res.status(400).json({ success: false, message: 'Este correo ya está registrado. Por favor inicia sesión.' });
+        }
+
         if (!usuario) {
             // Contraseña aleatoria imposible de adivinar para forzar que siempre use Google (o "olvidaste tu contraseña")
             const randomPassword = await bcrypt.hash(Math.random().toString(36).slice(-15) + Date.now().toString(), 10);

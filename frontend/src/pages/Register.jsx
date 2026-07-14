@@ -86,7 +86,7 @@ export default function Register() {
     onSuccess: async (tokenResponse) => {
       setLoading(true);
       try {
-        const res = await api.post('/auth/google', { access_token: tokenResponse.access_token });
+        const res = await api.post('/auth/google', { access_token: tokenResponse.access_token, flowType: 'register' });
         if (res.data.success) {
           localStorage.setItem('token', res.data.token);
           localStorage.setItem('usuario', JSON.stringify(res.data.usuario));
@@ -115,7 +115,8 @@ export default function Register() {
         title: 'Error',
         text: 'El registro con Google falló'
       });
-    }
+    },
+    ux_mode: 'redirect'
   });
 
   // Render a field status icon
