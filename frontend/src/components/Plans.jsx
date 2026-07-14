@@ -1,9 +1,8 @@
 import { motion } from 'framer-motion';
 import { Zap, TrendingUp, Star, Check, ArrowRight } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import api from '../services/api';
+import { useState, useMemo } from 'react';
 
-export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, plans: dynamicPlans }) {
+export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, plans: dynamicPlans, availabilityData, feriadosData }) {
   const staticPlans = [
     {
       id: 'semanal',
@@ -42,30 +41,18 @@ export default function Plans({ onOpenWizard, selectedPlan, setSelectedPlan, pla
     }
   ];
 
-  const [availableDate, setAvailableDate] = useState(null);
-  const [holidayDates, setHolidayDates] = useState([]);
+  // Derivar availableDate y holidayDates de los props (antes venían de un useEffect con API calls)
+  const availableDate = useMemo(() => {
+    if (!availabilityData) return null;
+    const firstAvailable = availabilityData.find(a => a.disponible);
+    return firstAvailable ? firstAvailable.fecha : null;
+  }, [availabilityData]);
 
-  useEffect(() => {
-    const checkHolidays = async () => {
-      try {
-        const [availRes, feriadosRes] = await Promise.all([
-          api.get('/availability'),
-          api.get('/feriados')
-        ]);
-        
-        if (availRes.data?.success && feriadosRes.data?.success) {
-          const firstAvailable = availRes.data.availability.find(a => a.disponible);
-          if (firstAvailable) {
-            setAvailableDate(firstAvailable.fecha);
-            setHolidayDates(feriadosRes.data.feriados.map(h => h.fecha));
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching holidays for Plans:", err);
-      }
-    };
-    checkHolidays();
-  }, []);
+  const holidayDates = useMemo(() => {
+    if (!feriadosData) return [];
+    return feriadosData.map(h => h.fecha);
+  }, [feriadosData]);
+
 
   const plans = staticPlans.map(staticPlan => {
     let resultPlan = { ...staticPlan };

@@ -20,7 +20,8 @@ export default defineConfig({
     }
   },
   build: {
-    modulePreload: false,
+    // modulePreload: true es el default — permite que Vite inyecte <link rel="modulepreload">
+    // para precargar chunks en paralelo en vez de descubrirlos en cascada
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -47,3 +48,4 @@ export default defineConfig({
     }
   }
 })
+

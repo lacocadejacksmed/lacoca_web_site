@@ -1,4 +1,4 @@
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import api, { API_URL } from '../services/api';
 import Navbar from '../components/Navbar';
@@ -40,62 +40,82 @@ export default function Landing2({ defaultWizardOpen = false }) {
   });
   const [planes, setPlanes] = useState([]);
 
+  // Datos que antes cargaba Plans.jsx internamente — ahora centralizados
+  const [availability, setAvailability] = useState(null);
+  const [feriados, setFeriados] = useState(null);
+
   const [isAppReady, setIsAppReady] = useState(false);
   const [loadingProgress, setLoadingProgress] = useState(0);
 
-  useEffect(() => {
-    let progressInterval;
-    
-    // Simular progreso rápido hasta el 85% para dar feedback visual
-    progressInterval = setInterval(() => {
-      setLoadingProgress(prev => {
-        if (prev >= 85) {
-          clearInterval(progressInterval);
-          return 85;
-        }
-        return prev + Math.floor(Math.random() * 15) + 5;
-      });
-    }, 150);
+  // Ref para verificar que el contenido principal se renderizó en el DOM
+  const mainContentRef = useRef(null);
 
-    const completeLoading = () => {
-      setLoadingProgress(100);
-      setTimeout(() => {
-        setIsAppReady(true);
-      }, 500); // Dar tiempo a la barra de llegar al 100%
-    };
+  useEffect(() => {
+    // Progreso suave visual: 0→30 rápido para feedback inmediato
+    setLoadingProgress(10);
+    const quickProgress = setTimeout(() => setLoadingProgress(25), 100);
 
     const loadData = async () => {
-      try {
-        const resMenu = await api.get('/menu');
-        if (resMenu.data.success && resMenu.data.menu) {
-          setWeeklyMenu(resMenu.data.menu);
-        }
-      } catch (err) {
-        console.error("Error al cargar menú:", err);
+      // ═══ TODAS las llamadas API en paralelo ═══
+      // Antes: 4 llamadas secuenciales (~2s). Ahora: 1 batch paralelo (~500ms)
+      const [menuRes, planesRes, availRes, feriadosRes] = await Promise.allSettled([
+        api.get('/menu'),
+        api.get('/planes'),
+        api.get('/availability'),
+        api.get('/feriados')
+      ]);
+
+      // Procesar resultados (cada uno independiente, si uno falla los demás siguen)
+      if (menuRes.status === 'fulfilled' && menuRes.value.data?.success && menuRes.value.data.menu) {
+        setWeeklyMenu(menuRes.value.data.menu);
       }
-      
-      try {
-        const resPlanes = await api.get('/planes');
-        if (resPlanes.data.success && resPlanes.data.planes) {
-          setPlanes(resPlanes.data.planes);
-        }
-      } catch (err) {
-        console.error("Error al cargar planes:", err);
+      if (planesRes.status === 'fulfilled' && planesRes.value.data?.success && planesRes.value.data.planes) {
+        setPlanes(planesRes.value.data.planes);
+      }
+      if (availRes.status === 'fulfilled' && availRes.value.data?.success) {
+        setAvailability(availRes.value.data.availability);
+      }
+      if (feriadosRes.status === 'fulfilled' && feriadosRes.value.data?.success) {
+        setFeriados(feriadosRes.value.data.feriados);
       }
 
-      // Esperar a que todos los assets estáticos de la página estén listos
-      if (document.readyState === 'complete') {
-        completeLoading();
-      } else {
-        window.addEventListener('load', completeLoading);
-      }
+      // APIs completadas → 60%
+      setLoadingProgress(60);
+
+      // Esperar a que los assets del DOM estén listos
+      const waitForDOMAssets = () => {
+        return new Promise((resolve) => {
+          if (document.readyState === 'complete') {
+            resolve();
+          } else {
+            window.addEventListener('load', resolve, { once: true });
+          }
+        });
+      };
+
+      await waitForDOMAssets();
+
+      // Assets listos → 85%
+      setLoadingProgress(85);
+
+      // ═══ FIX BUG MÓVIL: Doble rAF para confirmar que React PINTÓ ═══
+      // Un solo rAF puede ejecutarse antes del paint. Doble rAF garantiza
+      // que el browser completó al menos un ciclo de pintura con los datos.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setLoadingProgress(100);
+          // Esperar a que la animación de la barra llegue visualmente al 100%
+          setTimeout(() => {
+            setIsAppReady(true);
+          }, 350);
+        });
+      });
     };
 
     loadData();
 
     return () => {
-      clearInterval(progressInterval);
-      window.removeEventListener('load', completeLoading);
+      clearTimeout(quickProgress);
     };
   }, []);
 
@@ -128,7 +148,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
                 <motion.div 
                   className="h-full bg-[#F2641A] rounded-full"
                   animate={{ width: `${loadingProgress}%` }}
-                  transition={{ duration: 0.2 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
                 />
               </div>
               <p className="text-[#7A6B5C] font-bold text-[10px] uppercase tracking-[0.2em] animate-pulse">
@@ -139,7 +159,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
         )}
       </AnimatePresence>
 
-      <div className={`min-h-screen bg-[#FFF6EA] selection:bg-[#F2641A] selection:text-white overflow-x-hidden ${!isAppReady ? 'h-screen overflow-hidden' : ''}`}>
+      <div ref={mainContentRef} className={`min-h-screen bg-[#FFF6EA] selection:bg-[#F2641A] selection:text-white overflow-x-hidden ${!isAppReady ? 'h-screen overflow-hidden' : ''}`}>
       <Navbar 
         onOpenWizard={() => openWizard()} 
       />
@@ -238,6 +258,9 @@ export default function Landing2({ defaultWizardOpen = false }) {
                <img 
                  src="/hero.jpg" 
                  alt="Almuerzo Premium Jacks" 
+                 fetchpriority="high"
+                 width={600}
+                 height={600}
                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                />
             </div>
@@ -294,6 +317,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
                         <img 
                           src={weeklyMenu.imagen_url ? (weeklyMenu.imagen_url.startsWith('http') ? weeklyMenu.imagen_url : API_URL + weeklyMenu.imagen_url) : '/weekly_menu_preview_1778475988702.png'} 
                           alt="Menú Semanal Jacks" 
+                          loading="lazy"
                           className="w-full h-auto rounded-[36px] shadow-sm transform transition-transform duration-700 group-hover:scale-[1.02]"
                         />
                         <div className="absolute inset-0 bg-[#2B2118]/0 group-hover:bg-[#2B2118]/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -352,7 +376,9 @@ export default function Landing2({ defaultWizardOpen = false }) {
         plans={planes}
         selectedPlan={selectedPlan} 
         setSelectedPlan={setSelectedPlan} 
-        onOpenWizard={openWizard} 
+        onOpenWizard={openWizard}
+        availabilityData={availability}
+        feriadosData={feriados}
       />
 
       {/* --- HOW IT WORKS 2.0 --- */}
@@ -454,7 +480,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
                         <span className="font-black text-sm tracking-tight">Guayabal, Medellín</span>
                      </div>
                      <div className="relative rounded-[32px] overflow-hidden border border-[#7A6B5C]/30 group cursor-pointer">
-                        <img src="/mapa_ubicacion.jpg" alt="Mapa Jacks" className="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                        <img src="/mapa_ubicacion.jpg" alt="Mapa Jacks" loading="lazy" width={400} height={96} className="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
                         <div className="absolute inset-0 flex items-center justify-center bg-[#2B2118]/40 group-hover:bg-[#2B2118]/0 transition-all">
                            <span className="bg-white text-[#2B2118] px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl">Google Maps</span>
                         </div>
