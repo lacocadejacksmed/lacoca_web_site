@@ -162,11 +162,19 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
         { header: 'Días Secundaria', key: 'dias2', width: 25 },
         { header: 'Alergias', key: 'alergias', width: 30 },
         { header: 'Restricciones', key: 'restricciones', width: 30 },
-        { header: 'Facturación Electrónica', key: 'facturacionElectronica', width: 25 }
+        { header: 'Facturación Electrónica', key: 'facturacionElectronica', width: 25 },
+        { header: 'Valor Pagado', key: 'precioTotal', width: 15 },
+        { header: 'Es Fraudulento', key: 'esFraudulento', width: 15 },
+        { header: 'Fecha de Registro', key: 'fechaRegistro', width: 20 },
+        { header: 'Renovado (Re-suscrito)', key: 'esResuscrito', width: 20 }
       ];
 
       clients.forEach(c => {
         const addr = extractAddressInfo(c);
+        
+        const subs = c.raw && (c.raw.Suscripcions || c.raw.Suscripciones) ? (c.raw.Suscripcions || c.raw.Suscripciones) : [];
+        const activeSub = subs.sort((a,b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))[0];
+        
         worksheet.addRow({
           nombre: c.nombre,
           cedula: c.cedula,
@@ -187,7 +195,11 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
           dias2: addr.dias2,
           alergias: c.alergias || 'Ninguna',
           restricciones: c.restricciones || 'Ninguna',
-          facturacionElectronica: c.facturacionElectronica || 'No'
+          facturacionElectronica: c.facturacionElectronica || 'No',
+          precioTotal: activeSub ? parseFloat(activeSub.precio_total) || 0 : 0,
+          esFraudulento: c.esFraudulento ? 'Sí' : 'No',
+          fechaRegistro: formatDate(c.raw ? c.raw.fecha_creacion : null),
+          esResuscrito: subs.length > 1 ? 'Sí' : 'No'
         });
       });
       styleHeader(worksheet, 'FF2563EB'); // Azul
