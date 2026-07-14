@@ -8,6 +8,7 @@ const Plan = require('../models/Plan');
 const DireccionEntrega = require('../models/DireccionEntrega');
 const Feriado = require('../models/Feriado');
 const { Op } = require('sequelize');
+const { getHolidaysInRange } = require('../utils/colombianHolidays');
 
     // calculateBusinessDays is no longer needed since we use calcularVencimiento for holidays logic
 const MAIN_ZONES = [
@@ -294,17 +295,43 @@ const getAvailability = async (req, res) => {
         const maxCuposConfig = await Configuracion.findByPk('max_cupos');
         const maxCupos = maxCuposConfig ? parseInt(maxCuposConfig.valor, 10) : 1500;
 
-        // Calcular los próximos 4 lunes
         const availability = [];
-        const start = new Date();
+        const now = new Date();
+        const start = new Date(now.toLocaleString("en-US", { timeZone: "America/Bogota" }));
+        
         const day = start.getDay();
-        const daysToNextMonday = (day === 0) ? 1 : (8 - day);
+        let daysToNextMonday = (day === 0) ? 1 : (8 - day);
+        
+        // REGLA: Si hoy es lunes y es FESTIVO, el plazo se extiende hasta las 11:59 PM de hoy.
+        if (day === 1) {
+            const currentYear = start.getFullYear();
+            const y = start.getFullYear();
+            const m = String(start.getMonth() + 1).padStart(2, '0');
+            const d = String(start.getDate()).padStart(2, '0');
+            const todayStr = `${y}-${m}-${d}`;
+            
+            const feriadosDocs = await Feriado.findAll({ where: { fecha: todayStr } });
+            const isDbHoliday = feriadosDocs.some(f => f.activo !== false);
+            const isIgnored = feriadosDocs.some(f => f.activo === false);
+            
+            const autoHolidays = getHolidaysInRange(currentYear, currentYear).map(h => h.date);
+            const isAutoHoliday = autoHolidays.includes(todayStr);
+            
+            const isHolidayToday = (isAutoHoliday && !isIgnored) || isDbHoliday;
+            
+            if (isHolidayToday) {
+                daysToNextMonday = 0; // Permitir suscribirse para "hoy" (la semana actual)
+            }
+        }
         
         let currentMonday = new Date(start);
         currentMonday.setDate(start.getDate() + daysToNextMonday);
 
         for (let i = 0; i < 4; i++) {
-            const dateStr = currentMonday.toISOString().split('T')[0];
+            const y = currentMonday.getFullYear();
+            const m = String(currentMonday.getMonth() + 1).padStart(2, '0');
+            const d = String(currentMonday.getDate()).padStart(2, '0');
+            const dateStr = `${y}-${m}-${d}`;
             
             const count = await Suscripcion.count({
                 where: {
@@ -320,7 +347,6 @@ const getAvailability = async (req, res) => {
                 disponible: count < maxCupos
             });
 
-            // Siguiente lunes
             currentMonday.setDate(currentMonday.getDate() + 7);
         }
 
