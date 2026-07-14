@@ -10,6 +10,15 @@ export default function ClientDashboard() {
   const [suscripciones, setSuscripciones] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ 
+    nombre: usuario.nombre || '', 
+    email: usuario.email || '', 
+    celular: '', 
+    password: '' 
+  });
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -41,6 +50,26 @@ export default function ClientDashboard() {
     navigate('/#reserva');
   };
 
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    try {
+      const res = await api.put('/auth/me', editForm);
+      if (res.data.success) {
+        Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Perfil actualizado', showConfirmButton: false, timer: 3000 });
+        const updatedUser = { ...usuario, nombre: editForm.nombre, email: editForm.email };
+        localStorage.setItem('usuario', JSON.stringify(updatedUser));
+        setUsuario(updatedUser);
+        setEditForm({ ...editForm, password: '' });
+        setIsEditing(false);
+      }
+    } catch (err) {
+      Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Error al actualizar', showConfirmButton: false, timer: 3000 });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const activeOrPendingSubs = suscripciones.filter(sub => sub.estado === 'Activo' || sub.estado === 'Pendiente');
   const pastSubs = suscripciones.filter(sub => sub.estado === 'Vencido' || sub.estado === 'Cancelado');
 
@@ -54,10 +83,15 @@ export default function ClientDashboard() {
             <ArrowLeft size={18} />
             Volver al inicio
           </Link>
-          <button onClick={handleLogout} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-all border border-white/20 w-full md:w-auto justify-center">
-            <LogOut size={18} />
-            <span className="text-sm font-bold">Cerrar Sesión</span>
-          </button>
+          <div className="flex gap-2 w-full md:w-auto">
+            <button onClick={() => setIsEditing(!isEditing)} className="flex items-center gap-2 bg-orange-600/90 hover:bg-orange-600 px-4 py-2 rounded-xl transition-all w-full md:w-auto justify-center shadow-lg">
+              <span className="text-sm font-bold">{isEditing ? 'Cancelar' : 'Editar Perfil'}</span>
+            </button>
+            <button onClick={handleLogout} className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-all border border-white/20 w-full md:w-auto justify-center">
+              <LogOut size={18} />
+              <span className="text-sm font-bold hidden md:inline">Cerrar Sesión</span>
+            </button>
+          </div>
         </div>
         
         <div className="max-w-4xl mx-auto mt-12 mb-16 text-center md:text-left relative z-10">
@@ -75,6 +109,40 @@ export default function ClientDashboard() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-6 -mt-16 md:-mt-24 pb-20 relative z-20">
         
+        {/* Edit Profile Form */}
+        {isEditing && (
+          <motion.section 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="mb-8"
+          >
+            <form onSubmit={handleUpdateProfile} className="bg-white p-6 rounded-[24px] shadow-xl border border-slate-100 flex flex-col gap-4">
+              <h3 className="text-lg font-black text-slate-800 mb-2">Editar Datos Personales</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 ml-1">Nombre Completo</label>
+                  <input type="text" value={editForm.nombre} onChange={e=>setEditForm({...editForm, nombre: e.target.value})} className="w-full mt-1 border-none bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-orange-500" required />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 ml-1">Correo Electrónico</label>
+                  <input type="email" value={editForm.email} onChange={e=>setEditForm({...editForm, email: e.target.value})} className="w-full mt-1 border-none bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-orange-500" required />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 ml-1">Celular (Opcional)</label>
+                  <input type="text" value={editForm.celular} onChange={e=>setEditForm({...editForm, celular: e.target.value})} className="w-full mt-1 border-none bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-orange-500" placeholder="Ej. 3001234567" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 ml-1">Nueva Contraseña (Opcional)</label>
+                  <input type="password" value={editForm.password} onChange={e=>setEditForm({...editForm, password: e.target.value})} className="w-full mt-1 border-none bg-slate-50 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 focus:ring-2 focus:ring-orange-500" placeholder="Dejar en blanco para no cambiar" />
+                </div>
+              </div>
+              <button type="submit" disabled={isUpdating} className="mt-4 bg-orange-600 text-white font-black py-3 rounded-xl hover:bg-orange-700 transition-colors">
+                {isUpdating ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </form>
+          </motion.section>
+        )}
+
         {/* Active Subscription Section */}
         <section className="mb-12">
           <div className="flex items-center gap-3 mb-6 px-2">
@@ -134,7 +202,7 @@ export default function ClientDashboard() {
                          </div>
                          <p className="text-slate-500 font-medium flex items-center gap-2">
                            <Calendar size={16} />
-                           Vence el {sub.fecha_vencimiento || sub.fecha_inicio || 'N/A'}
+                           Inicia el {sub.fecha_inicio || 'N/A'} • Vence el {sub.fecha_vencimiento || 'N/A'}
                          </p>
                        </div>
 
@@ -149,17 +217,54 @@ export default function ClientDashboard() {
                      </div>
 
                      {/* Details Grid */}
-                     <div className="grid grid-cols-2 gap-4 bg-slate-50 p-6 rounded-2xl">
+                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4 bg-slate-50 p-6 rounded-2xl">
+                       <div>
+                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Modalidad</p>
+                         <p className="text-sm font-bold text-slate-800">{sub.tipo_entrega || 'Fija'}</p>
+                       </div>
+                       <div>
+                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Días de Entrega</p>
+                         <p className="text-sm font-semibold text-slate-700">{sub.direcciones?.[0]?.dias_entrega || 'Todos los días'}</p>
+                       </div>
                        <div>
                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Precio Total</p>
-                         <p className="text-lg font-bold text-slate-800">${parseFloat(sub.precio_total).toLocaleString('es-CO')}</p>
+                         <p className="text-sm font-bold text-slate-800">${parseFloat(sub.precio_total).toLocaleString('es-CO')}</p>
                        </div>
-                       <div>
-                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Dirección de Entrega</p>
-                         <p className="text-sm font-semibold text-slate-700 line-clamp-2">
-                           {sub.direcciones?.[0]?.direccion || 'N/A'}
+                       <div className="col-span-2 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
+                         <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Dirección Principal</p>
+                         <p className="text-sm font-semibold text-slate-700">
+                           {sub.direcciones?.[0]?.direccion || 'N/A'} 
+                           {sub.direcciones?.[0]?.barrio && ` - ${sub.direcciones[0].barrio}`}
                          </p>
                        </div>
+                       {sub.tipo_entrega === 'Hibrida' && sub.direcciones?.[1] && (
+                         <div className="col-span-2 md:col-span-3 border-t border-slate-200/60 pt-4">
+                           <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Dirección Secundaria (Híbrida)</p>
+                           <p className="text-sm font-semibold text-slate-700">
+                             {sub.direcciones[1].direccion} 
+                             {sub.direcciones[1].barrio && ` - ${sub.direcciones[1].barrio}`}
+                             <span className="ml-2 text-orange-600">({sub.direcciones[1].dias_entrega})</span>
+                           </p>
+                         </div>
+                       )}
+                       {(sub.alergias || sub.restricciones) && (
+                         <div className="col-span-2 md:col-span-3 border-t border-red-100/50 pt-4 bg-red-50/50 rounded-b-xl px-2">
+                           <div className="flex gap-4">
+                             {sub.alergias && (
+                               <div className="flex-1">
+                                 <p className="text-[10px] text-red-400 font-black uppercase tracking-widest mb-1">Alergias</p>
+                                 <p className="text-sm font-semibold text-red-900">{sub.alergias}</p>
+                               </div>
+                             )}
+                             {sub.restricciones && (
+                               <div className="flex-1">
+                                 <p className="text-[10px] text-red-400 font-black uppercase tracking-widest mb-1">Restricciones</p>
+                                 <p className="text-sm font-semibold text-red-900">{sub.restricciones}</p>
+                               </div>
+                             )}
+                           </div>
+                         </div>
+                       )}
                      </div>
 
                      {/* Renewal Action */}
