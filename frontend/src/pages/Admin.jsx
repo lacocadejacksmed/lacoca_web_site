@@ -65,7 +65,6 @@ import Swal from 'sweetalert2';
 import { validateComprobanteEdit, validateConfig, validateConfigValue, validatePlan, validateMenu, validateFeriado } from '../schemas/validationSchemas';
 import ClientEditorModal from '../components/ClientEditorModal';
 import ClientViewModal from '../components/ClientViewModal';
-import ExportModal from '../components/ExportModal';
 import RegistrationWizard from '../components/RegistrationWizard';
 import CoverageMap from '../components/CoverageMap';
 
@@ -80,6 +79,7 @@ export default function Admin() {
   const [repartidores, setRepartidores] = useState([]);
   const [repartidorAsignado, setRepartidorAsignado] = useState(null);
   const [plans, setPlans] = useState([]);
+  const [selectedComprobante, setSelectedComprobante] = useState(null);
 
   // Stats
   const [dashboardStats, setDashboardStats] = useState({
@@ -98,9 +98,6 @@ export default function Admin() {
   const [selectedClient, setSelectedClient] = useState(null);
   const [viewingClient, setViewingClient] = useState(null);
   const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
-  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
-  const [exportModalType, setExportModalType] = useState('todos');
-  const [selectedComprobante, setSelectedComprobante] = useState(null);
   const [feriados, setFeriados] = useState([]);
   const [newFeriado, setNewFeriado] = useState({ fecha: '', descripcion: '' });
   
@@ -673,23 +670,16 @@ export default function Admin() {
             <div className="mt-12 pt-8 border-t border-slate-800">
             <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest px-4 mb-4 block">Reportes Rápidos</span>
             <div className="space-y-1">
-              {['todos', 'activos', 'cocina_logistica', 'produccion'].map(type => (
+              {['completo', 'cocina', 'logistica', 'produccion'].map(type => (
                 <button 
                   key={type}
-                  onClick={() => {
-                    if (type === 'produccion' || type === 'cocina_logistica') {
-                      exportExcel(type, clients, payments, adminPlanes);
-                    } else {
-                      setExportModalType(type);
-                      setIsExportModalOpen(true);
-                    }
-                  }}
+                  onClick={() => exportExcel(type, clients, payments, adminPlanes)}
                   className="w-full text-left px-4 py-2 text-xs text-slate-400 hover:text-white transition-colors font-bold uppercase tracking-tight flex items-center gap-2"
                 >
                   <FileDown size={14} />
-                  {type === 'todos' ? 'Clientes' : 
-                   type === 'activos' ? 'Sólo Activos' : 
-                   type === 'cocina_logistica' ? 'Logística y Cocina' : 
+                  {type === 'completo' ? 'Todos los Clientes' : 
+                   type === 'cocina' ? 'Cocina y Restricciones' : 
+                   type === 'logistica' ? 'Despachos (Logística)' : 
                    'Resumen Producción'}
                 </button>
               ))}
@@ -1634,7 +1624,7 @@ export default function Admin() {
                       <option value="">Todos</option>
                    </select>
                    <button 
-                     onClick={() => exportExcel({ entity: 'pagos', group: paymentStatusFilter || 'todos', columns: ['clienteNombre', 'clienteCedula', 'clienteCelular', 'plan', 'status', 'fecha'] }, clients, payments, adminPlanes)}
+                     onClick={() => exportExcel('pagos', clients, filteredPayments, adminPlanes)}
                      className="bg-green-50 text-green-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-green-100 transition-all"
                      title="Exportar vista actual a Excel"
                    >
@@ -1769,7 +1759,7 @@ export default function Admin() {
                       <option value="vencido">Vencidos / Inactivos</option>
                    </select>
                    <button 
-                     onClick={() => exportExcel('cocina_logistica', clients, payments, adminPlanes)}
+                     onClick={() => exportExcel('logistica', clients, payments, adminPlanes)}
                      className="bg-orange-50 text-orange-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-orange-100 transition-all"
                      title="Exporta clientes activos con direcciones para logística"
                    >
@@ -1777,12 +1767,20 @@ export default function Admin() {
                      Logística
                    </button>
                    <button 
-                     onClick={() => exportExcel('produccion', clients, payments, adminPlanes)}
-                     className="bg-purple-50 text-purple-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-purple-100 transition-all"
-                     title="Exporta resumen de cantidades por plan"
+                     onClick={() => exportExcel('cocina', clients, payments, adminPlanes)}
+                     className="bg-red-50 text-red-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-red-100 transition-all"
+                     title="Exporta clientes activos con restricciones"
                    >
                      <FileDown size={18} />
-                     Producción
+                     Cocina
+                   </button>
+                   <button 
+                     onClick={() => exportExcel('completo', clients, payments, adminPlanes)}
+                     className="bg-blue-50 text-blue-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-blue-100 transition-all"
+                     title="Exporta todos los datos del cliente"
+                   >
+                     <FileDown size={18} />
+                     Completo
                    </button>
                  </div>
                  <button 
@@ -1899,14 +1897,6 @@ export default function Admin() {
         onUpdate={fetchData}
         initialPlan=""
         plans={plans}
-      />
-      <ExportModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        initialType={exportModalType}
-        onExport={(entity, group, columns) => {
-          exportExcel({ entity, group, columns }, clients, payments, adminPlanes);
-        }}
       />
       {/* Comprobante Modal (Full Data & Edit) */}
       {selectedComprobante && (
