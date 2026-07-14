@@ -135,10 +135,10 @@ export default function Landing2({ defaultWizardOpen = false }) {
                 <span className="text-[#F2641A]">de Jacks</span>
               </motion.h1>
               
-              <div className="w-full h-2 bg-[#F5D89A] rounded-full overflow-hidden">
+              <div className="w-full h-2 bg-[#F5D89A] rounded-full overflow-hidden transform-gpu">
                 <motion.div 
-                  className="h-full bg-[#F2641A] rounded-full"
-                  animate={{ width: `${loadingProgress}%` }}
+                  className="h-full bg-[#F2641A] rounded-full origin-left"
+                  animate={{ scaleX: loadingProgress / 100 }}
                   transition={{ duration: 0.3, ease: "easeOut" }}
                 />
               </div>
@@ -157,9 +157,9 @@ export default function Landing2({ defaultWizardOpen = false }) {
 
       {/* --- HERO SECTION 2.0 --- */}
       <section className="relative min-h-[95vh] flex items-center pt-32 lg:pt-40 pb-16 px-6 overflow-hidden bg-[#FFF6EA]">
-        {/* Abstract Background Elements */}
-        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-[#F2641A]/15 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#F5D89A]/30 rounded-full blur-[100px] animate-pulse delay-700"></div>
+        {/* Abstract Background Elements (Optimized: Removed animate-pulse to prevent mobile GPU lockups) */}
+        <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-[#F2641A]/15 rounded-full blur-[120px] transform-gpu"></div>
+        <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#F5D89A]/30 rounded-full blur-[100px] transform-gpu"></div>
         
         <div className="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center relative z-10">
           <motion.div
