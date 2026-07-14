@@ -203,7 +203,9 @@ export async function exportExcel(type, clients = [], payments = [], plans = [])
       
       activeClients.forEach(c => { 
         const p = (c.plan || '').toLowerCase();
-        if(resumen[p] !== undefined) resumen[p]++; 
+        if (p.includes('semanal')) resumen.semanal++;
+        else if (p.includes('quincenal')) resumen.quincenal++;
+        else if (p.includes('mensual')) resumen.mensual++;
         
         const addr = extractAddressInfo(c);
         if (addr.cocas === 'Sí') {
