@@ -93,10 +93,13 @@ body {
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 html {
   scroll-behavior: smooth;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* =============================================================

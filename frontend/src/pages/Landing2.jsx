@@ -150,7 +150,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
         )}
       </AnimatePresence>
 
-      <div ref={mainContentRef} className={`min-h-screen bg-[#FFF6EA] selection:bg-[#F2641A] selection:text-white overflow-x-hidden ${!isAppReady ? 'h-screen overflow-hidden' : ''}`}>
+      <div ref={mainContentRef} className={`min-h-screen bg-[#FFF6EA] selection:bg-[#F2641A] selection:text-white ${!isAppReady ? 'h-screen overflow-hidden' : ''}`}>
       <Navbar 
         onOpenWizard={() => openWizard()} 
       />
