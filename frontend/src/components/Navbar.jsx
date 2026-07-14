@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Menu, X, LogOut, User, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
+
+const MotionLink = motion(Link);
 
 export default function Navbar({ onOpenWizard, onMenuToggle }) {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -34,7 +37,7 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
       >
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           {/* Brand Section */}
-          <a href="/" className="flex items-center gap-3 no-underline group">
+          <Link to="/" className="flex items-center gap-3 no-underline group">
             {/* Image - Hidden on Mobile, visible from LG */}
             <div className="relative hidden lg:block">
               <img
@@ -54,7 +57,7 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
                 de Jacks
               </span>
             </div>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className={`hidden lg:flex items-center gap-8 backdrop-blur-sm px-8 py-3 rounded-full border transition-all ${isScrolled ? 'bg-white/10 border-white/20' : 'bg-[#2B2118]/5 border-[#2B2118]/10'}`}>
@@ -77,14 +80,16 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
             <div className="flex items-center">
               {isLoggedIn ? (
                 <div className="flex items-center gap-2">
-                  <a
-                    href={user.rol === 'admin' ? '/admin' : '/dashboard'}
+                  <MotionLink
+                    to={user.rol === 'admin' ? '/admin' : '/dashboard'}
+                    whileTap={{ scale: 0.92 }}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all no-underline ${isScrolled ? 'bg-white/20 hover:bg-white/30 text-white' : 'bg-[#2B2118]/5 hover:bg-[#2B2118]/10 text-[#2B2118]'}`}
                   >
                     <User size={16} />
                     <span className="hidden sm:inline text-[10px] font-black uppercase tracking-widest">Panel</span>
-                  </a>
-                  <button
+                  </MotionLink>
+                  <motion.button
+                    whileTap={{ scale: 0.85 }}
                     onClick={() => { localStorage.clear(); window.location.reload(); }}
                     title="Cerrar Sesión"
                     className={`p-2.5 rounded-xl transition-all duration-300 hidden md:flex items-center justify-center border-none cursor-pointer ${isScrolled
@@ -93,29 +98,32 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
                       }`}
                   >
                     <LogOut size={16} strokeWidth={2.5} />
-                  </button>
+                  </motion.button>
                 </div>
               ) : (
-                <a
-                  href="/login"
-                  className="bg-[#F2641A] hover:bg-[#F2641A]/90 text-white px-6 py-3 rounded-full text-[15px] font-black uppercase tracking-[0.15em] no-underline shadow-lg shadow-[#F2641A]/20 active:scale-95 transition-all flex items-center gap-2"
+                <MotionLink
+                  to="/login"
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-[#F2641A] hover:bg-[#F2641A]/90 text-white px-6 py-3 rounded-full text-[15px] font-black uppercase tracking-[0.15em] no-underline shadow-lg shadow-[#F2641A]/20 transition-all flex items-center gap-2"
                 >
                   <User size={14} strokeWidth={3} />
                   Ingresar
-                </a>
+                </MotionLink>
               )}
             </div>
 
             {/* CTA Reservar - Hidden on very small mobile, visible from M up */}
-            <button
+            <motion.button
+              whileTap={{ scale: 0.92 }}
               onClick={onOpenWizard}
-              className={`hidden sm:flex text-[15px] font-black uppercase tracking-widest py-3.5 px-8 rounded-full transition-all shadow-xl active:scale-95 border-none cursor-pointer ${isScrolled ? 'bg-white text-[#F2641A] hover:bg-[#FFF6EA]' : 'bg-[#F2641A] text-white hover:bg-[#F2641A]/90 shadow-[#F2641A]/20'}`}
+              className={`hidden sm:flex text-[15px] font-black uppercase tracking-widest py-3.5 px-8 rounded-full transition-all shadow-xl border-none cursor-pointer ${isScrolled ? 'bg-white text-[#F2641A] hover:bg-[#FFF6EA]' : 'bg-[#F2641A] text-white hover:bg-[#F2641A]/90 shadow-[#F2641A]/20'}`}
             >
               Reservar
-            </button>
+            </motion.button>
 
             {/* Mobile Menu Toggle */}
-            <button
+            <motion.button
+              whileTap={{ scale: 0.85 }}
               onClick={() => {
                 const newState = !isMenuOpen;
                 setIsMenuOpen(newState);
@@ -124,7 +132,7 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
               className={`lg:hidden p-3 rounded-2xl transition-all border ${isScrolled ? 'bg-white/10 hover:bg-white/20 text-white border-white/20' : 'bg-[#2B2118]/5 hover:bg-[#2B2118]/10 text-[#2B2118] border-[#2B2118]/10'}`}
             >
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            </motion.button>
           </div>
         </div>
       </nav>
@@ -156,7 +164,8 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
               className="fixed right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col p-8 pt-20 z-[301] lg:hidden"
             >
               {/* Close Button - Absolute for visibility */}
-              <button
+              <motion.button
+                whileTap={{ scale: 0.85 }}
                 onClick={() => {
                   setIsMenuOpen(false);
                   onMenuToggle?.(false);
@@ -164,7 +173,7 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
                 className="absolute top-6 right-6 p-3 bg-[#F2641A] text-white rounded-2xl shadow-lg hover:bg-[#F2641A]/90 transition-all z-[350]"
               >
                 <X size={24} strokeWidth={3} />
-              </button>
+              </motion.button>
 
               {/* Centered Logo Section */}
               <div className="flex flex-col items-center justify-center mb-12 text-center">
@@ -218,25 +227,27 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
               </div>
 
               <div className="mt-auto space-y-4">
-                <button
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => {
                     onOpenWizard();
                     setIsMenuOpen(false);
                     onMenuToggle?.(false);
                   }}
-                  className="w-full py-5 bg-[#F2641A] text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-[#F2641A]/30 flex items-center justify-center gap-3 active:scale-95 transition-all"
+                  className="w-full py-5 bg-[#F2641A] text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-xl shadow-[#F2641A]/30 flex items-center justify-center gap-3 transition-all border-none"
                 >
                   Reservar Ahora
                   <ChevronRight size={18} strokeWidth={3} />
-                </button>
+                </motion.button>
 
                 {isLoggedIn && (
-                  <button
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => { localStorage.clear(); window.location.reload(); }}
-                    className="w-full py-4 text-[#7A6B5C] font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-4 text-[#7A6B5C] font-black text-[10px] uppercase tracking-widest hover:text-red-500 transition-colors flex items-center justify-center gap-2 border-none bg-transparent"
                   >
                     <LogOut size={16} /> Cerrar Sesión
-                  </button>
+                  </motion.button>
                 )}
               </div>
             </motion.div>

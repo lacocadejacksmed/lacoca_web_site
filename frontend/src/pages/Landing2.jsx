@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, Suspense, lazy } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api, { API_URL } from '../services/api';
 import Navbar from '../components/Navbar';
 
@@ -9,6 +9,9 @@ const RegistrationWizard = lazy(() => import('../components/RegistrationWizard')
 import FAQ from '../components/FAQ';
 import Plans from '../components/Plans';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const MotionLink = motion(Link);
+
 import { 
   ArrowRight, 
   Check, 
@@ -51,6 +54,11 @@ export default function Landing2({ defaultWizardOpen = false }) {
   const mainContentRef = useRef(null);
 
   useEffect(() => {
+    // 0. Pre-cargar el wizard pesadísimo silenciosamente en el fondo tras 1 segundo
+    const preloadTimer = setTimeout(() => {
+      import('../components/RegistrationWizard').catch(err => console.log('Error preloading wizard:', err));
+    }, 1000);
+
     // 1. Iniciar carga asíncrona de APIs en el fondo (Desbloqueado del render)
     const fetchApis = async () => {
       try {
@@ -106,6 +114,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
     }, 50);
 
     return () => {
+      clearTimeout(preloadTimer);
       clearInterval(progressInterval);
     };
   }, []);
@@ -189,20 +198,25 @@ export default function Landing2({ defaultWizardOpen = false }) {
             </p>
 
             <div className="flex flex-wrap gap-5">
-              <button 
+              <motion.button 
+                whileTap={{ scale: 0.92 }}
                 onClick={() => openWizard()}
-                className="group relative bg-[#2B2118] text-white px-10 py-5 rounded-[24px] font-black text-sm tracking-tight overflow-hidden transition-all hover:shadow-2xl hover:shadow-[#2B2118]/20 active:scale-95 border-none cursor-pointer"
+                className="group relative bg-[#2B2118] text-white px-10 py-5 rounded-[24px] font-black text-sm tracking-tight overflow-hidden transition-all hover:shadow-2xl hover:shadow-[#2B2118]/20 border-none cursor-pointer"
               >
                 <span className="relative z-10 flex items-center gap-3">
                   Reserva tu Cupo Ahora
                   <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-[#F2641A] to-[#F2A922] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              </button>
+              </motion.button>
 
-              <a href="#menu" className="px-10 py-5 rounded-[24px] border-2 border-[#EFD9B4] text-[#2B2118] font-black text-sm hover:bg-[#FFF9F0] transition-all no-underline flex items-center">
+              <motion.a 
+                whileTap={{ scale: 0.95 }}
+                href="#menu" 
+                className="px-10 py-5 rounded-[24px] border-2 border-[#EFD9B4] text-[#2B2118] font-black text-sm hover:bg-[#FFF9F0] transition-all no-underline flex items-center"
+              >
                 Ver Menú Semanal
-              </a>
+              </motion.a>
             </div>
 
             <div className="mt-12 flex flex-wrap items-center gap-2 lg:gap-6 -ml-4">
