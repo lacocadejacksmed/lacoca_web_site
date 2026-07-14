@@ -677,6 +677,11 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     
     const end = new Date(endDate);
     
+    console.log("=== DEBUG FESTIVOS ===");
+    console.log("Plan:", planName);
+    console.log("Rango de evaluacion:", current, "a", end);
+    console.log("Festivos cargados (holidays):", holidays);
+    
     const fmt = (d) => {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -685,7 +690,15 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     };
     
     while (current <= end) {
-      if (holidays.includes(fmt(current)) && current.getDay() !== 0 && current.getDay() !== 6) holidaysFound++;
+      const isWeekend = current.getDay() === 0 || current.getDay() === 6;
+      if (!isWeekend) {
+        if (holidays.includes(fmt(current))) {
+          console.log(`Festivo DETECTADO dentro del rango: ${fmt(current)}`);
+          holidaysFound++;
+        } else {
+          console.log(`Día normal evaluado: ${fmt(current)}`);
+        }
+      }
       current.setDate(current.getDate() + 1);
     }
 
