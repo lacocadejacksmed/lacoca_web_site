@@ -51,71 +51,62 @@ export default function Landing2({ defaultWizardOpen = false }) {
   const mainContentRef = useRef(null);
 
   useEffect(() => {
-    // Progreso suave visual: 0→30 rápido para feedback inmediato
-    setLoadingProgress(10);
-    const quickProgress = setTimeout(() => setLoadingProgress(25), 100);
+    // 1. Iniciar carga asíncrona de APIs en el fondo (Desbloqueado del render)
+    const fetchApis = async () => {
+      try {
+        const [menuRes, planesRes, availRes, feriadosRes] = await Promise.allSettled([
+          api.get('/menu'),
+          api.get('/planes'),
+          api.get('/availability'),
+          api.get('/feriados')
+        ]);
 
-    const loadData = async () => {
-      // ═══ TODAS las llamadas API en paralelo ═══
-      // Antes: 4 llamadas secuenciales (~2s). Ahora: 1 batch paralelo (~500ms)
-      const [menuRes, planesRes, availRes, feriadosRes] = await Promise.allSettled([
-        api.get('/menu'),
-        api.get('/planes'),
-        api.get('/availability'),
-        api.get('/feriados')
-      ]);
-
-      // Procesar resultados (cada uno independiente, si uno falla los demás siguen)
-      if (menuRes.status === 'fulfilled' && menuRes.value.data?.success && menuRes.value.data.menu) {
-        setWeeklyMenu(menuRes.value.data.menu);
+        if (menuRes.status === 'fulfilled' && menuRes.value.data?.success && menuRes.value.data.menu) {
+          setWeeklyMenu(menuRes.value.data.menu);
+        }
+        if (planesRes.status === 'fulfilled' && planesRes.value.data?.success && planesRes.value.data.planes) {
+          setPlanes(planesRes.value.data.planes);
+        }
+        if (availRes.status === 'fulfilled' && availRes.value.data?.success) {
+          setAvailability(availRes.value.data.availability);
+        }
+        if (feriadosRes.status === 'fulfilled' && feriadosRes.value.data?.success) {
+          setFeriados(feriadosRes.value.data.feriados);
+        }
+      } catch (error) {
+        console.error("Error cargando datos en background:", error);
       }
-      if (planesRes.status === 'fulfilled' && planesRes.value.data?.success && planesRes.value.data.planes) {
-        setPlanes(planesRes.value.data.planes);
-      }
-      if (availRes.status === 'fulfilled' && availRes.value.data?.success) {
-        setAvailability(availRes.value.data.availability);
-      }
-      if (feriadosRes.status === 'fulfilled' && feriadosRes.value.data?.success) {
-        setFeriados(feriadosRes.value.data.feriados);
-      }
-
-      // APIs completadas → 60%
-      setLoadingProgress(60);
-
-      // Esperar a que los assets del DOM estén listos
-      const waitForDOMAssets = () => {
-        return new Promise((resolve) => {
-          if (document.readyState === 'complete') {
-            resolve();
-          } else {
-            window.addEventListener('load', resolve, { once: true });
-          }
-        });
-      };
-
-      await waitForDOMAssets();
-
-      // Assets listos → 85%
-      setLoadingProgress(85);
-
-      // ═══ FIX BUG MÓVIL: Doble rAF para confirmar que React PINTÓ ═══
-      // Un solo rAF puede ejecutarse antes del paint. Doble rAF garantiza
-      // que el browser completó al menos un ciclo de pintura con los datos.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setLoadingProgress(100);
-          // Esperar a que la animación de la barra llegue visualmente al 100%
-          setTimeout(() => {
-            setIsAppReady(true);
-          }, 350);
-        });
-      });
     };
 
-    loadData();
+    fetchApis();
+
+    // 2. Controlar la barra de carga visual (Duración fija de ~2.5s para UX consistente)
+    const startTime = Date.now();
+    const duration = 2500;
+    
+    const progressInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      // Calcula el progreso del 0 al 100 basado en el tiempo transcurrido
+      const progress = Math.min((elapsed / duration) * 100, 100);
+      setLoadingProgress(progress);
+      
+      if (progress >= 100) {
+        clearInterval(progressInterval);
+        
+        // Doble rAF para garantizar que React pintó el contenido oculto
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            // Un leve retraso final para que se note que llegó al 100% visualmente
+            setTimeout(() => {
+              setIsAppReady(true);
+            }, 300);
+          });
+        });
+      }
+    }, 50);
 
     return () => {
-      clearTimeout(quickProgress);
+      clearInterval(progressInterval);
     };
   }, []);
 
