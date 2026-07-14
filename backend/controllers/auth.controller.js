@@ -325,18 +325,29 @@ exports.resetPassword = async (req, res) => {
 
 exports.googleLogin = async (req, res) => {
     try {
-        const { credential } = req.body;
-        if (!credential) {
+        const { credential, access_token } = req.body;
+        if (!credential && !access_token) {
             return res.status(400).json({ success: false, message: 'Falta el token de Google' });
         }
 
-        const ticket = await googleClient.verifyIdToken({
-            idToken: credential,
-            audience: process.env.GOOGLE_CLIENT_ID
-        });
-        
-        const payload = ticket.getPayload();
-        const { email, name } = payload;
+        let email, name;
+
+        if (credential) {
+            const ticket = await googleClient.verifyIdToken({
+                idToken: credential,
+                audience: process.env.GOOGLE_CLIENT_ID
+            });
+            const payload = ticket.getPayload();
+            email = payload.email;
+            name = payload.name;
+        } else if (access_token) {
+            const axios = require('axios');
+            const { data } = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${access_token}` }
+            });
+            email = data.email;
+            name = data.name;
+        }
 
         let usuario = await Usuario.findOne({ where: { email } });
         
