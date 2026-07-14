@@ -168,7 +168,6 @@ export default function Login() {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={handleGoogleError}
-              useOneTap
               shape="pill"
               theme="outline"
               size="large"

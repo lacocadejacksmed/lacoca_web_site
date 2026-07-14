@@ -294,7 +294,6 @@ export default function Register() {
             <GoogleLogin
               onSuccess={handleGoogleSuccess}
               onError={handleGoogleError}
-              useOneTap
               shape="pill"
               theme="outline"
               size="large"
