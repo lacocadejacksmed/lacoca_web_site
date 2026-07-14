@@ -590,10 +590,29 @@ export default function Admin() {
     }
   }, [statsPeriod, customDate]);
 
-  const filteredClients = clients.filter(c => 
-    (c.nombre.toLowerCase().includes(clientSearch.toLowerCase()) || c.cedula.includes(clientSearch)) &&
-    (clientStatus === '' || c.status === clientStatus)
-  );
+  const filteredClients = clients.filter(c => {
+    const searchMatch = c.nombre.toLowerCase().includes(clientSearch.toLowerCase()) || c.cedula.includes(clientSearch);
+    if (!searchMatch) return false;
+    if (clientStatus === '' || clientStatus === 'todos') return true;
+
+    let isRunning = true;
+    if (c.status === 'activo') {
+       const subs = c.raw && (c.raw.Suscripcions || c.raw.Suscripciones) ? (c.raw.Suscripcions || c.raw.Suscripciones) : [];
+       const activeSub = subs.sort((a,b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion))[0];
+       if (activeSub && activeSub.fecha_inicio) {
+         const [y, m, d] = activeSub.fecha_inicio.split('-');
+         const start = new Date(y, m - 1, d);
+         const today = new Date();
+         today.setHours(0, 0, 0, 0);
+         isRunning = start <= today;
+       }
+    }
+
+    if (clientStatus === 'activo') return c.status === 'activo' && isRunning;
+    if (clientStatus === 'futuro') return c.status === 'activo' && !isRunning;
+    
+    return c.status === clientStatus;
+  });
 
   const filteredPayments = payments.filter(p => 
     (p.clienteNombre.toLowerCase().includes(paymentSearch.toLowerCase()) || p.plan.toLowerCase().includes(paymentSearch.toLowerCase())) &&
@@ -1754,7 +1773,8 @@ export default function Admin() {
                       onChange={e => setClientStatus(e.target.value)}
                    >
                       <option value="todos">Todos los Estados</option>
-                      <option value="activo">Activos</option>
+                      <option value="activo">Activos (Semana Actual)</option>
+                      <option value="futuro">Nuevos (Próxima Semana)</option>
                       <option value="pendiente">Pendientes</option>
                       <option value="vencido">Vencidos / Inactivos</option>
                    </select>
