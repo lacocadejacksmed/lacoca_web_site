@@ -131,21 +131,30 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
 
       <AnimatePresence>
         {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: '100%' }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[300] lg:hidden"
-          >
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-[#2B2118]/80 backdrop-blur-md" onClick={() => {
-              setIsMenuOpen(false);
-              onMenuToggle?.(false);
-            }} />
+          <>
+            {/* Backdrop - Fade animation only */}
+            <motion.div
+              key="backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[300] bg-[#2B2118]/80 backdrop-blur-md lg:hidden"
+              onClick={() => {
+                setIsMenuOpen(false);
+                onMenuToggle?.(false);
+              }}
+            />
 
-            {/* Content Card */}
-            <div className="absolute right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col p-8 pt-20">
+            {/* Content Card - Slide animation only */}
+            <motion.div
+              key="sidebar"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+              className="fixed right-0 top-0 bottom-0 w-[85%] max-w-sm bg-white shadow-2xl flex flex-col p-8 pt-20 z-[301] lg:hidden"
+            >
               {/* Close Button - Absolute for visibility */}
               <button
                 onClick={() => {
@@ -230,8 +239,8 @@ export default function Navbar({ onOpenWizard, onMenuToggle }) {
                   </button>
                 )}
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>
