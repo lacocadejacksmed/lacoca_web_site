@@ -220,7 +220,14 @@ export default function ClientDashboard() {
                        </div>
                        <div>
                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Días de Entrega</p>
-                         <p className="text-sm font-semibold text-slate-700">{sub.direcciones?.[0]?.dias_entrega || 'Todos los días'}</p>
+                         <p className="text-sm font-semibold text-slate-700">
+                           {(() => {
+                             const dias = sub.direcciones?.[0]?.dias_entrega;
+                             if (!dias) return 'Todos los días';
+                             if (dias.includes('Lunes') && dias.includes('Martes') && dias.includes('Miércoles') && dias.includes('Jueves') && dias.includes('Viernes')) return 'Lun - Vie';
+                             return dias.split(',').join(', ');
+                           })()}
+                         </p>
                        </div>
                        <div>
                          <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Precio Total</p>
@@ -239,7 +246,12 @@ export default function ClientDashboard() {
                            <p className="text-sm font-semibold text-slate-700">
                              {sub.direcciones[1].direccion} 
                              {sub.direcciones[1].barrio && ` - ${sub.direcciones[1].barrio}`}
-                             <span className="ml-2 text-orange-600">({sub.direcciones[1].dias_entrega})</span>
+                             <span className="ml-2 text-orange-600">({(() => {
+                               const dias = sub.direcciones[1].dias_entrega;
+                               if (!dias) return 'A definir';
+                               if (dias.includes('Lunes') && dias.includes('Martes') && dias.includes('Miércoles') && dias.includes('Jueves') && dias.includes('Viernes')) return 'Lun - Vie';
+                               return dias.split(',').join(', ');
+                             })()})</span>
                            </p>
                          </div>
                        )}
