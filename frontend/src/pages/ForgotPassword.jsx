@@ -32,7 +32,7 @@ export default function ForgotPassword() {
       // Endpoint sugerido para solicitar recuperación
       const res = await api.post('/auth/forgot-password', { email: data.email.trim() });
       if (res.data.success || res.status === 200) {
-        Swal.fire({
+        await Swal.fire({
           icon: 'success',
           title: 'Código Enviado',
           text: 'Revisa tu correo electrónico para obtener el código de recuperación.',
