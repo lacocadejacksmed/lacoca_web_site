@@ -118,90 +118,177 @@ const getDashboardStats = async (req, res) => {
 
 const getStrategyStats = async (req, res) => {
   try {
-    const activeSubs = await Suscripcion.findAll({
-      where: { estado: 'Activo' },
-      include: [Cliente, Plan, { model: DireccionEntrega, as: 'direcciones' }]
+    // ── Traemos TODAS las suscripciones para análisis completo ──
+    const allSubs = await Suscripcion.findAll({
+      include: [Cliente, Plan, { model: DireccionEntrega, as: 'direcciones' }],
+      order: [['fecha_creacion', 'ASC']]
     });
 
-    let mrr = 0;
-    const planCounts = { semanal: 0, quincenal: 0, mensual: 0, otro: 0 };
-    const deliveryCounts = { fija: 0, hibrida: 0 };
-    const barrioMap = {};
-    const restriccionesMap = {};
-    const cocasStats = { compraron: 0, tenian: 0 };
+    const activeSubs = allSubs.filter(s => s.estado === 'Activo');
+    const totalClientes = await Cliente.count();
+    const totalSubs = allSubs.length;
 
+    // ── MRR ──
+    let mrr = 0;
     activeSubs.forEach(sub => {
-      // MRR
       const price = Number(sub.precio_total) || 0;
       const days = sub.Plan?.dias_duracion || 7;
-      const dailyRate = price / days;
-      mrr += (dailyRate * 30);
+      mrr += (price / days) * 30;
+    });
 
-      // Plan Types
-      const planName = (sub.Plan?.nombre || '').toLowerCase();
-      if (planName.includes('semana')) planCounts.semanal++;
-      else if (planName.includes('quince')) planCounts.quincenal++;
-      else if (planName.includes('mes') || planName.includes('mensual')) planCounts.mensual++;
-      else planCounts.otro++;
+    // ── Plan Counts con porcentajes ──
+    const planCounts = {};
+    activeSubs.forEach(sub => {
+      const planName = sub.Plan?.nombre || 'Otro';
+      planCounts[planName] = (planCounts[planName] || 0) + 1;
+    });
+    const totalActive = activeSubs.length;
+    const planData = Object.entries(planCounts)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percent: totalActive > 0 ? Math.round((value / totalActive) * 100) : 0
+      }))
+      .sort((a, b) => b.value - a.value);
 
-      // Delivery Types
-      const tipo = (sub.tipo_entrega || 'fija').toLowerCase();
-      if (tipo === 'hibrida') deliveryCounts.hibrida++;
-      else deliveryCounts.fija++;
+    // ── Modalidad de Entrega con porcentajes ──
+    const deliveryCounts = { Fija: 0, Híbrida: 0 };
+    activeSubs.forEach(sub => {
+      const tipo = (sub.tipo_entrega || 'Fija');
+      if (tipo === 'Hibrida') deliveryCounts['Híbrida']++;
+      else deliveryCounts['Fija']++;
+    });
+    const deliveryData = Object.entries(deliveryCounts)
+      .map(([name, value]) => ({
+        name,
+        value,
+        percent: totalActive > 0 ? Math.round((value / totalActive) * 100) : 0
+      }))
+      .filter(d => d.value > 0);
 
-      // Cocas
-      if (sub.necesita_cocas) cocasStats.compraron++;
-      else cocasStats.tenian++;
+    // ── Cocas con porcentajes ──
+    let cocasCompradas = 0, cocasPropias = 0;
+    activeSubs.forEach(sub => {
+      if (sub.necesita_cocas) cocasCompradas++;
+      else cocasPropias++;
+    });
+    const cocasData = [
+      { name: 'Compraron', value: cocasCompradas, percent: totalActive > 0 ? Math.round((cocasCompradas / totalActive) * 100) : 0 },
+      { name: 'Ya Tenían', value: cocasPropias, percent: totalActive > 0 ? Math.round((cocasPropias / totalActive) * 100) : 0 }
+    ].filter(d => d.value > 0);
 
-      // Barrios
+    // ── Top Barrios ──
+    const barrioMap = {};
+    activeSubs.forEach(sub => {
       if (sub.direcciones && sub.direcciones.length > 0) {
-         const mainDir = sub.direcciones.find(d => d.es_principal) || sub.direcciones[0];
-         if (mainDir.barrio) {
-            const cleanBarrio = mainDir.barrio.trim().toUpperCase();
-            barrioMap[cleanBarrio] = (barrioMap[cleanBarrio] || 0) + 1;
-         }
+        const mainDir = sub.direcciones.find(d => d.es_principal) || sub.direcciones[0];
+        if (mainDir.barrio) {
+          const cleanBarrio = mainDir.barrio.trim().toUpperCase();
+          barrioMap[cleanBarrio] = (barrioMap[cleanBarrio] || 0) + 1;
+        }
       }
+    });
+    const topBarrios = Object.entries(barrioMap)
+      .map(([name, cantidad]) => ({
+        name,
+        cantidad,
+        percent: totalActive > 0 ? Math.round((cantidad / totalActive) * 100) : 0
+      }))
+      .sort((a, b) => b.cantidad - a.cantidad)
+      .slice(0, 10);
 
-      // Restricciones y Alergias
+    // ── Restricciones y Alergias ──
+    const restriccionesMap = {};
+    activeSubs.forEach(sub => {
       const addRestrictions = (str) => {
         if (!str) return;
         str.split(',').forEach(s => {
-           const clean = s.trim().toUpperCase();
-           if (clean.length > 2) restriccionesMap[clean] = (restriccionesMap[clean] || 0) + 1;
+          const clean = s.trim().toUpperCase();
+          if (clean.length > 2) restriccionesMap[clean] = (restriccionesMap[clean] || 0) + 1;
         });
       };
       addRestrictions(sub.alergias);
       addRestrictions(sub.restricciones);
     });
-
-    const topBarrios = Object.keys(barrioMap)
-      .map(b => ({ name: b, cantidad: barrioMap[b] }))
-      .sort((a, b) => b.cantidad - a.cantidad)
-      .slice(0, 10);
-
-    const topRestricciones = Object.keys(restriccionesMap)
-      .map(r => ({ name: r, value: restriccionesMap[r] }))
+    const topRestricciones = Object.entries(restriccionesMap)
+      .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 15);
+
+    // ── RETENCIÓN DE CLIENTES ──
+    // Agrupamos suscripciones por cédula del cliente
+    const subsByClient = {};
+    allSubs.forEach(sub => {
+      const cedula = sub.cliente_cedula;
+      if (!subsByClient[cedula]) subsByClient[cedula] = [];
+      subsByClient[cedula].push(sub);
+    });
+
+    let loyalCount = 0;       // 3+ suscripciones (leales)
+    let occasionalCount = 0;  // 2 suscripciones (volvieron al menos una vez)
+    let oneTimeCount = 0;     // 1 sola suscripción
+    let activeNow = 0;        // Tienen suscripción activa actualmente
+    let churnedCount = 0;     // Tuvieron suscripciones pero ninguna está activa
+
+    Object.entries(subsByClient).forEach(([cedula, subs]) => {
+      const completedOrActive = subs.filter(s => s.estado === 'Activo' || s.estado === 'Cancelado' || s.estado === 'Vencido');
+      const hasActive = subs.some(s => s.estado === 'Activo');
+      const count = completedOrActive.length;
+
+      if (hasActive) activeNow++;
+
+      if (count >= 3) loyalCount++;
+      else if (count === 2) occasionalCount++;
+      else if (count >= 1) oneTimeCount++;
+
+      if (count >= 1 && !hasActive) churnedCount++;
+    });
+
+    const totalWithHistory = Object.keys(subsByClient).length;
+    const retentionData = [
+      { name: 'Leales (3+)', value: loyalCount, percent: totalWithHistory > 0 ? Math.round((loyalCount / totalWithHistory) * 100) : 0 },
+      { name: 'Volvieron (2)', value: occasionalCount, percent: totalWithHistory > 0 ? Math.round((occasionalCount / totalWithHistory) * 100) : 0 },
+      { name: 'Una sola vez', value: oneTimeCount, percent: totalWithHistory > 0 ? Math.round((oneTimeCount / totalWithHistory) * 100) : 0 }
+    ].filter(d => d.value > 0);
+
+    // ── Tasa de retención vs churn ──
+    const retentionRate = totalWithHistory > 0 ? Math.round(((totalWithHistory - churnedCount) / totalWithHistory) * 100) : 0;
+    const churnRate = totalWithHistory > 0 ? Math.round((churnedCount / totalWithHistory) * 100) : 0;
+
+    // ── Facturación electrónica ──
+    let facturacionSi = 0, facturacionNo = 0;
+    activeSubs.forEach(sub => {
+      if (sub.facturacion_electronica) facturacionSi++;
+      else facturacionNo++;
+    });
+
+    // ── Ticket promedio ──
+    let totalRevenue = 0;
+    activeSubs.forEach(sub => { totalRevenue += Number(sub.precio_total) || 0; });
+    const avgTicket = totalActive > 0 ? Math.round(totalRevenue / totalActive) : 0;
 
     res.json({
       success: true,
       mrr: Math.round(mrr),
-      planData: [
-        { name: 'Semanal', value: planCounts.semanal },
-        { name: 'Quincenal', value: planCounts.quincenal },
-        { name: 'Mensual', value: planCounts.mensual }
-      ].filter(d => d.value > 0),
-      deliveryData: [
-        { name: 'Fija', value: deliveryCounts.fija },
-        { name: 'Híbrida', value: deliveryCounts.hibrida }
-      ].filter(d => d.value > 0),
-      cocasData: [
-        { name: 'Compraron', value: cocasStats.compraron },
-        { name: 'Ya Tenían', value: cocasStats.tenian }
-      ].filter(d => d.value > 0),
+      avgTicket,
+      totalClientes,
+      totalSubs,
+      totalActive,
+      activeNow,
+      churnedCount,
+      retentionRate,
+      churnRate,
+      facturacionElectronica: {
+        si: facturacionSi,
+        no: facturacionNo,
+        percentSi: totalActive > 0 ? Math.round((facturacionSi / totalActive) * 100) : 0
+      },
+      planData,
+      deliveryData,
+      cocasData,
       topBarrios,
-      topRestricciones
+      topRestricciones,
+      retentionData
     });
   } catch (error) {
     console.error("Error en getStrategyStats:", error);

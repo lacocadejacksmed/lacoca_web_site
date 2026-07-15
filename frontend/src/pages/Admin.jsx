@@ -86,7 +86,11 @@ export default function Admin() {
     income: 0, active: 0, pending: 0, expiring: 0, byCocas: 0, byFake: 0, byNotReflected: 0
   });
   const [strategyStats, setStrategyStats] = useState({
-    mrr: 0, planData: [], deliveryData: [], cocasData: [], topBarrios: [], topRestricciones: []
+    mrr: 0, avgTicket: 0, totalClientes: 0, totalSubs: 0, totalActive: 0, activeNow: 0,
+    churnedCount: 0, retentionRate: 0, churnRate: 0,
+    facturacionElectronica: { si: 0, no: 0, percentSi: 0 },
+    planData: [], deliveryData: [], cocasData: [], topBarrios: [], topRestricciones: [],
+    retentionData: []
   });
   
   // Filters
@@ -904,23 +908,135 @@ export default function Admin() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="space-y-8"
+              className="space-y-6"
             >
-              <div className="flex justify-between items-center bg-slate-900 p-6 rounded-3xl text-white shadow-xl relative overflow-hidden">
-                <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500 rounded-full blur-3xl opacity-30"></div>
-                <div>
-                  <h3 className="text-xs font-black uppercase tracking-widest text-orange-400 mb-1">Métrica Estrella</h3>
-                  <div className="text-3xl font-black">${strategyStats.mrr.toLocaleString()} COP</div>
-                  <p className="text-[10px] text-slate-400 font-bold mt-1">Ingreso Mensual Recurrente Estimado (MRR)</p>
+              {/* HERO KPIs */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                <div className="bg-slate-900 p-5 lg:p-6 rounded-3xl text-white shadow-xl relative overflow-hidden col-span-2">
+                  <div className="absolute -top-10 -right-10 w-40 h-40 bg-orange-500 rounded-full blur-3xl opacity-30"></div>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-orange-400 mb-1">Ingreso Mensual Recurrente</h3>
+                  <div className="text-2xl lg:text-3xl font-black">${strategyStats.mrr.toLocaleString()} <span className="text-sm text-slate-400">COP</span></div>
+                  <div className="flex items-center gap-4 mt-3">
+                    <div className="text-[10px] text-slate-400"><span className="text-white font-black">{strategyStats.totalActive}</span> clientes activos</div>
+                    <div className="text-[10px] text-slate-400">Ticket Prom: <span className="text-white font-black">${strategyStats.avgTicket.toLocaleString()}</span></div>
+                  </div>
                 </div>
-                <div className="bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm">
-                  <TrendingUp size={32} className="text-orange-400" />
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Retención</h3>
+                  <div className="text-3xl font-black text-emerald-500">{strategyStats.retentionRate}%</div>
+                  <p className="text-[10px] text-slate-400 font-bold mt-1">{strategyStats.activeNow} clientes siguen activos</p>
+                </div>
+                <div className="bg-white p-5 rounded-3xl shadow-sm border border-gray-100 flex flex-col justify-between">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Churn (Abandono)</h3>
+                  <div className="text-3xl font-black text-red-500">{strategyStats.churnRate}%</div>
+                  <p className="text-[10px] text-slate-400 font-bold mt-1">{strategyStats.churnedCount} no renovaron</p>
                 </div>
               </div>
 
+              {/* SNAPSHOT */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: 'Total Registrados', value: strategyStats.totalClientes, color: 'text-slate-900' },
+                  { label: 'Suscripciones Históricas', value: strategyStats.totalSubs, color: 'text-blue-600' },
+                  { label: 'Activos Ahora', value: strategyStats.totalActive, color: 'text-emerald-600' },
+                  { label: 'Facturación E.', value: `${strategyStats.facturacionElectronica.percentSi}%`, sub: `${strategyStats.facturacionElectronica.si} de ${strategyStats.totalActive}`, color: 'text-violet-600' }
+                ].map((kpi, i) => (
+                  <div key={i} className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{kpi.label}</div>
+                    <div className={`text-xl lg:text-2xl font-black ${kpi.color}`}>{typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}</div>
+                    {kpi.sub && <div className="text-[10px] text-slate-400 mt-0.5">{kpi.sub}</div>}
+                  </div>
+                ))}
+              </div>
+
+              {/* RETENCIÓN + PLANES */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Top Barrios (Heatmap)</h3>
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-2">Retención de Clientes</h3>
+                  <p className="text-[10px] text-slate-400 mb-6">¿Cuántos vuelven a suscribirse?</p>
+                  {strategyStats.retentionData.length > 0 ? (
+                    <div className="space-y-4">
+                      {strategyStats.retentionData.map((item, i) => {
+                        const colors = ['#10b981', '#3b82f6', '#f97316'];
+                        const bgColors = ['bg-emerald-50', 'bg-blue-50', 'bg-orange-50'];
+                        const textColors = ['text-emerald-600', 'text-blue-600', 'text-orange-600'];
+                        return (
+                          <div key={i}>
+                            <div className="flex justify-between items-center mb-1.5">
+                              <span className="text-xs font-black text-slate-700">{item.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className={`${bgColors[i]} ${textColors[i]} px-2 py-0.5 rounded-full text-[10px] font-black`}>{item.value} clientes</span>
+                                <span className="text-xs font-black text-slate-900">{item.percent}%</span>
+                              </div>
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${item.percent}%` }}
+                                transition={{ duration: 1, delay: i * 0.2 }}
+                                className="h-full rounded-full"
+                                style={{ backgroundColor: colors[i] }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400 text-center py-8">No hay datos suficientes</p>
+                  )}
+                </div>
+
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-2">Distribución de Planes</h3>
+                  <p className="text-[10px] text-slate-400 mb-4">Solo clientes activos</p>
+                  <div className="h-48">
+                    <Pie 
+                      options={{
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                          legend: { display: false },
+                          tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
+                        }
+                      }}
+                      data={{
+                        labels: strategyStats.planData.map(d => `${d.name} (${d.percent}%)`),
+                        datasets: [{
+                          data: strategyStats.planData.map(d => d.value),
+                          backgroundColor: COLORS.slice(0, strategyStats.planData.length),
+                          borderWidth: 0,
+                          hoverOffset: 4
+                        }]
+                      }}
+                    />
+                  </div>
+                  <div className="mt-4 space-y-1.5">
+                    {strategyStats.planData.map((d, i) => (
+                      <div key={i} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i] }}></div>
+                          <span className="font-bold text-slate-700">{d.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-400">{d.value}</span>
+                          <span className="font-black text-slate-900 bg-slate-50 px-2 py-0.5 rounded-lg">{d.percent}%</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* BARRIOS HEATMAP */}
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                    <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest">Top Barrios</h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Concentración geográfica de clientes activos</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <div className="h-64">
                     <Bar 
                       options={{
@@ -929,7 +1045,15 @@ export default function Admin() {
                         maintainAspectRatio: false,
                         plugins: {
                           legend: { display: false },
-                          tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
+                          tooltip: { 
+                            backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16,
+                            callbacks: {
+                              label: (ctx) => {
+                                const barrio = strategyStats.topBarrios[ctx.dataIndex];
+                                return barrio ? `${barrio.cantidad} clientes (${barrio.percent}%)` : '';
+                              }
+                            }
+                          }
                         },
                         scales: {
                           x: { display: false },
@@ -947,44 +1071,35 @@ export default function Admin() {
                       }} 
                     />
                   </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Distribución de Planes</h3>
-                  <div className="h-64">
-                    <Pie 
-                      options={{
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                          legend: { position: 'bottom', labels: { font: { size: 10, weight: 'bold' }, usePointStyle: true, boxWidth: 8 } },
-                          tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
-                        }
-                      }}
-                      data={{
-                        labels: strategyStats.planData.map(d => d.name),
-                        datasets: [{
-                          data: strategyStats.planData.map(d => d.value),
-                          backgroundColor: COLORS.slice(0, strategyStats.planData.length),
-                          borderWidth: 0,
-                          hoverOffset: 4
-                        }]
-                      }}
-                    />
+                  <div className="space-y-2">
+                    {strategyStats.topBarrios.map((b, i) => (
+                      <div key={i} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 rounded-lg bg-orange-100 text-orange-600 text-[10px] font-black flex items-center justify-center">{i + 1}</span>
+                          <span className="text-xs font-bold text-slate-700 capitalize">{b.name.toLowerCase()}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-slate-400">{b.cantidad}</span>
+                          <span className="bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full text-[10px] font-black">{b.percent}%</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
 
+              {/* ENTREGA, COCAS, RESTRICCIONES */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Modalidad de Entrega</h3>
-                  <div className="h-48">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-1">Modalidad de Entrega</h3>
+                  <p className="text-[10px] text-slate-400 mb-4">Fija vs Híbrida</p>
+                  <div className="h-40">
                     <Pie 
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                          legend: { position: 'bottom', labels: { font: { size: 10, weight: 'bold' }, usePointStyle: true, boxWidth: 8 } },
+                          legend: { display: false },
                           tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
                         }
                       }}
@@ -999,17 +1114,29 @@ export default function Admin() {
                       }}
                     />
                   </div>
+                  <div className="mt-4 space-y-1.5">
+                    {strategyStats.deliveryData.map((d, i) => (
+                      <div key={i} className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: ['#3b82f6', '#8b5cf6'][i] }}></div>
+                          <span className="font-bold text-slate-700">{d.name}</span>
+                        </div>
+                        <span className="font-black text-slate-900">{d.percent}%<span className="text-slate-400 font-normal ml-1">({d.value})</span></span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-6">Demanda de Cocas</h3>
-                  <div className="h-48">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-1">Demanda de Cocas</h3>
+                  <p className="text-[10px] text-slate-400 mb-4">Compraron vs ya tenían</p>
+                  <div className="h-40">
                     <Pie 
                       options={{
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                          legend: { position: 'bottom', labels: { font: { size: 10, weight: 'bold' }, usePointStyle: true, boxWidth: 8 } },
+                          legend: { display: false },
                           tooltip: { backgroundColor: '#fff', titleColor: '#0f172a', bodyColor: '#64748b', borderColor: '#f1f5f9', borderWidth: 1, padding: 12, cornerRadius: 16 }
                         }
                       }}
@@ -1024,10 +1151,22 @@ export default function Admin() {
                       }}
                     />
                   </div>
+                  <div className="mt-4 space-y-1.5">
+                    {strategyStats.cocasData.map((d, i) => (
+                      <div key={i} className="flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: ['#f43f5e', '#10b981'][i] }}></div>
+                          <span className="font-bold text-slate-700">{d.name}</span>
+                        </div>
+                        <span className="font-black text-slate-900">{d.percent}%<span className="text-slate-400 font-normal ml-1">({d.value})</span></span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 overflow-y-auto max-h-[265px]">
-                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-4 sticky top-0 bg-white z-10 pb-2">Alergias & Restricciones</h3>
+                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 overflow-y-auto max-h-[360px]">
+                  <h3 className="text-xs font-black uppercase text-slate-900 tracking-widest mb-1 sticky top-0 bg-white z-10 pb-1">Alergias & Restricciones</h3>
+                  <p className="text-[10px] text-slate-400 mb-4">Frecuencia entre clientes activos</p>
                   <div className="space-y-2">
                     {strategyStats.topRestricciones.map((r, i) => (
                       <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl">
