@@ -1239,6 +1239,11 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         <AlertCircle size={12} /> Fuera de nuestra zona de cobertura.
                       </p>
                     )}
+                    {coverage1.status === 'mismatch' && (
+                      <p className="text-[10px] font-bold text-orange-600 mt-2 flex items-center gap-1 bg-orange-50 p-2 rounded-lg">
+                        <AlertCircle size={12} /> La dirección parece estar en la zona "{coverage1.zone}", pero el barrio no coincide.
+                      </p>
+                    )}
 
                     <div className="mt-3">
                       <input 
@@ -1349,6 +1354,11 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       {coverage2.status === 'no_coverage' && (
                         <p className="text-[10px] font-bold text-red-600 mt-2 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
                           <AlertCircle size={12} /> Fuera de nuestra zona de cobertura.
+                        </p>
+                      )}
+                      {coverage2.status === 'mismatch' && (
+                        <p className="text-[10px] font-bold text-orange-600 mt-2 flex items-center gap-1 bg-orange-50 p-2 rounded-lg">
+                          <AlertCircle size={12} /> La dirección parece estar en la zona "{coverage2.zone}", pero el barrio no coincide.
                         </p>
                       )}
                       
