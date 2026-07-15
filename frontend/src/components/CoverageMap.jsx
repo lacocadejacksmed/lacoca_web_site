@@ -10,7 +10,7 @@ import api from '../services/api';
 import Swal from 'sweetalert2';
 import { 
   Save, RefreshCw, Trash2, Map as MapIcon, 
-  List, Focus, AlertTriangle, Undo2
+  List, Focus, AlertTriangle, Undo2, Edit2
 } from 'lucide-react';
 
 // Fix for default marker icons
@@ -215,6 +215,36 @@ export default function CoverageMap() {
     }
   };
 
+  const editZone = (id) => {
+    const layer = featureGroupRef.current.getLayers().find(l => L.stamp(l) === id);
+    if (!layer) return;
+
+    Swal.fire({
+      title: 'Editar Configuración',
+      html:
+        `<input id="swal-input1" class="swal2-input" placeholder="Nombre de la Zona" value="${layer.options.zoneName || ''}">` +
+        `<input id="swal-input2" class="swal2-input" placeholder="Barrios clave (ej: poblado, lleras)" value="${layer.options.keywords || ''}">`,
+      focusConfirm: false,
+      confirmButtonColor: '#f97316',
+      showCancelButton: true,
+      preConfirm: () => {
+        return [
+          document.getElementById('swal-input1').value,
+          document.getElementById('swal-input2').value
+        ]
+      }
+    }).then(({ value }) => {
+      if (value) {
+        const zoneName = value[0] || `Nueva Zona`;
+        const keywords = value[1] || "";
+        layer.options.zoneName = zoneName;
+        layer.options.keywords = keywords;
+        layer.bindPopup(`<strong>Zona:</strong> ${zoneName}<br><small>Barrios: ${keywords}</small>`);
+        fetchCoverage(true); // Update list
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-2 h-[800px]">
       <div className="w-full lg:w-80 flex flex-col gap-4">
@@ -230,6 +260,7 @@ export default function CoverageMap() {
               <div key={zone.id} className="group flex items-center gap-3 p-3 rounded-2xl bg-slate-800/40 border border-transparent hover:border-slate-700 transition-all">
                 <div className="w-1.5 h-6 rounded-full" style={{ backgroundColor: zone.color }}></div>
                 <button onClick={() => focusZone(zone)} className="flex-1 text-left text-xs font-black text-white truncate">{zone.name}</button>
+                <button onClick={() => editZone(zone.id)} className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-orange-500 transition-all"><Edit2 size={14} /></button>
                 <button onClick={() => deleteZone(zone.id)} className="opacity-0 group-hover:opacity-100 p-1 text-slate-500 hover:text-red-500 transition-all"><Trash2 size={14} /></button>
               </div>
             ))}
