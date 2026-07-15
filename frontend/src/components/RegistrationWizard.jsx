@@ -371,16 +371,18 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         const [lng, lat] = firstFeat.center;
         const pt = turf.point([parseFloat(lng), parseFloat(lat)]);
         let zoneName = null;
+        let zoneFeature = null;
 
         coberturaData.features.forEach(f => {
           if (turf.booleanPointInPolygon(pt, f)) {
             const nameKey = Object.keys(f.properties).find(k => k.trim().toLowerCase() === 'nombre' || k.trim().toLowerCase() === 'name');
             if (nameKey) zoneName = f.properties[nameKey];
+            zoneFeature = f;
           }
         });
 
         if (zoneName) {
-          if (barrio && !isBarrioCompatibleWithZone(barrio, zoneName)) {
+          if (barrio && !isBarrioCompatibleWithZone(barrio, zoneFeature)) {
             setStatus({ status: 'mismatch', zone: zoneName });
             return { status: 'mismatch', zone: zoneName };
           } else {
