@@ -26,7 +26,7 @@ L.Marker.prototype.options.icon = DefaultIcon;
 
 const COLORS = ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#06b6d4', '#f59e0b', '#ec4899', '#6366f1', '#14b8a6'];
 
-function MapController({ featureGroupRef, onDataLoaded, refreshTrigger }) {
+function MapController({ onDataLoaded, featureGroupRef, setIsEditingMap }) {
   const map = useMap();
 
   useEffect(() => {
@@ -85,18 +85,29 @@ function MapController({ featureGroupRef, onDataLoaded, refreshTrigger }) {
     map.on(L.Draw.Event.CREATED, handleCreated);
     map.on(L.Draw.Event.DELETED, () => onDataLoaded(true));
     map.on(L.Draw.Event.EDITED, () => onDataLoaded(true));
+    
+    const handleEditStart = () => setIsEditingMap(true);
+    const handleEditStop = () => setIsEditingMap(false);
+    
+    map.on(L.Draw.Event.EDITSTART, handleEditStart);
+    map.on(L.Draw.Event.EDITSTOP, handleEditStop);
+    map.on(L.Draw.Event.DRAWSTART, handleEditStart);
+    map.on(L.Draw.Event.DRAWSTOP, handleEditStop);
+    map.on(L.Draw.Event.DELETESTART, handleEditStart);
+    map.on(L.Draw.Event.DELETESTOP, handleEditStop);
 
     return () => {
       map.removeControl(geocoder);
       map.removeControl(drawControl);
       map.off(L.Draw.Event.CREATED, handleCreated);
+      map.off(L.Draw.Event.EDITSTART, handleEditStart);
+      map.off(L.Draw.Event.EDITSTOP, handleEditStop);
+      map.off(L.Draw.Event.DRAWSTART, handleEditStart);
+      map.off(L.Draw.Event.DRAWSTOP, handleEditStop);
+      map.off(L.Draw.Event.DELETESTART, handleEditStart);
+      map.off(L.Draw.Event.DELETESTOP, handleEditStop);
     };
   }, [map]);
-
-  // Handle manual refreshes
-  useEffect(() => {
-    if (refreshTrigger > 0) onDataLoaded();
-  }, [refreshTrigger]);
 
   return null;
 }
@@ -105,6 +116,7 @@ export default function CoverageMap() {
   const [zones, setZones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [isEditingMap, setIsEditingMap] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const featureGroupRef = useRef(null);
   const mapRef = useRef(null);
@@ -245,6 +257,11 @@ export default function CoverageMap() {
     });
   };
 
+  // Handle manual refreshes
+  useEffect(() => {
+    if (refreshTrigger > 0) fetchCoverage();
+  }, [refreshTrigger]);
+
   return (
     <div className="flex flex-col lg:flex-row gap-6 p-2 h-[800px]">
       <div className="w-full lg:w-80 flex flex-col gap-4">
@@ -266,9 +283,9 @@ export default function CoverageMap() {
             ))}
           </div>
           <div className="mt-6 pt-6 border-t border-slate-800">
-            <button onClick={handleSave} disabled={saving} className="w-full bg-orange-600 hover:bg-orange-700 text-white py-4 rounded-2xl font-black text-xs uppercase transition-all flex items-center justify-center gap-2">
+            <button onClick={handleSave} disabled={saving || isEditingMap} className={`w-full ${isEditingMap ? 'bg-slate-700 text-slate-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700 text-white'} py-4 rounded-2xl font-black text-xs uppercase transition-all flex items-center justify-center gap-2`}>
               {saving ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
-              Guardar Cambios
+              {isEditingMap ? 'Termina de editar el mapa' : 'Guardar Cambios'}
             </button>
           </div>
         </div>
@@ -283,11 +300,7 @@ export default function CoverageMap() {
         <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }} ref={mapRef}>
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <FeatureGroup ref={featureGroupRef}>
-            <MapController 
-              featureGroupRef={featureGroupRef} 
-              onDataLoaded={fetchCoverage}
-              refreshTrigger={refreshTrigger}
-            />
+            <MapController onDataLoaded={fetchCoverage} featureGroupRef={featureGroupRef} setIsEditingMap={setIsEditingMap} />
           </FeatureGroup>
         </MapContainer>
       </div>
