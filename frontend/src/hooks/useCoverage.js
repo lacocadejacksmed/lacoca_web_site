@@ -92,9 +92,6 @@ export function useCoverage() {
     
     if (zoneFeature) {
       const zoneName = zoneFeature.properties.name || zoneFeature.properties.nombre;
-      if (barrio && !isBarrioCompatibleWithZone(barrio, zoneFeature)) {
-        return { status: 'mismatch', zone: zoneName, lat, lng };
-      }
       return { status: 'ok', zone: zoneName, lat, lng };
     } else {
       return { status: 'no_coverage', zone: null, lat, lng };
@@ -134,9 +131,6 @@ export function useCoverage() {
 
         if (zoneFeature) {
           const zoneName = zoneFeature.properties.name || zoneFeature.properties.nombre;
-          if (barrio && !isBarrioCompatibleWithZone(barrio, zoneFeature)) {
-            return { status: 'mismatch', zone: zoneName, lat, lng };
-          }
           return { status: 'ok', zone: zoneName, lat, lng };
         } else {
           return { status: 'no_coverage', zone: null, lat, lng };
