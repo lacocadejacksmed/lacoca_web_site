@@ -72,9 +72,14 @@ router.post("/admin/cobertura", [protect, admin], adminController.updateCoverage
 router.get("/admin/menus", [protect, admin], menuController.getMenus);
 router.post("/admin/menu", [protect, admin, orderController.upload.single("menu_image")], menuController.updateMenu);
 
+const excelController = require("../controllers/excel.controller");
+
 // Configuraciones
 router.get("/admin/configuraciones", [protect, admin], adminController.getConfiguraciones);
 router.post("/admin/configuraciones", [protect, admin], adminController.upsertConfiguracion);
+
+// Reportes (Excel)
+router.get("/admin/export-excel", [protect, admin], excelController.exportarProduccion);
 router.delete("/admin/configuraciones/:clave", [protect, admin], adminController.deleteConfiguracion);
 
 // Planes (Administración)
