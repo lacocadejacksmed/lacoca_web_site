@@ -3,6 +3,7 @@ const orderController = require("../controllers/order.controller");
 const adminController = require("../controllers/admin.controller");
 const menuController = require("../controllers/menu.controller");
 const authController = require("../controllers/auth.controller");
+const importController = require("../controllers/import.controller");
 const { protect, admin } = require("../utils/auth.middleware");
 const rateLimit = require("express-rate-limit");
 
