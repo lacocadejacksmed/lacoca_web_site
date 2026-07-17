@@ -320,6 +320,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       .replace(/\b(dg|diag)\.?\s+/i, 'Diagonal ')
       .replace(/\b(tr|trans)\.?\s+/i, 'Transversal ')
       .replace(/\b(cq|circ)\.?\s+/i, 'Circular ')
+      .replace(/(\d+)(sur|norte|este|oeste)\b/gi, '$1 $2') // Separar "9SUR" a "9 SUR" para Mapbox
       .replace(/(\d+)\s+([a-zA-Z]{1,2})\b/g, '$1$2'); // Mapbox odia los espacios en ej: "65 B", lo pasa a "65B"
       
     // Limpiamos # y - porque Mapbox en Colombia suele fallar y devolver 0 resultados con ellos.
