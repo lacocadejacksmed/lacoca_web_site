@@ -723,14 +723,14 @@ export default function Admin() {
               {['completo', 'cocina', 'logistica', 'produccion'].map(type => (
                 <button 
                   key={type}
-                  onClick={() => exportExcel(type, clients, payments, adminPlanes)}
+                  onClick={() => type === 'produccion' ? handleDownloadProduccion() : exportExcel(type, clients, payments, adminPlanes)}
                   className="w-full text-left px-4 py-2 text-xs text-slate-400 hover:text-white transition-colors font-bold uppercase tracking-tight flex items-center gap-2"
                 >
                   <FileDown size={14} />
                   {type === 'completo' ? 'Todos los Clientes' : 
                    type === 'cocina' ? 'Cocina y Restricciones' : 
                    type === 'logistica' ? 'Despachos (Logística)' : 
-                   'Resumen Producción'}
+                   'Rutas (Producción Oficial)'}
                 </button>
               ))}
             </div>
@@ -1944,14 +1944,6 @@ export default function Admin() {
                       <option value="pendiente">Pendientes</option>
                       <option value="vencido">Vencidos / Inactivos</option>
                    </select>
-                   <button 
-                     onClick={handleDownloadProduccion}
-                     className="bg-green-50 text-green-700 px-4 py-3 rounded-2xl text-sm font-black flex items-center gap-2 hover:bg-green-100 transition-all border border-green-200 shadow-sm"
-                     title="Descarga el Excel oficial de producción agrupado por rutas"
-                   >
-                     <FileDown size={18} className="text-green-600" />
-                     Rutas / Producción
-                   </button>
                    <button 
                      onClick={() => exportExcel('logistica', clients, payments, adminPlanes)}
                      className="bg-orange-50 text-orange-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-orange-100 transition-all"
