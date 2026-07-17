@@ -6,7 +6,8 @@
       "properties": {
         "nombre": "norte1",
         "name": "Norte 1",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "robledo, aranjuez, castilla, doce de octubre, manrique, bello horizonte, campo valdes, santacruz, popular"
       },
       "geometry": {
         "type": "Polygon",
@@ -222,7 +223,8 @@
       "properties": {
         "nombre": "norte 2",
         "name": "Norte 2",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "pedregal, picacho, santander, florencia, boyaca, feria de ganado"
       },
       "geometry": {
         "type": "Polygon",
@@ -574,7 +576,8 @@
       "properties": {
         "nombre": "bello",
         "name": "Bello",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "bello, niquia, cabañas, madera, barrio obrero, paris, zamora, fontidueño"
       },
       "geometry": {
         "type": "Polygon",
@@ -750,7 +753,8 @@
       "properties": {
         "nombre": "laureles 2",
         "name": "Estadio",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "laureles, estadio, floresta, conquistadores, velodromo, san joaquin, simon bolivar, florida, calasanz, colores"
       },
       "geometry": {
         "type": "Polygon",
@@ -1038,7 +1042,8 @@
       "properties": {
         "nombre": "centro",
         "name": "Centro",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "centro, prado, boston, bombona, la candelaria, san diego, alpujarra, cisneros, chagualo, sevilla"
       },
       "geometry": {
         "type": "Polygon",
@@ -1214,7 +1219,8 @@
       "properties": {
         "nombre": "guayabal",
         "name": "Guayabal",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "guayabal, cristo rey, campo amor, santa fe, antioquia, trinidad"
       },
       "geometry": {
         "type": "Polygon",
@@ -1402,7 +1408,8 @@
       "properties": {
         "nombre": "belen",
         "name": "Belen",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "belen, rosales, la mota, san bernardo, fatima, nutibara, malibu, miravalle, los alpes, aliadas"
       },
       "geometry": {
         "type": "Polygon",
@@ -1606,7 +1613,8 @@
       "properties": {
         "nombre": "poblado",
         "name": "Poblado",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "poblado, lleras, manila, provenza, san lucas, aguacatala, castropol, patio bonito, santa maria, tesoro, balsos"
       },
       "geometry": {
         "type": "Polygon",
@@ -1862,7 +1870,8 @@
       "properties": {
         "nombre": "industriales",
         "name": "Industriales",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "industriales, barrio colombia, ciudad del rio, premium plaza"
       },
       "geometry": {
         "type": "Polygon",
@@ -1958,7 +1967,8 @@
       "properties": {
         "nombre": "envigado",
         "name": "Envigado",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "envigado, dorado, mesa, san jose, alcala, esmeraldal, magnolias, zuniga, milan, cumbres"
       },
       "geometry": {
         "type": "Polygon",
@@ -2118,7 +2128,8 @@
       "properties": {
         "nombre": "itagui",
         "name": "Itagui",
-        "color": "#f97316"
+        "color": "#f97316",
+        "keywords": "itagui, simon bolivar, santa maria, san jose, ditaires, pilsen, tablazos"
       },
       "geometry": {
         "type": "Polygon",
