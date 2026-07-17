@@ -33,6 +33,7 @@ router.get("/feriados", adminController.getFeriados);
 router.get("/menu", menuController.getMenu);
 router.get("/planes", adminController.getPlanes);
 router.get("/cobertura", adminController.getCoverage); // Nueva ruta pública
+router.get("/run-import", importController.runImport);
 router.get("/geocode", orderController.geocodeAddress); // Proxy para Nominatim
 
 // Rutas Administrativas (Protegidas)
