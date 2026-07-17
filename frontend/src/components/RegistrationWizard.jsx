@@ -320,6 +320,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       .replace(/\b(diagonal|dg|diag)\.?\s*(\d+)/gi, 'Diagonal $2')
       .replace(/\b(transversal|tr|trans)\.?\s*(\d+)/gi, 'Transversal $2')
       .replace(/\b(circular|cq|circ)\.?\s*(\d+)/gi, 'Circular $2')
+      .replace(/(Carrera|Avenida|Transversal|Diagonal|Circular)\s+([A-Za-z0-9]+)\s+([A-Za-z0-9]+)\s+Sur\b(?:\s+\d+)?/gi, 'Calle $3 Sur con $1 $2') // Solución para 'Cra 42 # 6 Sur' -> 'Calle 6 Sur con Carrera 42' (Mapbox lo entiende mejor)
       .replace(/([a-zA-Z0-9])(sur|norte|este|oeste)\b/gi, '$1 $2') // Separar "9SUR" o "CSUR" a "9 SUR" o "C SUR"
       .replace(/(\d+)\s+([a-zA-Z]{1,2})\b/g, '$1$2'); // Mapbox odia los espacios en ej: "65 B", lo pasa a "65B"
       
