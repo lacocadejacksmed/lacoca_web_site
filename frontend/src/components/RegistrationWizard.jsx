@@ -314,13 +314,13 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     // Mejorar la nomenclatura colombiana para Mapbox
     let cleanAddress = address
       .replace(/[#-]/g, ' ')
-      .replace(/\b(cl|cll)\.?\s+/i, 'Calle ')
-      .replace(/\b(cra|cr)\.?\s+/i, 'Carrera ')
-      .replace(/\b(av)\.?\s+/i, 'Avenida ')
-      .replace(/\b(dg|diag)\.?\s+/i, 'Diagonal ')
-      .replace(/\b(tr|trans)\.?\s+/i, 'Transversal ')
-      .replace(/\b(cq|circ)\.?\s+/i, 'Circular ')
-      .replace(/(\d+)(sur|norte|este|oeste)\b/gi, '$1 $2') // Separar "9SUR" a "9 SUR" para Mapbox
+      .replace(/\b(calle|cl|cll)\.?\s*(\d+)/gi, 'Calle $2')
+      .replace(/\b(carrera|cra|cr)\.?\s*(\d+)/gi, 'Carrera $2')
+      .replace(/\b(avenida|av)\.?\s*(\d+)/gi, 'Avenida $2')
+      .replace(/\b(diagonal|dg|diag)\.?\s*(\d+)/gi, 'Diagonal $2')
+      .replace(/\b(transversal|tr|trans)\.?\s*(\d+)/gi, 'Transversal $2')
+      .replace(/\b(circular|cq|circ)\.?\s*(\d+)/gi, 'Circular $2')
+      .replace(/([a-zA-Z0-9])(sur|norte|este|oeste)\b/gi, '$1 $2') // Separar "9SUR" o "CSUR" a "9 SUR" o "C SUR"
       .replace(/(\d+)\s+([a-zA-Z]{1,2})\b/g, '$1$2'); // Mapbox odia los espacios en ej: "65 B", lo pasa a "65B"
       
     // Limpiamos # y - porque Mapbox en Colombia suele fallar y devolver 0 resultados con ellos.
