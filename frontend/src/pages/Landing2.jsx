@@ -484,7 +484,7 @@ export default function Landing2({ defaultWizardOpen = false }) {
                <div className="space-y-8">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F2641A]">Ubicación</h4>
                   <div className="space-y-6">
-                     <a href="https://www.google.com/maps/search/?api=1&query=Cl.+27+%23+65B-28+Guayabal+Medellin+Antioquia+Colombia" target="_blank" rel="noopener noreferrer" className="group block space-y-6 no-underline">
+                     <a href="https://www.google.com/maps/search/?api=1&query=La+Coca+de+Jacks,+Medellin" target="_blank" rel="noopener noreferrer" className="group block space-y-6 no-underline">
                         <div className="flex items-center gap-4 text-[#EFD9B4] group-hover:text-white transition-colors">
                            <div className="w-10 h-10 rounded-xl bg-[#2B2118] border border-[#7A6B5C]/20 flex items-center justify-center group-hover:bg-[#F2641A] group-hover:border-[#F2641A] transition-all"><MapPin size={16} /></div>
                            <div>

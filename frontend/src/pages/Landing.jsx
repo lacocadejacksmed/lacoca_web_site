@@ -259,7 +259,7 @@ export default function Landing() {
               <div className="space-y-6">
                 <h4 className="font-black uppercase text-[10px] tracking-[0.2em] text-slate-400">Ubicación</h4>
                 <a
-                  href="https://www.google.com/maps/search/?api=1&query=Cl.+27+%23+65B-28+Guayabal+Medellin+Antioquia+Colombia"
+                  href="https://www.google.com/maps/search/?api=1&query=La+Coca+de+Jacks,+Medellin"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group block space-y-3"
