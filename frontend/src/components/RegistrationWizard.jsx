@@ -1192,7 +1192,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                             if(fieldErrors.barrio) setFieldErrors({...fieldErrors, barrio: null});
                             setCoverage1({ status: 'pending', zone: null });
                           }}
-                          placeholder="Barrio"
+                          placeholder="ej: envigado, sabaneta, poblado, robledo, itagui"
                         />
                         {fieldErrors.barrio && (
                           <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
@@ -1312,7 +1312,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                               if(fieldErrors.barrio2) setFieldErrors({...fieldErrors, barrio2: null});
                               setCoverage2({ status: 'pending', zone: null });
                             }}
-                            placeholder="Barrio 2"
+                            placeholder="ej: envigado, sabaneta, poblado, robledo, itagui"
                           />
                           {fieldErrors.barrio2 && (
                             <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1">
