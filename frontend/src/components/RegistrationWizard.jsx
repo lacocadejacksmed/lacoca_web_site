@@ -1455,7 +1455,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                     <div className="space-y-3 relative z-10" id="field-comprobante">
                       <div className="flex justify-between items-center">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 flex items-center gap-1.5">
-                          Adjuntar Comprobante
+                          Sube el pantallazo parcero!
                           {isFieldValid('comprobante') ? (
                             <CheckCircle2 size={12} className="text-green-500 animate-in zoom-in" />
                           ) : (
@@ -1478,10 +1478,10 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         <div className="flex items-center justify-center gap-3">
                           <Upload className={fieldErrors.comprobante ? 'text-orange-500' : 'text-slate-400 group-hover:text-white'} size={20} />
                           <span className="text-xs font-black text-slate-200">
-                            {formData.comprobanteName || 'Haz clic para subir la captura o PDF'}
+                            {formData.comprobanteName || 'Haz clic para subir la foto del pago'}
                           </span>
                         </div>
-                        <input type="file" ref={fileInputRef} className="hidden" onChange={(e) => {
+                        <input type="file" accept="image/*" ref={fileInputRef} className="hidden" onChange={(e) => {
                           handleFileChange(e);
                           if(fieldErrors.comprobante) setFieldErrors({...fieldErrors, comprobante: null});
                         }} />
