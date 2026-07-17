@@ -93,3 +93,6 @@ test-*.cjs
 /scripts/
 /database/
 /stress_test.js
+.vercel
+.env*
+/base_de_datos/
