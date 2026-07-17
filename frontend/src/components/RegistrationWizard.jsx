@@ -77,6 +77,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     direccion2: '', detalles2: '', barrio2: '', days_address_2: '',
     plan: initialPlan,
     alergias: '', restricciones: '', tieneCocas: false,
+    tipoProteina: 'ninguna',
     comprobanteFile: null, comprobanteName: '', fecha_inicio: '',
     paymentMethod: 'bancolombia', terms: false
   });
@@ -720,12 +721,14 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   const getAdjustedPriceInfo = () => {
     const details = getPlanPriceDetails(formData.plan);
     const cocasPrice = formData.tieneCocas ? 0 : juegoCocasPrice;
+    const proteinaExtra = formData.tipoProteina !== 'ninguna' ? 10000 : 0;
     
     return {
-      total: details.planPrice + cocasPrice,
+      total: details.planPrice + cocasPrice + proteinaExtra,
       discount: details.discount,
       effectiveDays: details.effectiveDays,
-      holidaysFound: details.holidaysFound
+      holidaysFound: details.holidaysFound,
+      proteinaExtra
     };
   };
 
@@ -754,7 +757,8 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         facturacionElectronica: formData.facturacion ? 'Si' : 'No',
         fecha_inicio: formData.fecha_inicio,
         alergias: formData.alergias,
-        restricciones: formData.restricciones
+        restricciones: formData.restricciones,
+        tipo_proteina: formData.tipoProteina
       };
 
       if (formData.tipoEntrega === 'hibrida') {
@@ -808,7 +812,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
             tipoEntrega: 'fija', direccion: '', detalles: '', barrio: '',
             days_address_1: 'Lunes,Martes,Miércoles,Jueves,Viernes',
             direccion2: '', detalles2: '', barrio2: '', days_address_2: '',
-            plan: initialPlan, alergias: '', restricciones: '',
+            plan: initialPlan, alergias: '', restricciones: '', tipoProteina: 'ninguna',
             tieneCocas: false, terms: false, comprobanteFile: null, comprobanteName: ''
           });
           setStep(1);
@@ -827,7 +831,8 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   if (!isOpen) return null;
 
   const currentPlan = activePlans[formData.plan] || activePlans['quincenal'] || Object.values(activePlans)[0];
-  const totalPrice = (currentPlan?.price || 0) + (formData.tieneCocas ? 0 : juegoCocasPrice);
+  const proteinaExtra = formData.tipoProteina !== 'ninguna' ? 10000 : 0;
+  const totalPrice = (currentPlan?.price || 0) + (formData.tieneCocas ? 0 : juegoCocasPrice) + proteinaExtra;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -1077,6 +1082,23 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       placeholder="3001234567"
                     />
                     {fieldErrors.telefono && <p className="text-[10px] font-bold text-orange-600 mt-1 ml-1 flex items-center gap-1"><AlertCircle size={10} /> {fieldErrors.telefono}</p>}
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center justify-between">
+                      <span>Proteína Exclusiva</span>
+                      <span className="text-[10px] text-orange-500 font-bold bg-orange-50 px-2 py-0.5 rounded-md border border-orange-100">+ $10.000</span>
+                    </label>
+                    <select
+                      className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-orange-500 transition-all font-medium text-slate-900"
+                      value={formData.tipoProteina}
+                      onChange={e => setFormData({...formData, tipoProteina: e.target.value})}
+                    >
+                      <option value="ninguna">Variada (Pollo, Res y Cerdo según el menú)</option>
+                      <option value="solo pollo">Solo Pollo (+$10.000 al total)</option>
+                      <option value="solo res">Solo Res (+$10.000 al total)</option>
+                      <option value="solo cerdo">Solo Cerdo (+$10.000 al total)</option>
+                    </select>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1453,6 +1475,16 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                             </span>
                             <span className="text-[9px] font-bold text-orange-200 uppercase">
                               {priceInfo.holidaysFound} festivo(s)
+                            </span>
+                          </div>
+                        )}
+                        {priceInfo.proteinaExtra > 0 && (
+                          <div className="mt-2 flex items-center gap-2">
+                            <span className="bg-orange-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black">
+                              +${priceInfo.proteinaExtra.toLocaleString()}
+                            </span>
+                            <span className="text-[9px] font-bold text-orange-200 uppercase">
+                              Proteína Exclusiva
                             </span>
                           </div>
                         )}

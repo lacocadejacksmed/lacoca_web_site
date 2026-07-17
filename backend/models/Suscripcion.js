@@ -74,6 +74,15 @@ const Suscripcion = sequelize.define('Suscripcion', {
     tableName: 'suscripciones'
 });
 
+Suscripcion.beforeValidate((suscripcion) => {
+    if (suscripcion.alergias) {
+        suscripcion.alergias = suscripcion.alergias.toLowerCase().trim();
+    }
+    if (suscripcion.restricciones) {
+        suscripcion.restricciones = suscripcion.restricciones.toLowerCase().trim();
+    }
+});
+
 // Relationships
 Cliente.hasMany(Suscripcion, { foreignKey: 'cliente_cedula' });
 Suscripcion.belongsTo(Cliente, { foreignKey: 'cliente_cedula' });

@@ -36,4 +36,10 @@ const Cliente = sequelize.define('Cliente', {
     ]
 });
 
+Cliente.beforeValidate((cliente) => {
+    if (cliente.nombre) {
+        cliente.nombre = cliente.nombre.toLowerCase().trim();
+    }
+});
+
 module.exports = Cliente;

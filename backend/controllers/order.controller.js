@@ -70,7 +70,7 @@ const createOrder = async (req, res) => {
             address_2, barrio_2, days_address_2,
             zona_2, lat_2, lng_2,
             facturacionElectronica,
-            alergias, restricciones,
+            alergias, restricciones, tipo_proteina,
             fecha_inicio
         } = req.body;
 
@@ -234,7 +234,18 @@ const createOrder = async (req, res) => {
         const priceCocas = configCocas ? parseFloat(configCocas.valor) : 70000;
         
         const cocasPrice = requiresCocas ? priceCocas : 0;
-        const precio_total = precioAjustado + cocasPrice;
+        
+        // 4.5 Calcular Cobro Extra de Proteína
+        const proteinaExtra = (tipo_proteina && tipo_proteina !== 'ninguna') ? 10000 : 0;
+        const precio_total = precioAjustado + cocasPrice + proteinaExtra;
+        
+        // 4.6 Interpolar Proteína en Restricciones
+        let finalRestricciones = restricciones || '';
+        if (tipo_proteina && tipo_proteina !== 'ninguna') {
+            finalRestricciones = finalRestricciones 
+                ? `${tipo_proteina}, ${finalRestricciones}`
+                : tipo_proteina;
+        }
 
         // 5. Crear Suscripción
         const nuevaSuscripcion = await Suscripcion.create({
@@ -246,7 +257,7 @@ const createOrder = async (req, res) => {
             precio_total,
             estado: 'Pendiente',
             alergias,
-            restricciones,
+            restricciones: finalRestricciones,
             fecha_inicio: targetStartDate
         });
 
