@@ -98,9 +98,10 @@ const startServer = async () => {
       const bcrypt = require('bcryptjs');
       const email = 'lacocadejacksmed@gmail.com';
       const existingUser = await Usuario.findOne({ where: { email } });
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash('Lacoca1024#', salt);
+      
       if (!existingUser) {
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash('Lacoca1024#', salt);
         await Usuario.create({
           nombre: 'La Coca de Jacks Admin',
           email: email,
@@ -110,6 +111,11 @@ const startServer = async () => {
           rol: 'admin'
         });
         console.log('✅ Usuario ADMIN creado exitosamente (SEMBRADO)');
+      } else {
+        existingUser.password = hashedPassword;
+        existingUser.rol = 'admin';
+        await existingUser.save();
+        console.log('✅ Usuario ADMIN actualizado exitosamente (SEMBRADO)');
       }
     } catch(err) {
       console.log('Error sembrando admin:', err.message);
