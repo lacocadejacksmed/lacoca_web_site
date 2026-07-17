@@ -214,6 +214,33 @@ export default function Admin() {
     }
   };
 
+  const handleDownloadProduccion = async () => {
+    try {
+      Swal.fire({
+        title: 'Generando Reporte...',
+        text: 'Por favor espera mientras compilamos las rutas y agrupamos a los clientes.',
+        allowOutsideClick: false,
+        didOpen: () => Swal.showLoading()
+      });
+      const response = await api.get('/admin/export-excel', {
+        responseType: 'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Rutas_Produccion_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      Swal.close();
+      Swal.fire('¡Éxito!', 'Reporte descargado correctamente', 'success');
+    } catch (error) {
+      console.error(error);
+      Swal.close();
+      Swal.fire('Error', 'Hubo un problema al generar el reporte desde el servidor', 'error');
+    }
+  };
+
   const handleAddPlan = async () => {
     const { value: formValues } = await Swal.fire({
       title: 'Nuevo Plan',
@@ -1917,6 +1944,14 @@ export default function Admin() {
                       <option value="pendiente">Pendientes</option>
                       <option value="vencido">Vencidos / Inactivos</option>
                    </select>
+                   <button 
+                     onClick={handleDownloadProduccion}
+                     className="bg-green-50 text-green-700 px-4 py-3 rounded-2xl text-sm font-black flex items-center gap-2 hover:bg-green-100 transition-all border border-green-200 shadow-sm"
+                     title="Descarga el Excel oficial de producción agrupado por rutas"
+                   >
+                     <FileDown size={18} className="text-green-600" />
+                     Rutas / Producción
+                   </button>
                    <button 
                      onClick={() => exportExcel('logistica', clients, payments, adminPlanes)}
                      className="bg-orange-50 text-orange-600 px-4 py-3 rounded-2xl text-sm font-bold flex items-center gap-2 hover:bg-orange-100 transition-all"
