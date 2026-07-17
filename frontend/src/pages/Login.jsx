@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, LogIn, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, LogIn, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema } from '../schemas/validationSchemas';
@@ -11,6 +11,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
   const {
@@ -129,13 +130,20 @@ export default function Login() {
             <div className="relative">
               <Lock className={`absolute left-5 top-1/2 -translate-y-1/2 transition-colors ${errors.password ? 'text-red-400' : 'text-[#EFD9B4]'}`} size={18} />
               <input 
-                type="password"
+                type={showPassword ? "text" : "password"}
                 {...register('password')}
                 placeholder="••••••••"
-                className={`w-full bg-[#FFF6EA] border-2 rounded-2xl pl-14 pr-6 py-4 text-sm font-bold transition-all outline-none ${
+                className={`w-full bg-[#FFF6EA] border-2 rounded-2xl pl-14 pr-12 py-4 text-sm font-bold transition-all outline-none ${
                   errors.password ? 'border-red-100 ring-2 ring-red-50 bg-red-50/30 text-red-900' : 'border-transparent focus:ring-2 focus:ring-[#F2641A]'
                 }`}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-5 top-1/2 -translate-y-1/2 text-[#7A6B5C] hover:text-[#F2641A] transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
             {errors.password && <p className="text-[10px] font-bold text-red-500 px-1 animate-in slide-in-from-top-1">{errors.password.message}</p>}
             <div className="flex justify-end">

@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, UserPlus, Users, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, User, UserPlus, Users, ArrowLeft, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { registerSchema } from '../schemas/validationSchemas';
@@ -11,6 +11,8 @@ import { useGoogleLogin } from '@react-oauth/google';
 
 export default function Register() {
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const navigate = useNavigate();
 
   const {
@@ -243,12 +245,19 @@ export default function Register() {
               <div className="relative">
                 <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.password ? 'text-red-400' : 'text-slate-300'}`} size={16} />
                 <input 
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   {...register('password')}
-                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
+                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-10 py-3 text-sm font-bold transition-all outline-none ${
                     errors.password ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:ring-2 focus:ring-orange-500'
                   }`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-500 transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
               {errors.password && <p className="text-[8px] font-bold text-red-500 px-1">{errors.password.message}</p>}
             </div>
@@ -260,12 +269,19 @@ export default function Register() {
               <div className="relative">
                 <Lock className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${errors.confirmPassword ? 'text-red-400' : 'text-slate-300'}`} size={16} />
                 <input 
-                  type="password"
+                  type={showConfirmPassword ? "text" : "password"}
                   {...register('confirmPassword')}
-                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-4 py-3 text-sm font-bold transition-all outline-none ${
+                  className={`w-full bg-gray-50 border-2 rounded-xl pl-11 pr-10 py-3 text-sm font-bold transition-all outline-none ${
                     errors.confirmPassword ? 'border-red-100 bg-red-50/30' : 'border-transparent focus:ring-2 focus:ring-orange-500'
                   }`}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-orange-500 transition-colors"
+                >
+                  {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
               {errors.confirmPassword && <p className="text-[8px] font-bold text-red-500 px-1">{errors.confirmPassword.message}</p>}
             </div>
