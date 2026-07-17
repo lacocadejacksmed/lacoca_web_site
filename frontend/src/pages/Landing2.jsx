@@ -484,16 +484,21 @@ export default function Landing2({ defaultWizardOpen = false }) {
                <div className="space-y-8">
                   <h4 className="text-[10px] font-black uppercase tracking-[0.4em] text-[#F2641A]">Ubicación</h4>
                   <div className="space-y-6">
-                     <div className="flex items-center gap-4 text-[#EFD9B4]">
-                        <div className="w-10 h-10 rounded-xl bg-[#2B2118] border border-[#7A6B5C]/20 flex items-center justify-center"><MapPin size={16} /></div>
-                        <span className="font-black text-sm tracking-tight">Guayabal, Medellín</span>
-                     </div>
-                     <div className="relative rounded-[32px] overflow-hidden border border-[#7A6B5C]/30 group cursor-pointer">
-                        <img src="/mapa_ubicacion.jpg" alt="Mapa Jacks" loading="lazy" width={400} height={96} className="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-[#2B2118]/40 group-hover:bg-[#2B2118]/0 transition-all">
-                           <span className="bg-white text-[#2B2118] px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl">Google Maps</span>
+                     <a href="https://www.google.com/maps/search/?api=1&query=Cl.+27+%23+65B-28+Guayabal+Medellin+Antioquia+Colombia" target="_blank" rel="noopener noreferrer" className="group block space-y-6 no-underline">
+                        <div className="flex items-center gap-4 text-[#EFD9B4] group-hover:text-white transition-colors">
+                           <div className="w-10 h-10 rounded-xl bg-[#2B2118] border border-[#7A6B5C]/20 flex items-center justify-center group-hover:bg-[#F2641A] group-hover:border-[#F2641A] transition-all"><MapPin size={16} /></div>
+                           <div>
+                              <p className="font-black text-sm tracking-tight leading-tight mb-1">Cl. 27 # 65B-28</p>
+                              <p className="text-xs text-[#7A6B5C] font-bold leading-tight">Guayabal, Medellín</p>
+                           </div>
                         </div>
-                     </div>
+                        <div className="relative rounded-[32px] overflow-hidden border border-[#7A6B5C]/30 cursor-pointer">
+                           <img src="/mapa_ubicacion.jpg" alt="Mapa Jacks" loading="lazy" width={400} height={96} className="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                           <div className="absolute inset-0 flex items-center justify-center bg-[#2B2118]/40 group-hover:bg-[#2B2118]/0 transition-all">
+                              <span className="bg-white text-[#2B2118] px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl">Google Maps</span>
+                           </div>
+                        </div>
+                     </a>
                   </div>
                </div>
             </div>
