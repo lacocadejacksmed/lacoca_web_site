@@ -93,33 +93,7 @@ const startServer = async () => {
     await sequelize.sync({ alter: alterDB });
     console.log(`✅ Modelos sincronizados con la base de datos (alter: ${alterDB}).`);
 
-    try {
-      const Usuario = require('./models/usuario.model');
-      const bcrypt = require('bcryptjs');
-      const email = 'lacocadejacksmed@gmail.com';
-      const existingUser = await Usuario.findOne({ where: { email } });
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash('Lacoca1024#', salt);
-      
-      if (!existingUser) {
-        await Usuario.create({
-          nombre: 'La Coca de Jacks Admin',
-          email: email,
-          password: hashedPassword,
-          cedula: '0000000000',
-          celular: '0000000000',
-          rol: 'admin'
-        });
-        console.log('✅ Usuario ADMIN creado exitosamente (SEMBRADO)');
-      } else {
-        existingUser.password = hashedPassword;
-        existingUser.rol = 'admin';
-        await existingUser.save();
-        console.log('✅ Usuario ADMIN actualizado exitosamente (SEMBRADO)');
-      }
-    } catch(err) {
-      console.log('Error sembrando admin:', err.message);
-    }
+
 
     initCronJobs();
 
