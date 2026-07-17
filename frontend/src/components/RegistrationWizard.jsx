@@ -1222,20 +1222,31 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         <CheckCircle2 size={12} /> Zona confirmada: {coverage1.zone}
                       </p>
                     )}
-                    {coverage1.status === 'not_found' && (
-                      <p className="text-[10px] font-bold text-orange-600 mt-2 flex items-center gap-1 bg-orange-50 p-2 rounded-lg">
-                        <AlertCircle size={12} /> No encontramos esta dirección en el mapa. Verifica que esté bien escrita.
-                      </p>
-                    )}
-                    {coverage1.status === 'no_coverage' && (
-                      <p className="text-[10px] font-bold text-red-600 mt-2 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
-                        <AlertCircle size={12} /> Fuera de nuestra zona de cobertura.
-                      </p>
-                    )}
-                    {coverage1.status === 'mismatch' && (
-                      <p className="text-[10px] font-bold text-orange-600 mt-2 flex items-center gap-1 bg-orange-50 p-2 rounded-lg">
-                        <AlertCircle size={12} /> La dirección parece estar en la zona "{coverage1.zone}", pero el barrio no coincide.
-                      </p>
+                    {['not_found', 'no_coverage', 'mismatch', 'api_error'].includes(coverage1.status) && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }} 
+                        animate={{ opacity: 1, height: 'auto' }} 
+                        className={`mt-3 p-3 rounded-xl border overflow-hidden ${coverage1.status === 'mismatch' ? 'bg-orange-50 border-orange-100' : 'bg-red-50 border-red-100'}`}
+                      >
+                        <p className={`text-[11px] font-bold flex items-start gap-1.5 ${coverage1.status === 'mismatch' ? 'text-orange-700' : 'text-red-700'}`}>
+                          <AlertCircle size={14} className="shrink-0 mt-0.5" /> 
+                          {coverage1.status === 'not_found' ? 'No encontramos esta dirección. Verifica que esté bien escrita.' : 
+                           coverage1.status === 'no_coverage' ? 'Fuera de nuestra zona de cobertura.' :
+                           coverage1.status === 'api_error' ? 'Hubo un error al validar tu dirección. Intenta de nuevo.' :
+                           `Parece estar en la zona "${coverage1.zone}", pero el barrio no coincide.`}
+                        </p>
+                        
+                        {(coverage1.status === 'not_found' || coverage1.status === 'no_coverage') && (
+                          <div className="mt-3 bg-white/60 p-2.5 rounded-lg border border-black/5">
+                            <p className="text-[10px] font-bold text-slate-700 mb-1.5 uppercase tracking-wider">💡 Ejemplo de formato ideal:</p>
+                            <div className="space-y-1.5">
+                              <p className="text-[11px] font-mono text-slate-700 flex items-center gap-1.5"><CheckCircle2 size={12} className="text-green-500" /> Calle 10A Sur #32-15</p>
+                              <p className="text-[11px] font-mono text-slate-700 flex items-center gap-1.5"><CheckCircle2 size={12} className="text-green-500" /> Cra 43B #9-50</p>
+                            </div>
+                            <p className="text-[9px] text-slate-500 mt-2 leading-tight">*Para "Calle 77CC" evita poner "CALLE77CC" pegado. Separa también palabras como SUR o NORTE (ej: "29C SUR").</p>
+                          </div>
+                        )}
+                      </motion.div>
                     )}
 
                     <div className="mt-3">
@@ -1339,20 +1350,31 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                           <CheckCircle2 size={12} /> Zona confirmada: {coverage2.zone}
                         </p>
                       )}
-                      {coverage2.status === 'not_found' && (
-                        <p className="text-[10px] font-bold text-orange-600 mt-2 flex items-center gap-1 bg-orange-50 p-2 rounded-lg">
-                          <AlertCircle size={12} /> No encontramos esta dirección en el mapa. Verifica que esté bien escrita.
-                        </p>
-                      )}
-                      {coverage2.status === 'no_coverage' && (
-                        <p className="text-[10px] font-bold text-red-600 mt-2 flex items-center gap-1 bg-red-50 p-2 rounded-lg">
-                          <AlertCircle size={12} /> Fuera de nuestra zona de cobertura.
-                        </p>
-                      )}
-                      {coverage2.status === 'mismatch' && (
-                        <p className="text-[10px] font-bold text-orange-600 mt-2 flex items-center gap-1 bg-orange-50 p-2 rounded-lg">
-                          <AlertCircle size={12} /> La dirección parece estar en la zona "{coverage2.zone}", pero el barrio no coincide.
-                        </p>
+                      {['not_found', 'no_coverage', 'mismatch', 'api_error'].includes(coverage2.status) && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }} 
+                          animate={{ opacity: 1, height: 'auto' }} 
+                          className={`mt-3 p-3 rounded-xl border overflow-hidden ${coverage2.status === 'mismatch' ? 'bg-orange-50 border-orange-100' : 'bg-red-50 border-red-100'}`}
+                        >
+                          <p className={`text-[11px] font-bold flex items-start gap-1.5 ${coverage2.status === 'mismatch' ? 'text-orange-700' : 'text-red-700'}`}>
+                            <AlertCircle size={14} className="shrink-0 mt-0.5" /> 
+                            {coverage2.status === 'not_found' ? 'No encontramos esta dirección. Verifica que esté bien escrita.' : 
+                             coverage2.status === 'no_coverage' ? 'Fuera de nuestra zona de cobertura.' :
+                             coverage2.status === 'api_error' ? 'Hubo un error al validar tu dirección. Intenta de nuevo.' :
+                             `Parece estar en la zona "${coverage2.zone}", pero el barrio no coincide.`}
+                          </p>
+                          
+                          {(coverage2.status === 'not_found' || coverage2.status === 'no_coverage') && (
+                            <div className="mt-3 bg-white/60 p-2.5 rounded-lg border border-black/5">
+                              <p className="text-[10px] font-bold text-slate-700 mb-1.5 uppercase tracking-wider">💡 Ejemplo de formato ideal:</p>
+                              <div className="space-y-1.5">
+                                <p className="text-[11px] font-mono text-slate-700 flex items-center gap-1.5"><CheckCircle2 size={12} className="text-green-500" /> Calle 10A Sur #32-15</p>
+                                <p className="text-[11px] font-mono text-slate-700 flex items-center gap-1.5"><CheckCircle2 size={12} className="text-green-500" /> Cra 43B #9-50</p>
+                              </div>
+                              <p className="text-[9px] text-slate-500 mt-2 leading-tight">*Para "Calle 77CC" evita poner "CALLE77CC" pegado. Separa también palabras como SUR o NORTE (ej: "29C SUR").</p>
+                            </div>
+                          )}
+                        </motion.div>
                       )}
                       
                       <div className="mt-3">
