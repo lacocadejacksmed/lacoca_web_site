@@ -72,6 +72,13 @@ router.post("/admin/cobertura", [protect, admin], adminController.updateCoverage
 router.get("/admin/menus", [protect, admin], menuController.getMenus);
 router.post("/admin/menu", [protect, admin, orderController.upload.single("menu_image")], menuController.updateMenu);
 
+router.get("/test-env", (req, res) => {
+    res.json({
+        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+        db_url: process.env.DATABASE_URL ? "Exists" : "Missing"
+    });
+});
+
 // Configuraciones
 router.get("/admin/configuraciones", [protect, admin], adminController.getConfiguraciones);
 router.post("/admin/configuraciones", [protect, admin], adminController.upsertConfiguracion);
