@@ -7,7 +7,7 @@
         "nombre": "norte1",
         "name": "Norte 1",
         "color": "#f97316",
-        "keywords": "robledo, aranjuez, castilla, doce de octubre, manrique, bello horizonte, campo valdes, santacruz, popular"
+        "keywords": "robledo, castilla, doce de octubre"
       },
       "geometry": {
         "type": "Polygon",
@@ -944,9 +944,9 @@
     {
       "type": "Feature",
       "properties": {
-        "nombre ": "laureles",
         "name": "Laureles",
-        "color": "#f97316"
+        "color": "#f97316",
+        "nombre": "laureles"
       },
       "geometry": {
         "type": "Polygon",
@@ -2335,9 +2335,10 @@
     {
       "type": "Feature",
       "properties": {
-        "nombre ": "sabaneta",
         "name": "Sabaneta",
-        "color": "#f97316"
+        "color": "#f97316",
+        "nombre": "sabaneta",
+        "keywords": "sabaneta, aves marias, pan de azucar, restrepo naranjo, betania, calle larga, prados de sabaneta"
       },
       "geometry": {
         "type": "Polygon",
