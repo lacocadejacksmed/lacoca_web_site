@@ -452,12 +452,6 @@ const checkClient = async (req, res) => {
             });
         }
 
-        if (today === 1 || today === 2) {
-            return res.json({
-                success: true, found: true, blocked: true,
-                message: 'Las renovaciones para la próxima semana se habilitan a partir de cada miércoles. ¡Vuelve pronto!'
-            });
-        }
     }
 
     // Si llegamos hasta aquí sin bloqueos, verificamos si realmente tiene historial válido
