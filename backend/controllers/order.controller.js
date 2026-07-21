@@ -318,28 +318,47 @@ const getAvailability = async (req, res) => {
         const start = new Date(now.toLocaleString("en-US", { timeZone: "America/Bogota" }));
         
         const day = start.getDay();
+        const hour = start.getHours();
         let daysToNextMonday = (day === 0) ? 1 : (8 - day);
         
-        // REGLA: Si hoy es lunes y es FESTIVO, el plazo se extiende hasta las 11:59 PM de hoy.
-        if (day === 1) {
-            const currentYear = start.getFullYear();
-            const y = start.getFullYear();
-            const m = String(start.getMonth() + 1).padStart(2, '0');
-            const d = String(start.getDate()).padStart(2, '0');
-            const todayStr = `${y}-${m}-${d}`;
-            
-            const feriadosDocs = await Feriado.findAll({ where: { fecha: todayStr } });
-            const isDbHoliday = feriadosDocs.some(f => f.activo !== false);
-            const isIgnored = feriadosDocs.some(f => f.activo === false);
-            
-            const autoHolidays = getHolidaysInRange(currentYear, currentYear).map(h => h.date);
-            const isAutoHoliday = autoHolidays.includes(todayStr);
-            
-            const isHolidayToday = (isAutoHoliday && !isIgnored) || isDbHoliday;
-            
-            if (isHolidayToday) {
-                daysToNextMonday = 0; // Permitir suscribirse para "hoy" (la semana actual)
+        // 1. Determinar si el "próximo lunes" a evaluar es festivo
+        const { getHolidaysInRange } = require('../utils/colombianHolidays');
+        const FeriadoModel = require('../models/Feriado');
+        
+        const tempNextMonday = new Date(start);
+        tempNextMonday.setDate(start.getDate() + daysToNextMonday);
+        const y_nm = tempNextMonday.getFullYear();
+        const m_nm = String(tempNextMonday.getMonth() + 1).padStart(2, '0');
+        const d_nm = String(tempNextMonday.getDate()).padStart(2, '0');
+        const nextMondayStr = `${y_nm}-${m_nm}-${d_nm}`;
+        
+        const feriadosDocsNext = await FeriadoModel.findAll({ where: { fecha: nextMondayStr } });
+        const isDbHolidayNext = feriadosDocsNext.some(f => f.activo !== false);
+        const isIgnoredNext = feriadosDocsNext.some(f => f.activo === false);
+        const autoHolidaysNext = getHolidaysInRange(y_nm, y_nm).map(h => h.date);
+        const isAutoHolidayNext = autoHolidaysNext.includes(nextMondayStr);
+        const isNextMondayHoliday = (isAutoHolidayNext && !isIgnoredNext) || isDbHolidayNext;
+
+        // 2. Aplicar límites de cierre (Cutoff)
+        let isPastCutoff = false;
+        
+        if (isNextMondayHoliday) {
+            // Límite: Domingo hasta las 10 PM
+            if (day === 0 && hour >= 22) {
+                isPastCutoff = true;
             }
+        } else {
+            // Límite: Sábado hasta las 10 PM
+            if (day === 6 && hour >= 22) {
+                isPastCutoff = true;
+            } else if (day === 0) {
+                isPastCutoff = true; // Todo el domingo ya está bloqueado
+            }
+        }
+
+        // Si ya pasó el límite, el usuario no puede comprar para el próximo lunes, sino para el de arriba
+        if (isPastCutoff) {
+            daysToNextMonday += 7;
         }
         
         let currentMonday = new Date(start);
