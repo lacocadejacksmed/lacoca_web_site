@@ -209,6 +209,17 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
       
       fetchAvailability();
       
+      // Siempre consultar la configuración del modo híbrido al abrir el wizard
+      const fetchHibridaConfig = async () => {
+        try {
+          const res = await api.get(`/planes?t=${Date.now()}`);
+          if (res.data?.success && res.data.modoHibrida !== undefined) {
+            setIsHybridEnabled(res.data.modoHibrida);
+          }
+        } catch(e) { console.error('Error fetching hybrid config', e); }
+      };
+      fetchHibridaConfig();
+      
       const token = localStorage.getItem('token');
       if (token) {
         const fetchMe = async () => {
@@ -266,7 +277,8 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   const checkExistingClient = async (cedula, silent = false) => {
     if (!cedula || cedula.length < 5) return;
     try {
-      const res = await api.get(`/check-client/${cedula}`);
+      // Prevención estricta de caché del navegador para la validación del cliente
+      const res = await api.get(`/check-client/${cedula}?t=${Date.now()}`);
       if (res.data && res.data.success && res.data.found) {
         if (res.data.blocked) {
           Swal.fire({
