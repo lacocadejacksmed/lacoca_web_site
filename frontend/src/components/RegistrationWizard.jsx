@@ -30,6 +30,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   const fileInputRef = useRef(null);
   const [fetchedPlans, setFetchedPlans] = useState([]);
   const [juegoCocasPrice, setJuegoCocasPrice] = useState(70000);
+  const [isHybridEnabled, setIsHybridEnabled] = useState(true);
 
   useEffect(() => {
     if (isOpen && (!dynamicPlans || dynamicPlans.length === 0)) {
@@ -39,6 +40,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           if (res.data?.success && res.data.planes) {
             setFetchedPlans(res.data.planes);
             if (res.data.juegoCocasPrice) setJuegoCocasPrice(res.data.juegoCocasPrice);
+            if (res.data.modoHibrida !== undefined) setIsHybridEnabled(res.data.modoHibrida);
           }
         } catch (err) {
           console.error("Error al cargar planes en wizard:", err);
@@ -1147,19 +1149,29 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       <div className="text-sm font-black text-slate-900">Punto Fijo</div>
                       <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Oficina o Casa</div>
                     </button>
-                    <button 
-                      onClick={() => setFormData({...formData, tipoEntrega: 'hibrida'})}
-                      className={`flex-1 p-5 rounded-[28px] border-2 transition-all text-left relative overflow-hidden ${
-                        formData.tipoEntrega === 'hibrida' ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-100 hover:border-gray-200'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${formData.tipoEntrega === 'hibrida' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                        <Check size={16} strokeWidth={3} />
-                      </div>
-                      <div className="text-sm font-black text-slate-900">Híbrida</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Dos Lugares</div>
-                    </button>
+                    {isHybridEnabled && (
+                      <button 
+                        onClick={() => setFormData({...formData, tipoEntrega: 'hibrida'})}
+                        className={`flex-1 p-5 rounded-[28px] border-2 transition-all text-left relative overflow-hidden ${
+                          formData.tipoEntrega === 'hibrida' ? 'border-blue-500 bg-blue-50/50 shadow-sm' : 'border-gray-100 hover:border-gray-200'
+                        }`}
+                      >
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center mb-3 ${formData.tipoEntrega === 'hibrida' ? 'bg-blue-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                          <Check size={16} strokeWidth={3} />
+                        </div>
+                        <div className="text-sm font-black text-slate-900">Híbrida</div>
+                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">Dos Lugares</div>
+                      </button>
+                    )}
                   </div>
+
+                  {/* Fallback si se deshabilita mientras estaba seleccionado */}
+                  {(!isHybridEnabled && formData.tipoEntrega === 'hibrida') && (
+                      <div className="text-red-500 text-xs font-bold mt-2">
+                        El modo híbrido no está disponible en este momento. Por favor selecciona Punto Fijo.
+                        {setTimeout(() => setFormData({...formData, tipoEntrega: 'fija'}), 0)}
+                      </div>
+                  )}
 
                   {formData.tipoEntrega === 'hibrida' && (
                     <motion.div 

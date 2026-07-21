@@ -6,6 +6,11 @@ const DireccionEntrega = require('../models/DireccionEntrega');
 
 exports.exportarProduccion = async (req, res) => {
     try {
+        // Fetch config for modo_hibrida
+        const Configuracion = require('../models/Configuracion');
+        const configHibrida = await Configuracion.findOne({ where: { clave: 'modo_hibrida' } });
+        const modoHibrida = configHibrida ? configHibrida.valor === 'true' : true;
+
         // Traer suscripciones activas
         const suscripciones = await Suscripcion.findAll({
             where: { estado: 'Activo' },
@@ -27,6 +32,9 @@ exports.exportarProduccion = async (req, res) => {
             const obs = [alergias, restricciones].filter(Boolean).join(' | ');
 
             sub.direcciones.forEach(dir => {
+                // If hybrid mode is disabled, skip any secondary address
+                if (!modoHibrida && !dir.es_principal) return;
+
                 const zona = dir.zona || 'Sin Zona';
                 if (!rutas[zona]) rutas[zona] = [];
                 

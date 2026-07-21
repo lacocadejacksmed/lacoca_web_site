@@ -982,8 +982,10 @@ const getPlanes = async (req, res) => {
   try {
     const planes = await Plan.findAll({ where: { esta_activo: true } });
     const configCocas = await Configuracion.findOne({ where: { clave: 'juego_cocas' } });
+    const configHibrida = await Configuracion.findOne({ where: { clave: 'modo_hibrida' } });
     const juegoCocasPrice = configCocas ? parseFloat(configCocas.valor) : 70000;
-    res.json({ success: true, planes, juegoCocasPrice });
+    const modoHibrida = configHibrida ? configHibrida.valor === 'true' : true;
+    res.json({ success: true, planes, juegoCocasPrice, modoHibrida });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

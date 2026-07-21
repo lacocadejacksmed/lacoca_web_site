@@ -162,6 +162,20 @@ export default function Admin() {
     }
   };
 
+  const handleToggleModoHibrida = async (currentVal) => {
+    const newVal = currentVal === 'true' ? 'false' : 'true';
+    try {
+      const token = localStorage.getItem('token');
+      await api.post('/admin/configuraciones', { clave: 'modo_hibrida', valor: newVal }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setConfiguraciones(configuraciones.map(c => c.clave === 'modo_hibrida' ? { ...c, valor: newVal } : c));
+      Swal.fire({ icon: 'success', title: 'Actualizado', toast: true, position: 'top-end', timer: 1500, showConfirmButton: false });
+    } catch (e) {
+      Swal.fire({ icon: 'error', title: 'Error al actualizar', text: e.response?.data?.message || e.message });
+    }
+  };
+
   const handleEditConfig = async (config) => {
     const { value: newVal } = await Swal.fire({
       title: `Editar ${config.clave}`,
@@ -395,7 +409,13 @@ export default function Admin() {
         api.get('/admin/planes')
       ]);
 
-      if (resConfig.data?.success) setConfiguraciones(resConfig.data.configuraciones || []);
+      if (resConfig.data?.success) {
+        let configs = resConfig.data.configuraciones || [];
+        if (!configs.find(c => c.clave === 'modo_hibrida')) {
+          configs.unshift({ clave: 'modo_hibrida', valor: 'true' });
+        }
+        setConfiguraciones(configs);
+      }
       if (resAdminPlanes.data?.success) setAdminPlanes(resAdminPlanes.data.planes || []);
 
       if (resClients.data.success) {
@@ -1491,9 +1511,18 @@ export default function Admin() {
                             <span className="px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-black uppercase tracking-widest">{config.clave}</span>
                           </td>
                           <td className="px-8 py-4">
-                            <span className="text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                              {config.valor}
-                            </span>
+                            {config.clave === 'modo_hibrida' ? (
+                              <button
+                                onClick={() => handleToggleModoHibrida(config.valor)}
+                                className={`w-12 h-6 rounded-full transition-colors relative flex items-center ${config.valor === 'true' ? 'bg-orange-500' : 'bg-gray-300'}`}
+                              >
+                                <span className={`absolute w-4 h-4 rounded-full bg-white transition-transform ${config.valor === 'true' ? 'translate-x-7' : 'translate-x-1'}`}></span>
+                              </button>
+                            ) : (
+                              <span className="text-xs font-bold text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                                {config.valor}
+                              </span>
+                            )}
                           </td>
                           <td className="px-8 py-4 text-right">
                             <button 
