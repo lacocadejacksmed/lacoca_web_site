@@ -774,6 +774,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         facturacionElectronica: formData.facturacion ? 'Si' : 'No',
         fecha_inicio: formData.fecha_inicio,
         alergias: formData.alergias,
+        restricciones: formData.restricciones,
         tipo_proteina: formData.tipoProteina
       };
 
@@ -825,7 +826,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           // Reset Form
           setFormData({
             nombre: '', documento: '', email: '', telefono: '',
-            plan: initialPlan, alergias: '', tipoProteina: 'tradicional',
+            plan: initialPlan, alergias: '', restricciones: '', tipoProteina: 'tradicional',
             direccion: '', barrio: '', days_address_1: 'Lunes,Martes,Miércoles,Jueves,Viernes', 
             zona: null, lat: null, lng: null, detalles: '',
             tipoEntrega: 'fija', direccion2: '', barrio2: '', 
@@ -1129,6 +1130,16 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         value={formData.alergias}
                         onChange={e => setFormData({...formData, alergias: e.target.value})}
                         placeholder="Ej: Maní, mariscos..."
+                      ></textarea>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-black text-slate-900 uppercase tracking-widest">Otras Observaciones</label>
+                      <textarea 
+                        className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-orange-500 transition-all font-medium text-slate-900 resize-none"
+                        rows="2"
+                        value={formData.restricciones}
+                        onChange={e => setFormData({...formData, restricciones: e.target.value})}
+                        placeholder="Ej: Sin jugo, sin arroz, etc."
                       ></textarea>
                     </div>
                   </div>
