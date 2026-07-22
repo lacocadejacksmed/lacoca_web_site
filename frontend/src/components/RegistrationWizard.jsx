@@ -734,15 +734,18 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
 
   const getAdjustedPriceInfo = () => {
     const details = getPlanPriceDetails(formData.plan);
-    const cocasPrice = formData.tieneCocas ? 0 : juegoCocasPrice;
+    const mustPayCocas = !recognizedClient;
+    const cocasPrice = mustPayCocas ? juegoCocasPrice : 0;
     const proteinaExtra = formData.tipoProteina !== 'ninguna' ? 10000 : 0;
     
     return {
+      basePrice: details.planPrice,
       total: details.planPrice + cocasPrice + proteinaExtra,
       discount: details.discount,
       effectiveDays: details.effectiveDays,
       holidaysFound: details.holidaysFound,
-      proteinaExtra
+      proteinaExtra,
+      cocasPrice
     };
   };
 
@@ -760,7 +763,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         email: formData.email,
         celular: formData.telefono,
         plan: formData.plan.charAt(0).toUpperCase() + formData.plan.slice(1),
-        needs_cocas: !formData.tieneCocas,
+        needs_cocas: !recognizedClient,
         delivery_type: formData.tipoEntrega === 'fija' ? 'Fija' : 'Hibrida',
         address_1: formData.detalles ? `${formData.direccion} (${formData.detalles})` : formData.direccion,
         barrio_1: formData.barrio,
@@ -771,7 +774,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
         facturacionElectronica: formData.facturacion ? 'Si' : 'No',
         fecha_inicio: formData.fecha_inicio,
         alergias: formData.alergias,
-        restricciones: formData.restricciones,
         tipo_proteina: formData.tipoProteina
       };
 
@@ -822,12 +824,13 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           
           // Reset Form
           setFormData({
-            nombre: '', documento: '', facturacion: false, telefono: '', email: '',
-            tipoEntrega: 'fija', direccion: '', detalles: '', barrio: '',
-            days_address_1: 'Lunes,Martes,Miércoles,Jueves,Viernes',
-            direccion2: '', detalles2: '', barrio2: '', days_address_2: '',
-            plan: initialPlan, alergias: '', restricciones: '', tipoProteina: 'ninguna',
-            tieneCocas: false, terms: false, comprobanteFile: null, comprobanteName: ''
+            nombre: '', documento: '', email: '', telefono: '',
+            plan: initialPlan, alergias: '', tipoProteina: 'ninguna',
+            direccion: '', barrio: '', days_address_1: 'Lunes,Martes,Miércoles,Jueves,Viernes', 
+            zona: null, lat: null, lng: null, detalles: '',
+            tipoEntrega: 'fija', direccion2: '', barrio2: '', 
+            days_address_2: '', zona2: null, lat2: null, lng2: null, detalles2: '',
+            terms: false, comprobanteFile: null, comprobanteName: ''
           });
           setStep(1);
           localStorage.removeItem('wizard_progress');
@@ -845,8 +848,10 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   if (!isOpen) return null;
 
   const currentPlan = activePlans[formData.plan] || activePlans['quincenal'] || Object.values(activePlans)[0];
+  const mustPayCocas = !recognizedClient;
+  const cocasPrice = mustPayCocas ? juegoCocasPrice : 0;
   const proteinaExtra = formData.tipoProteina !== 'ninguna' ? 10000 : 0;
-  const totalPrice = (currentPlan?.price || 0) + (formData.tieneCocas ? 0 : juegoCocasPrice) + proteinaExtra;
+  const totalPrice = (currentPlan?.price || 0) + cocasPrice + proteinaExtra;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm">
@@ -1124,16 +1129,6 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                         value={formData.alergias}
                         onChange={e => setFormData({...formData, alergias: e.target.value})}
                         placeholder="Ej: Maní, mariscos..."
-                      ></textarea>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-black text-slate-900 uppercase tracking-widest">Restricciones</label>
-                      <textarea 
-                        className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-xs focus:ring-2 focus:ring-orange-500 transition-all font-medium text-slate-900 resize-none"
-                        rows="2"
-                        value={formData.restricciones}
-                        onChange={e => setFormData({...formData, restricciones: e.target.value})}
-                        placeholder="Ej: No como cerdo, soy vegano..."
                       ></textarea>
                     </div>
                   </div>
@@ -1456,28 +1451,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                   exit={{ opacity: 0, x: -20 }}
                   className="space-y-6"
                 >
-                  <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 space-y-3">
-                    <label className="text-xs font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
-                      <CreditCard size={16} /> ¿Tienes los 2 juegos de cocas?
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button 
-                        onClick={() => setFormData({...formData, tieneCocas: true})}
-                        className={`py-3 rounded-xl font-bold text-xs transition-all ${
-                          formData.tieneCocas ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-gray-500'
-                        }`}
-                      >
-                        Ya los tengo
-                      </button>
-                      <button 
-                        onClick={() => setFormData({...formData, tieneCocas: false})}
-                        className={`py-3 rounded-xl font-bold text-xs transition-all ${
-                          !formData.tieneCocas ? 'bg-orange-500 text-white shadow-md' : 'bg-white text-gray-500'
-                        }`}
-                      >
-                        Deseo comprarlo
-                      </button>
-                    </div>
+                  <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 space-y-3 hidden">
                   </div>
 
                   {/* Contenedor Unificado de Pago */}
@@ -1489,29 +1463,38 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       <div>
                         <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total a Transferir</div>
                         <div className="text-3xl font-black text-white">${priceInfo.total.toLocaleString()}</div>
-                        <div className="text-[10px] font-bold text-slate-400 mt-1">
-                          Plan + Cocas {priceInfo.discount > 0 && <span className="text-orange-400 font-black">• DESCUENTO APLICADO</span>}
+                        
+                        <div className="mt-4 space-y-2 border-t border-white/10 pt-3">
+                          <div className="flex justify-between items-center text-[10px] font-bold text-slate-400">
+                            <span>Suscripción ({priceInfo.effectiveDays} días)</span>
+                            <span>${priceInfo.basePrice.toLocaleString()}</span>
+                          </div>
+                          
+                          {priceInfo.discount > 0 && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-[9px] font-bold text-orange-200 uppercase flex items-center gap-1">
+                                <AlertCircle size={10}/> Descuento Festivos ({priceInfo.holidaysFound})
+                              </span>
+                              <span className="bg-orange-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black">
+                                -${priceInfo.discount.toLocaleString()}
+                              </span>
+                            </div>
+                          )}
+
+                          {priceInfo.cocasPrice > 0 && (
+                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-300">
+                              <span>Juego de Cocas (2 juegos)</span>
+                              <span>+${priceInfo.cocasPrice.toLocaleString()}</span>
+                            </div>
+                          )}
+                          
+                          {priceInfo.proteinaExtra > 0 && (
+                            <div className="flex justify-between items-center text-[10px] font-bold text-slate-300">
+                              <span>Proteína Exclusiva</span>
+                              <span>+${priceInfo.proteinaExtra.toLocaleString()}</span>
+                            </div>
+                          )}
                         </div>
-                        {priceInfo.discount > 0 && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className="bg-orange-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black">
-                              -${priceInfo.discount.toLocaleString()}
-                            </span>
-                            <span className="text-[9px] font-bold text-orange-200 uppercase">
-                              {priceInfo.holidaysFound} festivo(s)
-                            </span>
-                          </div>
-                        )}
-                        {priceInfo.proteinaExtra > 0 && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className="bg-orange-500 text-white px-2 py-0.5 rounded-full text-[9px] font-black">
-                              +${priceInfo.proteinaExtra.toLocaleString()}
-                            </span>
-                            <span className="text-[9px] font-bold text-orange-200 uppercase">
-                              Proteína Exclusiva
-                            </span>
-                          </div>
-                        )}
                       </div>
                       
                       <div className="space-y-1 md:text-right md:flex md:flex-col md:items-end md:justify-center">
