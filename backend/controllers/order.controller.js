@@ -236,12 +236,12 @@ const createOrder = async (req, res) => {
         const cocasPrice = requiresCocas ? priceCocas : 0;
         
         // 4.5 Calcular Cobro Extra de Proteína
-        const proteinaExtra = (tipo_proteina && tipo_proteina !== 'ninguna') ? 10000 : 0;
+        const proteinaExtra = (tipo_proteina && tipo_proteina !== 'tradicional') ? 10000 : 0;
         const precio_total = precioAjustado + cocasPrice + proteinaExtra;
         
         // 4.6 Interpolar Proteína en Restricciones
         let finalRestricciones = restricciones || '';
-        if (tipo_proteina && tipo_proteina !== 'ninguna') {
+        if (tipo_proteina && tipo_proteina !== 'tradicional') {
             finalRestricciones = finalRestricciones 
                 ? `${tipo_proteina}, ${finalRestricciones}`
                 : tipo_proteina;

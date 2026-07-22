@@ -79,7 +79,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     direccion2: '', detalles2: '', barrio2: '', days_address_2: '',
     plan: initialPlan,
     alergias: '', restricciones: '', tieneCocas: false,
-    tipoProteina: 'ninguna',
+    tipoProteina: 'tradicional',
     comprobanteFile: null, comprobanteName: '', fecha_inicio: '',
     paymentMethod: 'bancolombia', terms: false
   });
@@ -736,7 +736,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
     const details = getPlanPriceDetails(formData.plan);
     const mustPayCocas = !recognizedClient;
     const cocasPrice = mustPayCocas ? juegoCocasPrice : 0;
-    const proteinaExtra = formData.tipoProteina !== 'ninguna' ? 10000 : 0;
+    const proteinaExtra = formData.tipoProteina !== 'tradicional' ? 10000 : 0;
     
     return {
       basePrice: details.planPrice,
@@ -825,7 +825,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
           // Reset Form
           setFormData({
             nombre: '', documento: '', email: '', telefono: '',
-            plan: initialPlan, alergias: '', tipoProteina: 'ninguna',
+            plan: initialPlan, alergias: '', tipoProteina: 'tradicional',
             direccion: '', barrio: '', days_address_1: 'Lunes,Martes,Miércoles,Jueves,Viernes', 
             zona: null, lat: null, lng: null, detalles: '',
             tipoEntrega: 'fija', direccion2: '', barrio2: '', 
@@ -850,7 +850,7 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
   const currentPlan = activePlans[formData.plan] || activePlans['quincenal'] || Object.values(activePlans)[0];
   const mustPayCocas = !recognizedClient;
   const cocasPrice = mustPayCocas ? juegoCocasPrice : 0;
-  const proteinaExtra = formData.tipoProteina !== 'ninguna' ? 10000 : 0;
+  const proteinaExtra = formData.tipoProteina !== 'tradicional' ? 10000 : 0;
   const totalPrice = (currentPlan?.price || 0) + cocasPrice + proteinaExtra;
 
   return (
@@ -1113,10 +1113,10 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                       value={formData.tipoProteina}
                       onChange={e => setFormData({...formData, tipoProteina: e.target.value})}
                     >
-                      <option value="ninguna">Variada (Pollo, Res y Cerdo según el menú)</option>
+                      <option value="tradicional">Tradicional (3 días cerdo, 1 pollo, 1 res)</option>
                       <option value="solo pollo">Solo Pollo (+$10.000 al total)</option>
                       <option value="solo res">Solo Res (+$10.000 al total)</option>
-                      <option value="solo cerdo">Solo Cerdo (+$10.000 al total)</option>
+                      <option value="pollo y res">Variado entre Pollo y Res (+$10.000 al total)</option>
                     </select>
                   </div>
 
