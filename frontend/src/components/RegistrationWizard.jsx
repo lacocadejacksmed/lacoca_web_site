@@ -1527,34 +1527,9 @@ export default function RegistrationWizard({ isOpen, onClose, initialPlan = '', 
                           <div className="flex items-center gap-3 md:justify-end w-full">
                             <div className="flex flex-col items-end">
                               <span className="text-sm font-black text-white tracking-tight leading-none">009-055230-3</span>
-                              <span className="text-[9px] font-bold text-slate-400 mt-1">Llave pro Bre-B</span>
+                              <span className="text-[9px] font-bold text-slate-400 mt-1">Envía por Bre-B</span>
                             </div>
                             <button type="button" onClick={() => copyToClipboard('0090552303')} className={`p-2 rounded-xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-white/10 text-slate-300 hover:text-white hover:bg-white/20'}`}>
-                              {copied ? <Check size={14} strokeWidth={3} /> : <Copy size={14} strokeWidth={3} />}
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Cuenta 2: Richard Ortiz */}
-                        <div className="flex flex-col items-end gap-1.5 w-full border-t border-white/10 pt-4">
-                          <div className="text-[10px] font-black uppercase text-slate-400 tracking-widest leading-none mb-1 text-right">Titular: Richard Ortiz</div>
-                          
-                          <div className="flex items-center gap-3 md:justify-end w-full">
-                            <div className="flex flex-col items-end">
-                              <span className="text-base font-black text-white tracking-tight leading-none">010-000847-6</span>
-                              <span className="text-[9px] font-bold text-slate-400 mt-1">Ahorros Bancolombia</span>
-                            </div>
-                            <button type="button" onClick={() => copyToClipboard('0100008476')} className={`p-2 rounded-xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-white/10 text-slate-300 hover:text-white hover:bg-white/20'}`}>
-                              {copied ? <Check size={14} strokeWidth={3} /> : <Copy size={14} strokeWidth={3} />}
-                            </button>
-                          </div>
-
-                          <div className="flex items-center gap-3 md:justify-end w-full">
-                            <div className="flex flex-col items-end">
-                              <span className="text-sm font-black text-white tracking-tight leading-none">1017176329</span>
-                              <span className="text-[9px] font-bold text-slate-400 mt-1">Llave pro Bre-B</span>
-                            </div>
-                            <button type="button" onClick={() => copyToClipboard('1017176329')} className={`p-2 rounded-xl transition-all ${copied ? 'bg-green-500 text-white' : 'bg-white/10 text-slate-300 hover:text-white hover:bg-white/20'}`}>
                               {copied ? <Check size={14} strokeWidth={3} /> : <Copy size={14} strokeWidth={3} />}
                             </button>
                           </div>
